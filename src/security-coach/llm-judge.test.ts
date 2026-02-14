@@ -123,7 +123,7 @@ describe("llm-judge.ts", () => {
 
     it("should handle LLM timeout", async () => {
       const slowJudge = new LLMJudge(
-        { enabled: true, maxLatency: 100, cacheEnabled: false },
+        { enabled: true, maxLatency: 100, cacheEnabled: false, fallbackToPatterns: false },
         mockClient,
       );
 
@@ -233,13 +233,18 @@ describe("llm-judge.ts", () => {
     });
 
     it("should validate response format", async () => {
+      const strictJudge = new LLMJudge(
+        { enabled: true, cacheEnabled: false, fallbackToPatterns: false },
+        mockClient,
+      );
+
       vi.mocked(mockClient.chat).mockResolvedValue({
         content: JSON.stringify({ invalid: "response" }),
       });
 
       const input: ThreatMatchInput = { command: "test" };
 
-      await expect(judge.evaluate(input)).rejects.toThrow("Invalid LLM response format");
+      await expect(strictJudge.evaluate(input)).rejects.toThrow("Invalid LLM response format");
     });
 
     it("should clamp confidence values", async () => {
@@ -473,7 +478,7 @@ describe("llm-judge.ts", () => {
 
     it("should detect obfuscation patterns", () => {
       expect(judge.shouldUseLLM({ command: "echo ${SECRET}" })).toBe(true);
-      expect(judge.shouldUseLLM({ command: "printf '\\x41\\x42\\x43'" })).toBe(true);
+      expect(judge.shouldUseLLM({ command: 'printf "\\123"' })).toBe(true);
     });
 
     it("should return false for simple safe commands", () => {
@@ -659,13 +664,18 @@ describe("llm-judge.ts", () => {
     });
 
     it("should handle JSON parse errors", async () => {
+      const strictJudge = new LLMJudge(
+        { enabled: true, cacheEnabled: false, fallbackToPatterns: false },
+        mockClient,
+      );
+
       vi.mocked(mockClient.chat).mockResolvedValue({
         content: "invalid json",
       });
 
       const input: ThreatMatchInput = { command: "test" };
 
-      await expect(judge.evaluate(input)).rejects.toThrow("Failed to parse LLM response");
+      await expect(strictJudge.evaluate(input)).rejects.toThrow("Failed to parse LLM response");
     });
 
     it("should handle network errors", async () => {
@@ -683,6 +693,11 @@ describe("llm-judge.ts", () => {
     });
 
     it("should handle missing required fields", async () => {
+      const strictJudge = new LLMJudge(
+        { enabled: true, cacheEnabled: false, fallbackToPatterns: false },
+        mockClient,
+      );
+
       vi.mocked(mockClient.chat).mockResolvedValue({
         content: JSON.stringify({
           isThreat: true,
@@ -692,7 +707,7 @@ describe("llm-judge.ts", () => {
 
       const input: ThreatMatchInput = { command: "test" };
 
-      await expect(judge.evaluate(input)).rejects.toThrow("Invalid LLM response format");
+      await expect(strictJudge.evaluate(input)).rejects.toThrow("Invalid LLM response format");
     });
   });
 });
