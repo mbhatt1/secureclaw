@@ -1,0 +1,223 @@
+openapi: 3.1.0
+info:
+  title: SecureClaw Gateway HTTP API
+  version: 1.0.0
+  description: |
+    SecureClaw Gateway HTTP API provides OpenAI-compatible chat completions,
+    OpenResponses API support, health checks, and tool invocation endpoints.
+
+    All endpoints share the same authentication mechanism configured in your
+    Gateway settings.
+  contact:
+    name: SecureClaw Project
+    url: https://github.com/yourusername/secureclaw
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://127.0.0.1:18789
+    description: Local development server
+  - url: https://gateway.example.com
+    description: Production gateway
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Chat
+    description: OpenAI-compatible chat completions endpoint
+  - name: Responses
+    description: OpenResponses API endpoint
+  - name: Tools
+    description: Tool invocation endpoints
+  - name: Health
+    description: Health check endpoints for monitoring
+
+paths:
+  /v1/chat/completions:
+    post:
+      tags:
+        - Chat
+      summary: Create chat completion
+      description: |
+        OpenAI-compatible chat completions endpoint. Supports both streaming
+        and non-streaming modes. Disabled by default - must be enabled in config.
+
+        Enable gateway.http.endpoints.chatCompletions.enabled = true
+      operationId: createChatCompletion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - model
+                - messages
+              properties:
+                model:
+                  type: string
+                  description: Model identifier
+                  example: secureclaw
+                messages:
+                  type: array
+                  items:
+                    type: object
+                stream:
+                  type: boolean
+                  default: false
+                user:
+                  type: string
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "500":
+          description: Internal server error
+
+  /v1/responses:
+    post:
+      tags:
+        - Responses
+      summary: Create response (OpenResponses API)
+      description: |
+        OpenResponses API endpoint for advanced agent interactions with support
+        for images, files, tools, and multi-turn conversations.
+      operationId: createResponse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - model
+                - input
+              properties:
+                model:
+                  type: string
+                input:
+                  oneOf:
+                    - type: string
+                    - type: array
+      responses:
+        "200":
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+
+  /tools/invoke:
+    post:
+      tags:
+        - Tools
+      summary: Invoke a tool directly
+      description: Invoke a SecureClaw tool directly via HTTP
+      operationId: invokeTool
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tool
+              properties:
+                tool:
+                  type: string
+                args:
+                  type: object
+                sessionKey:
+                  type: string
+      responses:
+        "200":
+          description: Tool executed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  result:
+                    type: object
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+        "403":
+          description: Tool blocked by security policy
+        "404":
+          description: Tool not found
+
+  /health/live:
+    get:
+      tags:
+        - Health
+      summary: Liveness probe
+      description: Check if the process is alive and responsive
+      operationId: getLiveness
+      security: []
+      responses:
+        "200":
+          description: Process is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  alive:
+                    type: boolean
+                  uptimeMs:
+                    type: integer
+        "500":
+          description: Process health check failed
+
+  /health/ready:
+    get:
+      tags:
+        - Health
+      summary: Readiness probe
+      description: Check if the service is ready to accept traffic
+      operationId: getReadiness
+      security: []
+      parameters:
+        - in: query
+          name: probe
+          schema:
+            type: boolean
+        - in: query
+          name: timeout
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                type: object
+        "503":
+          description: Service is not ready
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: Bearer token authentication
