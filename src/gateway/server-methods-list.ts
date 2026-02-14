@@ -88,6 +88,20 @@ const BASE_METHODS = [
   "chat.history",
   "chat.abort",
   "chat.send",
+  // Security Coach
+  "security.coach.resolve",
+  "security.coach.config.get",
+  "security.coach.config.update",
+  "security.coach.rules.list",
+  "security.coach.rules.delete",
+  "security.coach.status",
+  "security.coach.alerts.pending",
+  "security.coach.hygiene.run",
+  "security.coach.history.query",
+  "security.coach.metrics",
+  "security.coach.audit.query",
+  "security.coach.export",
+  "security.coach.import",
 ];
 
 export function listGatewayMethods(): string[] {
@@ -114,4 +128,10 @@ export const GATEWAY_EVENTS = [
   "voicewake.changed",
   "exec.approval.requested",
   "exec.approval.resolved",
+  // Security Coach
+  "security.coach.alert.requested",
+  "security.coach.alert.resolved",
+  "security.coach.tip",
+  "security.coach.status",
+  "security.coach.speak",
 ];

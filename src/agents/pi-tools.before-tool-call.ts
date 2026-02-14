@@ -1,6 +1,7 @@
 import type { AnyAgentTool } from "./tools/common.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
+import { getGlobalSecurityCoachHooks, isSecurityCoachInitialized } from "../security-coach/global.js";
 import { isPlainObject } from "../utils.js";
 import { normalizeToolName } from "./tool-policy.js";
 
@@ -22,6 +23,43 @@ export async function runBeforeToolCallHook(args: {
   const toolName = normalizeToolName(args.toolName || "tool");
   const params = args.params;
 
+  // --- Security Coach: evaluate tool call against threat patterns ----------
+  // This runs before plugin hooks because it is a core security gate that
+  // should not be overridden by third-party plugins.
+  const coachHooks = getGlobalSecurityCoachHooks();
+
+  // If security coach hasn't been initialized yet, fail closed
+  if (!coachHooks && !isSecurityCoachInitialized()) {
+    log.warn("security coach not yet initialized — blocking tool call as precaution");
+    return { blocked: true, reason: "Security Coach: not yet initialized — tool blocked" };
+  }
+
+  if (coachHooks) {
+    try {
+      const normalizedParams = isPlainObject(params) ? (params as Record<string, unknown>) : {};
+      const coachResult = await coachHooks.beforeToolCall({
+        toolName,
+        params: normalizedParams,
+        agentId: args.ctx?.agentId,
+        sessionKey: args.ctx?.sessionKey,
+      });
+      if (coachResult?.block) {
+        return {
+          blocked: true,
+          reason: coachResult.blockReason || "Tool call blocked by Security Coach",
+        };
+      }
+    } catch (err) {
+      const toolCallId = args.toolCallId ? ` toolCallId=${args.toolCallId}` : "";
+      log.warn(`security coach before_tool_call failed: tool=${toolName}${toolCallId} error=${String(err)}`);
+      return {
+        blocked: true,
+        reason: "Security Coach: internal error — tool blocked as precaution",
+      };
+    }
+  }
+
+  // --- Plugin hooks --------------------------------------------------------
   const hookRunner = getGlobalHookRunner();
   if (!hookRunner?.hasHooks("before_tool_call")) {
     return { blocked: false, params: args.params };
@@ -49,10 +87,26 @@ export async function runBeforeToolCallHook(args: {
     }
 
     if (hookResult?.params && isPlainObject(hookResult.params)) {
-      if (isPlainObject(params)) {
-        return { blocked: false, params: { ...params, ...hookResult.params } };
+      const modifiedParams = isPlainObject(params) ? { ...params, ...hookResult.params } : hookResult.params;
+
+      // Re-evaluate with security coach if params changed
+      if (coachHooks && JSON.stringify(modifiedParams) !== JSON.stringify(params)) {
+        try {
+          const recheck = await coachHooks.beforeToolCall({
+            toolName,
+            params: modifiedParams as Record<string, unknown>,
+            agentId: args.ctx?.agentId,
+            sessionKey: args.ctx?.sessionKey,
+          });
+          if (recheck && recheck.block) {
+            return { blocked: true, reason: recheck.blockReason ?? "Blocked by security coach (post-plugin recheck)" };
+          }
+        } catch {
+          return { blocked: true, reason: "Security Coach: internal error on recheck — tool blocked" };
+        }
       }
-      return { blocked: false, params: hookResult.params };
+
+      return { blocked: false, params: modifiedParams };
     }
   } catch (err) {
     const toolCallId = args.toolCallId ? ` toolCallId=${args.toolCallId}` : "";

@@ -336,6 +336,26 @@ export class AgentComponentButton extends Button {
 
     const eventText = `[Discord component: ${componentId} clicked by ${username} (${userId})]`;
 
+    // Security Coach: scan the interaction content before enqueueing
+    try {
+      const { getGlobalSecurityCoachHooks } = await import("../../security-coach/global.js");
+      const hooks = getGlobalSecurityCoachHooks();
+      if (hooks?.onInboundChannelMessage) {
+        const coachResult = await hooks.onInboundChannelMessage({
+          content: eventText,
+          channelId,
+          senderId: userId,
+          senderName: username,
+        });
+        if (coachResult?.cancel) {
+          logVerbose(`agent button: security coach blocked interaction: ${coachResult.reason}`);
+          return;
+        }
+      }
+    } catch {
+      // Fail open for interactions — do not block the interaction pipeline on coach errors
+    }
+
     logDebug(`agent button: enqueuing event for channel ${channelId}: ${eventText}`);
 
     enqueueSystemEvent(eventText, {
@@ -506,6 +526,26 @@ export class AgentSelectMenu extends StringSelectMenu {
     });
 
     const eventText = `[Discord select menu: ${componentId} interacted by ${username} (${userId})${valuesText}]`;
+
+    // Security Coach: scan the interaction content before enqueueing
+    try {
+      const { getGlobalSecurityCoachHooks } = await import("../../security-coach/global.js");
+      const hooks = getGlobalSecurityCoachHooks();
+      if (hooks?.onInboundChannelMessage) {
+        const coachResult = await hooks.onInboundChannelMessage({
+          content: eventText,
+          channelId,
+          senderId: userId,
+          senderName: username,
+        });
+        if (coachResult?.cancel) {
+          logVerbose(`agent select: security coach blocked interaction: ${coachResult.reason}`);
+          return;
+        }
+      }
+    } catch {
+      // Fail open for interactions — do not block the interaction pipeline on coach errors
+    }
 
     logDebug(`agent select: enqueuing event for channel ${channelId}: ${eventText}`);
 

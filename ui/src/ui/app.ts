@@ -4,6 +4,7 @@ import type { EventLogEntry } from "./app-events.ts";
 import type { AppViewState } from "./app-view-state.ts";
 import type { DevicePairingList } from "./controllers/devices.ts";
 import type { ExecApprovalRequest } from "./controllers/exec-approval.ts";
+import type { SecurityCoachAlertUI } from "./views/security-coach.ts";
 import type { ExecApprovalsFile, ExecApprovalsSnapshot } from "./controllers/exec-approvals.ts";
 import type { SkillMessage } from "./controllers/skills.ts";
 import type { GatewayBrowserClient, GatewayHelloOk } from "./gateway.ts";
@@ -159,6 +160,14 @@ export class OpenClawApp extends LitElement {
   @state() execApprovalQueue: ExecApprovalRequest[] = [];
   @state() execApprovalBusy = false;
   @state() execApprovalError: string | null = null;
+  @state() securityCoachEnabled = true;
+  @state() securityCoachAlerts: SecurityCoachAlertUI[] = [];
+  @state() securityCoachBusy = false;
+  @state() securityCoachError: string | null = null;
+  @state() securityCoachCharacterState = "idle";
+  @state() securityCoachSpeech: { message: string; style: string; autoDismissMs: number } | null = null;
+  @state() securityCoachMinimized = false;
+  @state() securityCoachStats: { alertsBlocked: number; alertsAllowed: number; rulesCount: number } | null = null;
   @state() pendingGatewayUrl: string | null = null;
 
   @state() configLoading = false;
@@ -512,6 +521,39 @@ export class OpenClawApp extends LitElement {
       this.execApprovalError = `Exec approval failed: ${String(err)}`;
     } finally {
       this.execApprovalBusy = false;
+    }
+  }
+
+  async handleSecurityCoachDecision(alertId: string, decision: string) {
+    if (!this.client || this.securityCoachBusy) {
+      return;
+    }
+    this.securityCoachBusy = true;
+    this.securityCoachError = null;
+    try {
+      await this.client.request("security.coach.resolve", {
+        id: alertId,
+        decision,
+      });
+      this.securityCoachAlerts = this.securityCoachAlerts.filter((a) => a.id !== alertId);
+      if (this.securityCoachAlerts.length === 0) {
+        this.securityCoachCharacterState = "idle";
+      }
+    } catch (err) {
+      this.securityCoachError = `Security coach: ${String(err)}`;
+    } finally {
+      this.securityCoachBusy = false;
+    }
+  }
+
+  handleSecurityCoachToggle(minimized: boolean) {
+    this.securityCoachMinimized = minimized;
+  }
+
+  handleSecurityCoachDismiss(alertId: string) {
+    this.securityCoachAlerts = this.securityCoachAlerts.filter((a) => a.id !== alertId);
+    if (this.securityCoachAlerts.length === 0) {
+      this.securityCoachCharacterState = "idle";
     }
   }
 

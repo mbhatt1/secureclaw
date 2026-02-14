@@ -69,6 +69,7 @@ import { renderConfig } from "./views/config.ts";
 import { renderCron } from "./views/cron.ts";
 import { renderDebug } from "./views/debug.ts";
 import { renderExecApprovalPrompt } from "./views/exec-approval.ts";
+import { renderSecurityCoach } from "./views/security-coach.ts";
 import { renderGatewayUrlConfirmation } from "./views/gateway-url-confirmation.ts";
 import { renderInstances } from "./views/instances.ts";
 import { renderLogs } from "./views/logs.ts";
@@ -1216,6 +1217,7 @@ export function renderApp(state: AppViewState) {
         }
       </main>
       ${renderExecApprovalPrompt(state)}
+      ${renderSecurityCoach(state)}
       ${renderGatewayUrlConfirmation(state)}
     </div>
   `;

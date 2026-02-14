@@ -56,6 +56,23 @@ import { startGatewayMaintenanceTimers } from "./server-maintenance.js";
 import { GATEWAY_EVENTS, listGatewayMethods } from "./server-methods-list.js";
 import { coreGatewayHandlers } from "./server-methods.js";
 import { createExecApprovalHandlers } from "./server-methods/exec-approval.js";
+import {
+  createSecurityCoachHandlers,
+  gatherHygieneScanInput,
+} from "./server-methods/security-coach.js";
+import { SecurityCoachEngine } from "../security-coach/engine.js";
+import { broadcastHygieneFindings, runHygieneCheck } from "../security-coach/hygiene.js";
+import { SecurityCoachRuleStore } from "../security-coach/rules.js";
+import { createSecurityCoachHooks } from "../security-coach/hooks.js";
+import { setGlobalSecurityCoachHooks } from "../security-coach/global.js";
+import { SecurityCoachAuditLog } from "../security-coach/audit.js";
+import { AlertThrottle } from "../security-coach/throttle.js";
+import { CoachMetrics } from "../security-coach/metrics.js";
+import { AlertHistoryStore } from "../security-coach/history.js";
+import { SiemDispatcher } from "../security-coach/siem/dispatcher.js";
+import { createSplunkAdapter } from "../security-coach/siem/splunk.js";
+import { createDatadogAdapter } from "../security-coach/siem/datadog.js";
+import { createSentinelAdapter } from "../security-coach/siem/sentinel.js";
 import { safeParseJson } from "./server-methods/nodes.helpers.js";
 import { hasConnectedMobileNode } from "./server-mobile-nodes.js";
 import { loadGatewayModelCatalog } from "./server-model-catalog.js";
@@ -468,6 +485,74 @@ export async function startGatewayServer(
     forwarder: execApprovalForwarder,
   });
 
+  const securityCoachRuleStore = new SecurityCoachRuleStore(undefined, (msg) => {
+    log.warn?.(msg);
+  });
+  try {
+    await securityCoachRuleStore.load();
+  } catch (err) {
+    log.error?.(`SECURITY WARNING: failed to load security coach rules — all saved allow/deny rules are lost: ${String(err)}`);
+  }
+  const securityCoachEngine = new SecurityCoachEngine(undefined, securityCoachRuleStore);
+
+  // Enterprise modules.
+  const securityCoachAuditLog = new SecurityCoachAuditLog();
+  const securityCoachThrottle = new AlertThrottle();
+  const securityCoachMetrics = new CoachMetrics();
+  const securityCoachHistory = new AlertHistoryStore();
+  const securityCoachSiem = new SiemDispatcher({
+    enabled: false,
+    destinations: [],
+    includeDetails: true,
+    includeContext: true,
+  });
+  // Register SIEM adapter factories so adapters are created with the real
+  // destination URL/token when batches are flushed (not at registration time).
+  securityCoachSiem.registerAdapterFactory("splunk", (dest) => createSplunkAdapter(dest));
+  securityCoachSiem.registerAdapterFactory("datadog", (dest) => createDatadogAdapter(dest));
+  securityCoachSiem.registerAdapterFactory("sentinel", (dest) => createSentinelAdapter(dest));
+
+  const enterpriseOpts = {
+    auditLog: securityCoachAuditLog,
+    throttle: securityCoachThrottle,
+    metrics: securityCoachMetrics,
+    history: securityCoachHistory,
+    siem: securityCoachSiem,
+  };
+
+  const securityCoachHandlers = createSecurityCoachHandlers(
+    securityCoachEngine,
+    securityCoachRuleStore,
+    enterpriseOpts,
+  );
+  const securityCoachHooks = createSecurityCoachHooks(
+    securityCoachEngine,
+    broadcast,
+    enterpriseOpts,
+  );
+  setGlobalSecurityCoachHooks(securityCoachHooks);
+
+  // Periodic hygiene scan — runs every 6 hours after a 5-minute initial delay.
+  const HYGIENE_INITIAL_DELAY_MS = 5 * 60 * 1000;
+  const HYGIENE_INTERVAL_MS = 6 * 60 * 60 * 1000;
+  let hygieneTimer: ReturnType<typeof setTimeout> | null = null;
+  const runHygieneScan = () => {
+    void gatherHygieneScanInput(cron, securityCoachRuleStore)
+      .then((input) => {
+        const findings = runHygieneCheck(input);
+        if (findings.length > 0) {
+          broadcastHygieneFindings(findings, broadcast);
+        }
+      })
+      .catch((err) => {
+        log.warn?.(`security coach hygiene scan failed: ${String(err)}`);
+      });
+  };
+  hygieneTimer = setTimeout(() => {
+    runHygieneScan();
+    hygieneTimer = setInterval(runHygieneScan, HYGIENE_INTERVAL_MS);
+  }, HYGIENE_INITIAL_DELAY_MS);
+
   const canvasHostServerPort = (canvasHostServer as CanvasHostServer | null)?.port;
 
   attachGatewayWsHandlers({
@@ -486,6 +571,7 @@ export async function startGatewayServer(
     extraHandlers: {
       ...pluginRegistry.gatewayHandlers,
       ...execApprovalHandlers,
+      ...securityCoachHandlers,
     },
     broadcast,
     context: {
@@ -656,6 +742,17 @@ export async function startGatewayServer(
         clearTimeout(skillsRefreshTimer);
         skillsRefreshTimer = null;
       }
+      if (hygieneTimer) {
+        clearTimeout(hygieneTimer);
+        clearInterval(hygieneTimer);
+        hygieneTimer = null;
+      }
+      // Flush SIEM dispatcher, clean up throttle state, and rotate logs on shutdown.
+      securityCoachEngine.shutdown();
+      void securityCoachSiem.shutdown().catch(() => { /* best-effort */ });
+      securityCoachThrottle.cleanup();
+      void securityCoachAuditLog.rotateIfNeeded().catch(() => { /* best-effort */ });
+      void securityCoachHistory.rotateIfNeeded().catch(() => { /* best-effort */ });
       skillsChangeUnsub();
       await close(opts);
     },

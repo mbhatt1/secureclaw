@@ -8,6 +8,7 @@ import { requestHeartbeatNow } from "../infra/heartbeat-wake.js";
 import { enqueueSystemEvent } from "../infra/system-events.js";
 import { normalizeMainKey } from "../routing/session-key.js";
 import { defaultRuntime } from "../runtime.js";
+import { getGlobalSecurityCoachHooks } from "../security-coach/global.js";
 import { loadSessionEntry } from "./session-utils.js";
 import { formatForLog } from "./ws-log.js";
 
@@ -53,6 +54,24 @@ export const handleNodeEvent = async (ctx: NodeEventContext, nodeId: string, evt
             lastTo: entry?.lastTo,
           };
         });
+      }
+
+      // Security coach: scan inbound voice transcript before starting agent run
+      const voiceCoachHooks = getGlobalSecurityCoachHooks();
+      if (voiceCoachHooks?.onInboundChannelMessage) {
+        try {
+          const coachResult = await voiceCoachHooks.onInboundChannelMessage({
+            content: text,
+            channelId: "node-event",
+            senderId: nodeId,
+          });
+          if (coachResult?.cancel) {
+            ctx.logGateway.warn?.(`security coach blocked node event: ${coachResult.reason}`);
+            return; // Don't start agent run
+          }
+        } catch {
+          // Log but continue — don't break node event pipeline
+        }
       }
 
       // Ensure chat UI clients refresh when this run completes (even though it wasn't started via chat.send).
@@ -130,6 +149,24 @@ export const handleNodeEvent = async (ctx: NodeEventContext, nodeId: string, evt
             lastTo: entry?.lastTo,
           };
         });
+      }
+
+      // Security coach: scan inbound agent request before starting agent run
+      const requestCoachHooks = getGlobalSecurityCoachHooks();
+      if (requestCoachHooks?.onInboundChannelMessage) {
+        try {
+          const coachResult = await requestCoachHooks.onInboundChannelMessage({
+            content: message,
+            channelId: "node-event",
+            senderId: nodeId,
+          });
+          if (coachResult?.cancel) {
+            ctx.logGateway.warn?.(`security coach blocked node event: ${coachResult.reason}`);
+            return; // Don't start agent run
+          }
+        } catch {
+          // Log but continue — don't break node event pipeline
+        }
       }
 
       void agentCommand(

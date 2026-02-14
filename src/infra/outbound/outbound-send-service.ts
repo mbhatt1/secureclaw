@@ -77,6 +77,36 @@ export async function executeSendAction(params: {
   sendResult?: MessageSendResult;
 }> {
   throwIfAborted(params.ctx.abortSignal);
+
+  // ── Security Coach: scan outbound channel message for PII/credential leaks ──
+  // Await the result so we can block flagged messages BEFORE sending to the channel.
+  // Fail-CLOSED on errors — if we can't verify the message is safe, don't send it
+  // to an external channel where data leaks are irreversible.
+  if (params.message && params.ctx.channel) {
+    try {
+      const { getGlobalSecurityCoachHooks } = await import("../../security-coach/global.js");
+      const hooks = getGlobalSecurityCoachHooks();
+      if (hooks?.onOutboundChannelMessage) {
+        const coachResult = await hooks.onOutboundChannelMessage({
+          content: params.message,
+          channelId: String(params.ctx.channel),
+          to: params.to,
+        });
+        if (coachResult?.cancel) {
+          throw new Error(
+            `Security coach blocked outbound message: ${coachResult.reason ?? "flagged content"}`,
+          );
+        }
+      }
+    } catch (err) {
+      // Fail-closed: if the coach itself errors, do NOT send the message.
+      // Re-throw so the caller knows the send was blocked.
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn(`[security-coach] outbound scan error: ${errMsg}`);
+      throw err;
+    }
+  }
+
   if (!params.ctx.dryRun) {
     const handled = await dispatchChannelMessageAction({
       channel: params.ctx.channel,

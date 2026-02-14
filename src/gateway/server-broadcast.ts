@@ -5,6 +5,7 @@ import { logWs, summarizeAgentEventForWsLog } from "./ws-log.js";
 const ADMIN_SCOPE = "operator.admin";
 const APPROVALS_SCOPE = "operator.approvals";
 const PAIRING_SCOPE = "operator.pairing";
+const SECURITY_COACH_SCOPE = "operator.security-coach";
 
 const EVENT_SCOPE_GUARDS: Record<string, string[]> = {
   "exec.approval.requested": [APPROVALS_SCOPE],
@@ -13,6 +14,11 @@ const EVENT_SCOPE_GUARDS: Record<string, string[]> = {
   "device.pair.resolved": [PAIRING_SCOPE],
   "node.pair.requested": [PAIRING_SCOPE],
   "node.pair.resolved": [PAIRING_SCOPE],
+  "security.coach.alert.requested": [SECURITY_COACH_SCOPE],
+  "security.coach.alert.resolved": [SECURITY_COACH_SCOPE],
+  "security.coach.tip": [SECURITY_COACH_SCOPE],
+  "security.coach.status": [SECURITY_COACH_SCOPE],
+  "security.coach.speak": [SECURITY_COACH_SCOPE],
 };
 
 function hasEventScope(client: GatewayWsClient, event: string): boolean {

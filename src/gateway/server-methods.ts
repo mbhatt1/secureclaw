@@ -138,6 +138,13 @@ function authorizeGatewayMethod(method: string, client: GatewayRequestOptions["c
   if (ADMIN_METHOD_PREFIXES.some((prefix) => method.startsWith(prefix))) {
     return errorShape(ErrorCodes.INVALID_REQUEST, "missing scope: operator.admin");
   }
+  // Security coach methods require operator.security-coach scope
+  if (method.startsWith("security.coach.")) {
+    if (scopes.includes("operator.security-coach")) {
+      return null; // authorized
+    }
+    return errorShape(ErrorCodes.INVALID_REQUEST, "missing scope: operator.security-coach");
+  }
   if (
     method.startsWith("config.") ||
     method.startsWith("wizard.") ||

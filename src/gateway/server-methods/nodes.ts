@@ -1,6 +1,7 @@
 import type { GatewayRequestHandlers } from "./types.js";
 import { loadConfig } from "../../config/config.js";
 import { listDevicePairing } from "../../infra/device-pairing.js";
+import { getGlobalSecurityCoachHooks } from "../../security-coach/global.js";
 import {
   approveNodePairing,
   listNodePairing,
@@ -417,6 +418,28 @@ export const nodeHandlers: GatewayRequestHandlers = {
         );
         return;
       }
+
+      // Security coach evaluation before dispatching to node
+      const coachHooks = getGlobalSecurityCoachHooks();
+      if (coachHooks) {
+        try {
+          const coachResult = await coachHooks.beforeToolCall({
+            toolName: `node.${command}`,
+            params: (typeof p.params === "object" && p.params !== null ? p.params : {}) as Record<string, unknown>,
+            agentId: nodeId,
+            sessionKey: `node-invoke-${nodeId}`,
+          });
+          if (coachResult && coachResult.block) {
+            respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, coachResult.blockReason ?? "Blocked by security coach"));
+            return;
+          }
+        } catch {
+          // Fail closed for node commands
+          respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, "Security coach unavailable — node command blocked"));
+          return;
+        }
+      }
+
       const res = await context.nodeRegistry.invoke({
         nodeId,
         command,
@@ -467,7 +490,11 @@ export const nodeHandlers: GatewayRequestHandlers = {
       error?: { code?: string; message?: string } | null;
     };
     const callerNodeId = client?.connect?.device?.id ?? client?.connect?.client?.id;
-    if (callerNodeId && callerNodeId !== p.nodeId) {
+    if (!callerNodeId) {
+      respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "caller identity required"));
+      return;
+    }
+    if (callerNodeId !== p.nodeId) {
       respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "nodeId mismatch"));
       return;
     }

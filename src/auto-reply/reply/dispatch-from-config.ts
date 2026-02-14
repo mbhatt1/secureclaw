@@ -197,6 +197,48 @@ export async function dispatchReplyFromConfig(params: {
       });
   }
 
+  // ── Security Coach: scan inbound channel message for threats ──────────
+  // Await the result so we can block flagged messages BEFORE dispatching a reply.
+  // Fail-open on errors to avoid breaking the entire chat system.
+  {
+    const content =
+      typeof ctx.BodyForCommands === "string"
+        ? ctx.BodyForCommands
+        : typeof ctx.RawBody === "string"
+          ? ctx.RawBody
+          : typeof ctx.Body === "string"
+            ? ctx.Body
+            : "";
+    const channelId = (ctx.OriginatingChannel ?? ctx.Surface ?? ctx.Provider ?? "").toLowerCase();
+
+    if (content) {
+      try {
+        const { getGlobalSecurityCoachHooks } = await import(
+          "../../security-coach/global.js"
+        );
+        const hooks = getGlobalSecurityCoachHooks();
+        if (hooks?.onInboundChannelMessage) {
+          const result = await hooks.onInboundChannelMessage({
+            content,
+            channelId,
+            senderId: ctx.SenderId ?? ctx.SenderE164 ?? ctx.From ?? undefined,
+            senderName: ctx.SenderName ?? ctx.SenderUsername ?? undefined,
+            conversationId: ctx.OriginatingTo ?? ctx.To ?? ctx.From ?? undefined,
+            accountId: ctx.AccountId ?? undefined,
+          });
+          if (result?.cancel) {
+            logVerbose(`dispatch-from-config: security coach blocked inbound message: ${result.reason}`);
+            recordProcessed("skipped", { reason: "security_coach_blocked" });
+            return { queuedFinal: false, counts: dispatcher.getQueuedCounts() };
+          }
+        }
+      } catch (err) {
+        // Coach error — log but continue (fail-open for inbound to avoid breaking channels)
+        logVerbose(`dispatch-from-config: security coach inbound scan failed: ${String(err)}`);
+      }
+    }
+  }
+
   // Check if we should route replies to originating channel instead of dispatcher.
   // Only route when the originating channel is DIFFERENT from the current surface.
   // This handles cross-provider routing (e.g., message from Telegram being processed

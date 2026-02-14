@@ -54,6 +54,9 @@ type GatewayHost = {
   refreshSessionsAfterChat: Set<string>;
   execApprovalQueue: ExecApprovalRequest[];
   execApprovalError: string | null;
+  securityCoachAlerts: Array<{ id: string; level: string; expiresAtMs: number; [k: string]: unknown }>;
+  securityCoachCharacterState: string;
+  securityCoachSpeech: { message: string; style: string; autoDismissMs: number } | null;
 };
 
 type SessionDefaultsSnapshot = {
@@ -253,6 +256,105 @@ function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
     if (resolved) {
       host.execApprovalQueue = removeExecApproval(host.execApprovalQueue, resolved.id);
     }
+    return;
+  }
+
+  // ── Security Coach events ───────────────────────────────────────────
+
+  if (evt.event === "security.coach.alert.requested") {
+    const payload = evt.payload as {
+      id?: string;
+      level?: string;
+      title?: string;
+      coachMessage?: string;
+      recommendation?: string;
+      requiresDecision?: boolean;
+      createdAtMs?: number;
+      expiresAtMs?: number;
+      threats?: unknown[];
+      context?: unknown;
+    } | undefined;
+
+    if (payload?.id && payload.title) {
+      const alert = {
+        id: payload.id,
+        level: (payload.level ?? "inform") as "block" | "warn" | "inform",
+        title: payload.title,
+        coachMessage: payload.coachMessage ?? "",
+        recommendation: payload.recommendation ?? "",
+        requiresDecision: payload.requiresDecision ?? false,
+        createdAtMs: payload.createdAtMs ?? Date.now(),
+        expiresAtMs: payload.expiresAtMs ?? Date.now() + 60_000,
+        threats: (payload.threats ?? []) as Array<{
+          patternId: string;
+          category: string;
+          severity: string;
+          title: string;
+          coaching: string;
+        }>,
+        context: payload.context as Record<string, unknown> | undefined,
+      };
+
+      // Add to alerts (deduplicated)
+      const exists = host.securityCoachAlerts.some((a: { id: string }) => a.id === alert.id);
+      if (!exists) {
+        host.securityCoachAlerts = [...host.securityCoachAlerts, alert];
+      }
+
+      // Update character state
+      host.securityCoachCharacterState =
+        alert.level === "block" ? "blocking" : alert.level === "warn" ? "alert" : "coaching";
+
+      // Auto-expire
+      const delay = Math.max(0, alert.expiresAtMs - Date.now() + 500);
+      window.setTimeout(() => {
+        host.securityCoachAlerts = host.securityCoachAlerts.filter(
+          (a: { id: string }) => a.id !== alert.id,
+        );
+        if (host.securityCoachAlerts.length === 0) {
+          host.securityCoachCharacterState = "idle";
+        }
+      }, delay);
+    }
+    return;
+  }
+
+  if (evt.event === "security.coach.alert.resolved") {
+    const payload = evt.payload as { id?: string } | undefined;
+    if (payload?.id) {
+      host.securityCoachAlerts = host.securityCoachAlerts.filter(
+        (a: { id: string }) => a.id !== payload.id,
+      );
+      if (host.securityCoachAlerts.length === 0) {
+        host.securityCoachCharacterState = "idle";
+      }
+    }
+    return;
+  }
+
+  if (evt.event === "security.coach.tip") {
+    const payload = evt.payload as {
+      message?: string;
+      autoDismissMs?: number;
+    } | undefined;
+    if (payload?.message) {
+      host.securityCoachSpeech = {
+        message: payload.message,
+        style: "tip",
+        autoDismissMs: payload.autoDismissMs ?? 10_000,
+      };
+      host.securityCoachCharacterState = "coaching";
+      const dismiss = payload.autoDismissMs ?? 10_000;
+      if (dismiss > 0) {
+        window.setTimeout(() => {
+          host.securityCoachSpeech = null;
+          if (host.securityCoachAlerts.length === 0) {
+            host.securityCoachCharacterState = "idle";
+          }
+        }, dismiss);
+      }
+    }
+    return;
   }
 }
 

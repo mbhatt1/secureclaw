@@ -96,6 +96,12 @@ export function createExecApprovalHandlers(
       );
     },
     "exec.approval.resolve": async ({ params, respond, client, context }) => {
+      // Require operator.approvals scope
+      const scopes = Array.isArray(client?.connect?.scopes) ? client.connect.scopes : [];
+      if (!scopes.includes("operator.admin") && !scopes.includes("operator.approvals")) {
+        respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "unauthorized: missing operator.approvals scope"));
+        return;
+      }
       if (!validateExecApprovalResolveParams(params)) {
         respond(
           false,

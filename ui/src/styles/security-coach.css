@@ -1,0 +1,1185 @@
+/* ===========================================
+   Security Coach - Interactive character overlay
+   A friendly shield character that lives in the
+   bottom-right corner, coaching users on security
+   decisions and alerting on threats.
+   =========================================== */
+
+/* -------------------------------------------
+   Keyframes
+   ------------------------------------------- */
+
+@keyframes coach-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes coach-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  20% {
+    transform: translateY(-8px);
+  }
+  40% {
+    transform: translateY(-4px);
+  }
+  60% {
+    transform: translateY(-6px);
+  }
+  80% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes coach-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  10%,
+  50%,
+  90% {
+    transform: translateX(-3px);
+  }
+  30%,
+  70% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes coach-spin-celebrate {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.1);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes coach-think-ring {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes coach-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes coach-slide-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+  }
+}
+
+@keyframes coach-badge-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  60% {
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes coach-zzz {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateY(0) scale(0.7);
+  }
+  30% {
+    opacity: 0.6;
+    transform: translateY(-6px) scale(1);
+  }
+  60% {
+    opacity: 0.3;
+    transform: translateY(-12px) scale(0.8);
+  }
+}
+
+@keyframes coach-speech-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* -------------------------------------------
+   1. Coach Container
+   ------------------------------------------- */
+
+.security-coach {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 180;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+/* -------------------------------------------
+   2. Character Avatar
+   ------------------------------------------- */
+
+.coach-character {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, #2d1f3d 0%, #1a1225 50%, #2a1832 100%);
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border: 2px solid var(--border-strong);
+  transition:
+    transform var(--duration-fast) var(--ease-spring),
+    border-color var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out),
+    opacity var(--duration-normal) var(--ease-out);
+  flex-shrink: 0;
+}
+
+.coach-character::after {
+  content: "\1F6E1\FE0F";
+  display: block;
+}
+
+.coach-character:hover {
+  transform: scale(1.08);
+  border-color: var(--accent);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 16px var(--accent-glow);
+}
+
+.coach-character:active {
+  transform: scale(0.95);
+}
+
+/* State: Idle - gentle float */
+.coach-character--idle {
+  animation: coach-float 3s ease-in-out infinite;
+}
+
+.coach-character--idle:hover {
+  animation: none;
+}
+
+/* State: Alert - bounce + red glow */
+.coach-character--alert {
+  animation:
+    coach-bounce 0.8s var(--ease-spring) infinite;
+  border-color: var(--danger);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 20px rgba(239, 68, 68, 0.4);
+}
+
+.coach-character--alert:hover {
+  animation: none;
+}
+
+/* State: Blocking - shake + intense red border */
+.coach-character--blocking {
+  animation: coach-shake 0.4s ease-in-out infinite;
+  border-color: var(--danger);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 24px rgba(239, 68, 68, 0.5),
+    0 0 48px rgba(239, 68, 68, 0.2);
+}
+
+.coach-character--blocking:hover {
+  animation: none;
+}
+
+/* State: Coaching - gentle pulse + speech dot */
+.coach-character--coaching {
+  animation: pulse-subtle 2s ease-in-out infinite;
+  border-color: var(--accent);
+}
+
+.coach-character--coaching::before {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  animation: coach-speech-dot 1.4s ease-in-out infinite;
+}
+
+/* State: Celebrating - spin + gold glow */
+.coach-character--celebrating {
+  animation: coach-spin-celebrate 0.6s var(--ease-spring);
+  border-color: #f59e0b;
+  box-shadow:
+    var(--shadow-lg),
+    0 0 24px rgba(245, 158, 11, 0.4),
+    0 0 48px rgba(245, 158, 11, 0.15);
+}
+
+/* State: Thinking - rotating ring */
+.coach-character--thinking {
+  border-color: var(--info);
+}
+
+.coach-character--thinking::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  border-top-color: var(--info);
+  border-right-color: rgba(59, 130, 246, 0.3);
+  animation: coach-think-ring 1s linear infinite;
+  pointer-events: none;
+}
+
+/* State: Sleeping - dimmed + z-z-z */
+.coach-character--sleeping {
+  opacity: 0.4;
+  border-color: var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.coach-character--sleeping:hover {
+  opacity: 0.7;
+}
+
+.coach-character--sleeping::before {
+  content: "z";
+  position: absolute;
+  top: -8px;
+  right: -4px;
+  font-size: 12px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  color: var(--muted);
+  animation: coach-zzz 2.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* -------------------------------------------
+   3. Speech Bubble
+   ------------------------------------------- */
+
+.coach-bubble {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  right: 0;
+  max-width: 320px;
+  min-width: 200px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-lg);
+  animation: coach-slide-in 0.3s var(--ease-out) backwards;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+/* Triangle pointer (bottom-right) */
+.coach-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -7px;
+  right: 20px;
+  width: 12px;
+  height: 12px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  transform: rotate(45deg);
+  border-radius: 0 0 3px 0;
+}
+
+/* Dismiss animation */
+.coach-bubble--exiting {
+  animation: coach-slide-out 0.2s var(--ease-out) forwards;
+}
+
+/* Variant: Speech (default) */
+.coach-bubble--speech {
+  border-color: var(--border);
+}
+
+/* Variant: Thought */
+.coach-bubble--thought {
+  border-style: dashed;
+  border-color: var(--border-strong);
+  opacity: 0.9;
+}
+
+.coach-bubble--thought::after {
+  border-right-style: dashed;
+  border-bottom-style: dashed;
+  border-color: var(--border-strong);
+}
+
+/* Variant: Alert */
+.coach-bubble--alert {
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 20px rgba(239, 68, 68, 0.1);
+}
+
+.coach-bubble--alert::after {
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* Variant: Tip */
+.coach-bubble--tip {
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+.coach-bubble--tip::after {
+  border-color: rgba(59, 130, 246, 0.35);
+}
+
+/* Bubble title */
+.coach-bubble__title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-strong);
+  margin-bottom: 6px;
+  letter-spacing: -0.01em;
+}
+
+/* Bubble text */
+.coach-bubble__text {
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* Bubble dismiss button */
+.coach-bubble__dismiss {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  transition:
+    color var(--duration-fast) ease,
+    background var(--duration-fast) ease;
+}
+
+.coach-bubble__dismiss:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+/* -------------------------------------------
+   4. Alert Card
+   ------------------------------------------- */
+
+.coach-alert-card {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  right: 0;
+  width: 380px;
+  max-width: calc(100vw - 48px);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    var(--shadow-xl),
+    inset 0 1px 0 var(--card-highlight);
+  animation: coach-slide-in 0.3s var(--ease-out) backwards;
+  overflow: hidden;
+}
+
+/* Alert card triangle pointer */
+.coach-alert-card::after {
+  content: "";
+  position: absolute;
+  bottom: -7px;
+  right: 20px;
+  width: 12px;
+  height: 12px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  transform: rotate(45deg);
+  border-radius: 0 0 3px 0;
+}
+
+/* Alert header */
+.coach-alert-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px 0;
+}
+
+/* Alert title */
+.coach-alert-card__title {
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+  padding: 0 16px;
+  margin-top: 10px;
+}
+
+/* Coach message */
+.coach-alert-card__message {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+  padding: 8px 16px 0;
+}
+
+/* Recommendation */
+.coach-alert-card__recommendation {
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--muted);
+  padding: 8px 16px 0;
+}
+
+/* Threat details expandable */
+.coach-alert-card__details {
+  margin: 10px 16px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--secondary);
+  overflow: hidden;
+}
+
+.coach-alert-card__details-summary {
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition:
+    color var(--duration-fast) ease,
+    background var(--duration-fast) ease;
+}
+
+.coach-alert-card__details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.coach-alert-card__details-summary::before {
+  content: "\25B8";
+  font-size: 10px;
+  transition: transform var(--duration-fast) ease;
+}
+
+.coach-alert-card__details[open] .coach-alert-card__details-summary::before {
+  transform: rotate(90deg);
+}
+
+.coach-alert-card__details-summary:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.coach-alert-card__details-content {
+  padding: 0 12px 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--chat-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-top: 1px solid var(--border);
+}
+
+/* Countdown timer */
+.coach-alert-card__timer {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px 0;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--warn);
+}
+
+.coach-alert-card__timer-bar {
+  flex: 1;
+  height: 3px;
+  border-radius: var(--radius-full);
+  background: var(--border);
+  overflow: hidden;
+}
+
+.coach-alert-card__timer-fill {
+  height: 100%;
+  border-radius: var(--radius-full);
+  background: var(--warn);
+  transition: width 1s linear;
+}
+
+/* Action buttons row */
+.coach-alert-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 16px;
+  margin-top: 4px;
+}
+
+/* -------------------------------------------
+   5. Severity Badges
+   ------------------------------------------- */
+
+.coach-severity {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+}
+
+/* Severity dot (shared) */
+.coach-severity::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.coach-severity--critical {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.coach-severity--critical::before {
+  background: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+}
+
+.coach-severity--high {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+}
+
+.coach-severity--high::before {
+  background: #f97316;
+  box-shadow: 0 0 6px rgba(249, 115, 22, 0.5);
+}
+
+.coach-severity--medium {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.coach-severity--medium::before {
+  background: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
+}
+
+.coach-severity--low {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+.coach-severity--low::before {
+  background: #3b82f6;
+  box-shadow: 0 0 6px rgba(59, 130, 246, 0.4);
+}
+
+.coach-severity--info {
+  background: rgba(113, 113, 122, 0.15);
+  color: var(--muted);
+}
+
+.coach-severity--info::before {
+  background: var(--muted);
+}
+
+/* -------------------------------------------
+   6. Action Buttons
+   ------------------------------------------- */
+
+.coach-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Inherit from .btn base pattern */
+.coach-actions .btn {
+  padding: 7px 14px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* "Allow Once" - primary accent */
+.coach-btn--allow-once {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--primary-foreground);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.coach-btn--allow-once:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  box-shadow:
+    var(--shadow-md),
+    0 0 20px var(--accent-glow);
+}
+
+/* "Always Allow" - secondary */
+.coach-btn--always-allow {
+  border-color: var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.coach-btn--always-allow:hover {
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+/* "Deny" - danger */
+.coach-btn--deny {
+  border-color: transparent;
+  background: var(--danger-subtle);
+  color: var(--danger);
+}
+
+.coach-btn--deny:hover {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* "Learn More" - ghost/outline */
+.coach-btn--learn-more {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--muted);
+}
+
+.coach-btn--learn-more:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+  border-color: var(--border-strong);
+}
+
+/* -------------------------------------------
+   7. Minimized State
+   ------------------------------------------- */
+
+.security-coach--minimized .coach-bubble,
+.security-coach--minimized .coach-alert-card {
+  display: none;
+}
+
+.security-coach--minimized .coach-character {
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+}
+
+/* Badge count overlay */
+.coach-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-full);
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--mono);
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(239, 68, 68, 0.5);
+  animation: coach-badge-pop 0.3s var(--ease-spring);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.coach-badge:empty {
+  display: none;
+}
+
+/* -------------------------------------------
+   8. Coach Overlay (for blocking alerts)
+   ------------------------------------------- */
+
+.coach-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 179;
+  animation: fade-in 0.25s var(--ease-out);
+}
+
+.coach-overlay--exiting {
+  animation: coach-slide-out 0.2s var(--ease-out) forwards;
+}
+
+/* -------------------------------------------
+   9. Utility: Bubble close area
+   ------------------------------------------- */
+
+.coach-bubble__close-area {
+  position: absolute;
+  inset: -8px;
+  z-index: -1;
+}
+
+/* -------------------------------------------
+   10. Transitions & Reduced Motion
+   ------------------------------------------- */
+
+/* Smooth transitions on state changes */
+.coach-character,
+.coach-bubble,
+.coach-alert-card,
+.coach-badge,
+.coach-severity {
+  will-change: transform, opacity;
+}
+
+.coach-character {
+  transition:
+    transform var(--duration-fast) var(--ease-spring),
+    border-color var(--duration-normal) var(--ease-out),
+    box-shadow var(--duration-normal) var(--ease-out),
+    opacity var(--duration-normal) var(--ease-out),
+    width var(--duration-normal) var(--ease-out),
+    height var(--duration-normal) var(--ease-out),
+    font-size var(--duration-normal) var(--ease-out);
+}
+
+/* -------------------------------------------
+   Reduced Motion
+   ------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .coach-character--idle,
+  .coach-character--alert,
+  .coach-character--blocking,
+  .coach-character--coaching,
+  .coach-character--celebrating,
+  .coach-character--sleeping::before {
+    animation: none !important;
+  }
+
+  .coach-character--thinking::before {
+    animation: none !important;
+    border-color: var(--info);
+  }
+
+  .coach-character--coaching::before {
+    animation: none !important;
+    opacity: 1;
+  }
+
+  .coach-bubble,
+  .coach-alert-card {
+    animation: none !important;
+  }
+
+  .coach-bubble--exiting,
+  .coach-overlay--exiting {
+    animation: none !important;
+    opacity: 0;
+  }
+
+  .coach-badge {
+    animation: none !important;
+  }
+
+  .coach-overlay {
+    animation: none !important;
+  }
+
+  .coach-alert-card__timer-fill {
+    transition: none;
+  }
+}
+
+/* -------------------------------------------
+   Light Theme Overrides
+   ------------------------------------------- */
+
+:root[data-theme="light"] .coach-character {
+  background: linear-gradient(135deg, #e8e0f0 0%, #d4cce0 50%, #e0d4ea 100%);
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+:root[data-theme="light"] .coach-bubble,
+:root[data-theme="light"] .coach-alert-card {
+  background: var(--card);
+  border-color: var(--border);
+}
+
+:root[data-theme="light"] .coach-bubble::after,
+:root[data-theme="light"] .coach-alert-card::after {
+  background: var(--card);
+}
+
+:root[data-theme="light"] .coach-alert-card__details {
+  background: var(--bg-muted);
+}
+
+:root[data-theme="light"] .coach-overlay {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* -------------------------------------------
+   11. View-layer Classes
+   These classes are used by the view render
+   functions (views/security-coach.ts) which
+   use flat naming rather than BEM __  notation.
+   ------------------------------------------- */
+
+/* Shield SVG icon sizing */
+.coach-shield-icon {
+  display: block;
+  color: currentColor;
+}
+
+/* ---- Alert header (flat naming) ---- */
+.coach-alert-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 0;
+}
+
+.coach-alert-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.coach-alert-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+}
+
+.coach-alert-sub {
+  font-size: 11px;
+  font-family: var(--mono);
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.coach-queue-indicator {
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ---- Coach message & recommendation (flat naming) ---- */
+.coach-message {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+  padding: 8px 16px 0;
+}
+
+.coach-recommendation {
+  font-size: 12px;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--muted);
+  padding: 8px 16px 0;
+}
+
+.coach-error {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--danger);
+  padding: 8px 16px 0;
+}
+
+/* ---- Severity badge (flat naming) ---- */
+.coach-severity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+/* Level-based severity variants (block / warn / inform) */
+.coach-severity--block,
+.coach-severity-badge.coach-severity--block {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.coach-severity--warn,
+.coach-severity-badge.coach-severity--warn {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.coach-severity--inform,
+.coach-severity-badge.coach-severity--inform {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+/* Alert card border tinting by severity level */
+.coach-alert-card.coach-severity--block {
+  border-color: rgba(239, 68, 68, 0.4);
+  box-shadow:
+    var(--shadow-xl),
+    inset 0 1px 0 var(--card-highlight),
+    0 0 20px rgba(239, 68, 68, 0.1);
+}
+
+.coach-alert-card.coach-severity--warn {
+  border-color: rgba(245, 158, 11, 0.35);
+  box-shadow:
+    var(--shadow-xl),
+    inset 0 1px 0 var(--card-highlight),
+    0 0 16px rgba(245, 158, 11, 0.08);
+}
+
+.coach-alert-card.coach-severity--inform {
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+/* ---- Bubble text (flat naming) ---- */
+.coach-bubble-text {
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* ---- Minimized character variant ---- */
+.coach-character--minimized,
+.coach-character.coach-character--minimized {
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+}
+
+/* ---- Alert context ---- */
+.coach-alert-context {
+  padding: 8px 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.coach-context-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.coach-context-label {
+  color: var(--muted);
+  flex-shrink: 0;
+  min-width: 56px;
+  text-align: right;
+}
+
+.coach-context-value {
+  color: var(--text);
+  word-break: break-all;
+}
+
+/* ---- Threat details ---- */
+.coach-threat-details {
+  margin: 10px 16px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--secondary);
+  overflow: hidden;
+}
+
+.coach-threat-details > summary {
+  padding: 8px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition:
+    color var(--duration-fast) ease,
+    background var(--duration-fast) ease;
+}
+
+.coach-threat-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.coach-threat-details > summary:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.coach-threat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.coach-threat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.coach-threat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.coach-threat-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.coach-threat-severity {
+  font-size: 10px;
+  font-family: var(--mono);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.coach-threat-category {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.coach-threat-coaching {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* -------------------------------------------
+   Responsive: Small Screens
+   ------------------------------------------- */
+
+@media (max-width: 480px) {
+  .security-coach {
+    bottom: 16px;
+    right: 16px;
+  }
+
+  .coach-alert-card {
+    width: calc(100vw - 32px);
+    right: -8px;
+  }
+
+  .coach-bubble {
+    max-width: calc(100vw - 80px);
+  }
+}

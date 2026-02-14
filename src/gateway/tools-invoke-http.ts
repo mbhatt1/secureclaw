@@ -21,6 +21,7 @@ import { isTestDefaultMemorySlotDisabled } from "../plugins/config-state.js";
 import { getPluginToolMeta } from "../plugins/tools.js";
 import { isSubagentSessionKey } from "../routing/session-key.js";
 import { normalizeMessageChannel } from "../utils/message-channel.js";
+import { getGlobalSecurityCoachHooks } from "../security-coach/global.js";
 import { authorizeGatewayConnect, type ResolvedGatewayAuth } from "./auth.js";
 import {
   readJsonBodyOrError,
@@ -304,6 +305,27 @@ export async function handleToolsInvokeHttpRequest(
       error: { type: "not_found", message: `Tool not available: ${toolName}` },
     });
     return true;
+  }
+
+  // Security coach evaluation before HTTP tool invocation
+  const coachHooks = getGlobalSecurityCoachHooks();
+  if (coachHooks) {
+    try {
+      const coachResult = await coachHooks.beforeToolCall({
+        toolName: toolName,
+        params: args ?? {},
+        agentId: `http-${Date.now()}`,
+        sessionKey: "http-invoke",
+      });
+      if (coachResult && coachResult.block) {
+        sendJson(res, 403, { ok: false, error: coachResult.blockReason ?? "Blocked by security coach" });
+        return true;
+      }
+    } catch (err) {
+      // Fail closed — block tool on coach error
+      sendJson(res, 503, { ok: false, error: "Security coach unavailable — tool blocked" });
+      return true;
+    }
   }
 
   try {

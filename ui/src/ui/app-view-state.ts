@@ -34,6 +34,7 @@ import type {
 import type { ChatAttachment, ChatQueueItem, CronFormState } from "./ui-types.ts";
 import type { NostrProfileFormState } from "./views/channels.nostr-profile-form.ts";
 import type { SessionLogEntry } from "./views/usage.ts";
+import type { SecurityCoachAlertUI } from "./views/security-coach.ts";
 
 export type AppViewState = {
   settings: UiSettings;
@@ -87,6 +88,22 @@ export type AppViewState = {
   execApprovalQueue: ExecApprovalRequest[];
   execApprovalBusy: boolean;
   execApprovalError: string | null;
+  securityCoachEnabled: boolean;
+  securityCoachAlerts: SecurityCoachAlertUI[];
+  securityCoachBusy: boolean;
+  securityCoachError: string | null;
+  securityCoachCharacterState: string;
+  securityCoachSpeech: {
+    message: string;
+    style: string;
+    autoDismissMs: number;
+  } | null;
+  securityCoachMinimized: boolean;
+  securityCoachStats: {
+    alertsBlocked: number;
+    alertsAllowed: number;
+    rulesCount: number;
+  } | null;
   pendingGatewayUrl: string | null;
   configLoading: boolean;
   configRaw: string;
@@ -240,6 +257,9 @@ export type AppViewState = {
   handleNostrProfileImport: () => Promise<void>;
   handleNostrProfileToggleAdvanced: () => void;
   handleExecApprovalDecision: (decision: "allow-once" | "allow-always" | "deny") => Promise<void>;
+  handleSecurityCoachDecision: (alertId: string, decision: string) => void;
+  handleSecurityCoachToggle: (minimized: boolean) => void;
+  handleSecurityCoachDismiss: (alertId: string) => void;
   handleGatewayUrlConfirm: () => void;
   handleGatewayUrlCancel: () => void;
   handleConfigLoad: () => Promise<void>;

@@ -6,6 +6,7 @@ import type {
 import type { EmbeddedPiSubscribeContext } from "./pi-embedded-subscribe.handlers.types.js";
 import { emitAgentEvent } from "../infra/agent-events.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
+import { getGlobalSecurityCoachHooks } from "../security-coach/global.js";
 import { normalizeTextForComparison } from "./pi-embedded-helpers.js";
 import { isMessagingTool, isMessagingToolSendAction } from "./pi-embedded-messaging.js";
 import {
@@ -253,11 +254,12 @@ export async function handleToolExecutionEnd(
 
   // Run after_tool_call plugin hook (fire-and-forget)
   const hookRunnerAfter = ctx.hookRunner ?? getGlobalHookRunner();
+  const startData = toolStartData.get(toolCallId);
+  toolStartData.delete(toolCallId);
+  const durationMs = startData?.startTime != null ? Date.now() - startData.startTime : undefined;
+  const toolArgs = startData?.args;
+
   if (hookRunnerAfter?.hasHooks("after_tool_call")) {
-    const startData = toolStartData.get(toolCallId);
-    toolStartData.delete(toolCallId);
-    const durationMs = startData?.startTime != null ? Date.now() - startData.startTime : undefined;
-    const toolArgs = startData?.args;
     const hookEvent: PluginHookAfterToolCallEvent = {
       toolName,
       params: (toolArgs && typeof toolArgs === "object" ? toolArgs : {}) as Record<string, unknown>,
@@ -274,7 +276,22 @@ export async function handleToolExecutionEnd(
       .catch((err) => {
         ctx.log.warn(`after_tool_call hook failed: tool=${toolName} error=${String(err)}`);
       });
-  } else {
-    toolStartData.delete(toolCallId);
+  }
+
+  // Run security coach after_tool_call hook (fire-and-forget, educational tips)
+  const coachHooks = getGlobalSecurityCoachHooks();
+  if (coachHooks) {
+    const coachParams = (toolArgs && typeof toolArgs === "object" ? toolArgs : {}) as Record<string, unknown>;
+    void coachHooks
+      .afterToolCall({
+        toolName,
+        params: coachParams,
+        result: sanitizedResult,
+        error: isToolError ? extractToolErrorMessage(sanitizedResult) : undefined,
+        durationMs,
+      })
+      .catch((err) => {
+        ctx.log.debug(`security coach after_tool_call failed: tool=${toolName} error=${String(err)}`);
+      });
   }
 }
