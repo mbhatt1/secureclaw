@@ -108,10 +108,10 @@ export class BufferedFileLogger {
 
     this.flushing = true;
 
-    try {
-      const entries = this.buffer.slice();
-      this.buffer = [];
+    const entries = this.buffer.slice();
+    this.buffer = [];
 
+    try {
       const content = entries.join("\n") + "\n";
       const bytes = Buffer.byteLength(content, "utf8");
 
@@ -135,7 +135,7 @@ export class BufferedFileLogger {
       // Log to console as fallback (can't use file logger)
       console.error("buffered logger flush failed:", err);
 
-      // Put entries back in buffer for retry - capture entries from outer scope
+      // Put entries back in buffer for retry
       this.buffer.unshift(...entries);
     } finally {
       this.flushing = false;
