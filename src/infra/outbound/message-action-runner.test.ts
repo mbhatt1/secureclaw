@@ -13,7 +13,7 @@ import {
   createIMessageTestPlugin,
   createOutboundTestPlugin,
   createTestRegistry,
-} from "../../test-utils/channel-plugins.js";
+} from "../../test-helpers/channel-plugins.js";
 import { loadWebMedia } from "../../web/media.js";
 import { runMessageAction } from "./message-action-runner.js";
 

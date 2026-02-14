@@ -3,7 +3,7 @@ import type { SecureClawConfig } from "../../config/config.js";
 import { slackPlugin } from "../../../extensions/slack/src/channel.js";
 import { telegramPlugin } from "../../../extensions/telegram/src/channel.js";
 import { setActivePluginRegistry } from "../../plugins/runtime.js";
-import { createTestRegistry } from "../../test-utils/channel-plugins.js";
+import { createTestRegistry } from "../../test-helpers/channel-plugins.js";
 
 const mocks = vi.hoisted(() => ({
   executeSendAction: vi.fn(),
