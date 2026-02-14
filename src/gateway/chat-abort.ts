@@ -33,9 +33,9 @@ export function resolveChatRunExpiresAtMs(params: {
 
 export type ChatAbortOps = {
   chatAbortControllers: Map<string, ChatAbortControllerEntry>;
-  chatRunBuffers: Map<string, string>;
-  chatDeltaSentAt: Map<string, number>;
-  chatAbortedRuns: Map<string, number>;
+  chatRunBuffers: import("./server-chat.js").ChatRunState["buffers"];
+  chatDeltaSentAt: import("./server-chat.js").ChatRunState["deltaSentAt"];
+  chatAbortedRuns: import("./server-chat.js").ChatRunState["abortedRuns"];
   removeChatRun: (
     sessionId: string,
     clientRunId: string,

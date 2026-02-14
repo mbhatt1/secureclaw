@@ -200,18 +200,12 @@ importers:
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
-      '@typescript/native-preview':
-        specifier: 7.0.0-dev.20260212.1
-        version: 7.0.0-dev.20260212.1
       '@vitest/coverage-v8':
         specifier: ^4.0.18
         version: 4.0.18(@vitest/browser@4.0.18(vite@7.3.1(@types/node@25.2.3)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))(vitest@4.0.18))(vitest@4.0.18)
       lit:
         specifier: ^3.3.2
         version: 3.3.2
-      ollama:
-        specifier: ^0.6.3
-        version: 0.6.3
       oxfmt:
         specifier: 0.32.0
         version: 0.32.0
@@ -4743,9 +4737,6 @@ packages:
   ogg-opus-decoder@1.7.3:
     resolution: {integrity: sha512-w47tiZpkLgdkpa+34VzYD8mHUj8I9kfWVZa82mBbNwDvB1byfLXSSzW/HxA4fI3e9kVlICSpXGFwMLV1LPdjwg==}
 
-  ollama@0.6.3:
-    resolution: {integrity: sha512-KEWEhIqE5wtfzEIZbDCLH51VFZ6Z3ZSa6sIOg/E/tBV8S51flyqBOXi+bRxlOYKDf8i327zG9eSTb8IJxvm3Zg==}
-
   on-exit-leak-free@2.1.2:
     resolution: {integrity: sha512-0eJJY6hXLGf1udHwfNftBqH+g73EU4B504nZeKpz1sYRKafAghwxEJunB2O7rDZkL4PGfsMVnTXZ2EjibbqcsA==}
     engines: {node: '>=14.0.0'}
@@ -5748,9 +5739,6 @@ packages:
 
   webidl-conversions@3.0.1:
     resolution: {integrity: sha512-2JAn3z8AR6rjK8Sm8orRC0h/bcl/DqL7tRPdGZ4I1CjdF+EaMLmYxBHyXuKL849eucPFhvBoxMsflfOb8kxaeQ==}
-
-  whatwg-fetch@3.6.20:
-    resolution: {integrity: sha512-EqhiFU6daOA8kpjOWTL0olhVOF3i7OrFzSYiGsEMB8GcXS+RrzauAERX65xMeNWVqxA6HXH2m69Z9LaKKdisfg==}
 
   whatwg-url@5.0.0:
     resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
@@ -8632,6 +8620,7 @@ snapshots:
       '@typescript/native-preview-linux-x64': 7.0.0-dev.20260212.1
       '@typescript/native-preview-win32-arm64': 7.0.0-dev.20260212.1
       '@typescript/native-preview-win32-x64': 7.0.0-dev.20260212.1
+    optional: true
 
   '@typespec/ts-http-runtime@0.3.3':
     dependencies:
@@ -10447,10 +10436,6 @@ snapshots:
       opus-decoder: 0.7.11
     optional: true
 
-  ollama@0.6.3:
-    dependencies:
-      whatwg-fetch: 3.6.20
-
   on-exit-leak-free@2.1.2: {}
 
   on-finished@2.3.0:
@@ -11591,8 +11576,6 @@ snapshots:
   web-streams-polyfill@3.3.3: {}
 
   webidl-conversions@3.0.1: {}
-
-  whatwg-fetch@3.6.20: {}
 
   whatwg-url@5.0.0:
     dependencies:

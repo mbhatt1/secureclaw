@@ -61,9 +61,9 @@ export type GatewayRequestContext = {
   nodeRegistry: NodeRegistry;
   agentRunSeq: Map<string, number>;
   chatAbortControllers: Map<string, ChatAbortControllerEntry>;
-  chatAbortedRuns: Map<string, number>;
-  chatRunBuffers: Map<string, string>;
-  chatDeltaSentAt: Map<string, number>;
+  chatAbortedRuns: import("../server-chat.js").ChatRunState["abortedRuns"];
+  chatRunBuffers: import("../server-chat.js").ChatRunState["buffers"];
+  chatDeltaSentAt: import("../server-chat.js").ChatRunState["deltaSentAt"];
   addChatRun: (sessionId: string, entry: { sessionKey: string; clientRunId: string }) => void;
   removeChatRun: (
     sessionId: string,

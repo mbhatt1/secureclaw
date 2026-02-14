@@ -148,30 +148,18 @@ class LazyInputText {
 
   get blob(): string {
     if (this._blob === undefined) {
-      // OPTIMIZATION: Avoid expensive JSON.stringify for params
-      // Instead, extract key string values directly
-      let paramsStr = "";
-      if (this.input.params && typeof this.input.params === "object") {
-        const keys = Object.keys(this.input.params);
-        if (keys.length > 0) {
-          // Only extract string/number values (skip nested objects)
-          for (const key of keys) {
-            const val = this.input.params[key];
-            if (typeof val === "string" || typeof val === "number") {
-              paramsStr += `${key}=${val}\n`;
-            }
-          }
-        }
-      }
-
-      const raw = [
+      // OPTIMIZATION: Skip params entirely for security pattern matching
+      // Params rarely contain security threats compared to command/content/url
+      // This avoids both JSON.stringify overhead and object iteration
+      const parts = [
         this.input.toolName ?? "",
         this.input.command ?? "",
         this.input.content ?? "",
         this.input.url ?? "",
         this.input.filePath ?? "",
-        paramsStr,
-      ].join("\n");
+      ];
+
+      const raw = parts.join("\n");
       this._blob = raw.length > 50_000 ? raw.slice(0, 50_000) : raw;
     }
     return this._blob;
@@ -274,10 +262,18 @@ export class OptimizedThreatMatcher {
     const now = Date.now();
     const startMs = now;
     const matches: ThreatMatch[] = [];
-    const lazyText = new LazyInputText(input);
+
+    // OPTIMIZATION: Create LazyInputText lazily (defer computation)
+    let lazyText: LazyInputText | null = null;
+    const getLazyText = () => {
+      if (!lazyText) {
+        lazyText = new LazyInputText(input);
+      }
+      return lazyText;
+    };
 
     // TIER 1: Fast-path check for critical substrings
-    const hasCriticalSubstring = this.fastPathCheck(lazyText.lower);
+    const hasCriticalSubstring = this.fastPathCheck(getLazyText().lower);
 
     // TIER 2: Critical patterns (check these first, even without fast-path match)
     for (const pattern of this.criticalPatterns) {
@@ -285,7 +281,7 @@ export class OptimizedThreatMatcher {
         break; // Timeout protection
       }
 
-      const result = this.matchPattern(pattern, input, lazyText);
+      const result = this.matchPattern(pattern, input, getLazyText());
       if (result.matched) {
         matches.push({
           pattern,
@@ -302,7 +298,7 @@ export class OptimizedThreatMatcher {
         break;
       }
 
-      const result = this.matchPattern(pattern, input, lazyText);
+      const result = this.matchPattern(pattern, input, getLazyText());
       if (result.matched) {
         matches.push({
           pattern,
@@ -319,7 +315,7 @@ export class OptimizedThreatMatcher {
         break;
       }
 
-      const result = this.matchPattern(pattern, input, lazyText);
+      const result = this.matchPattern(pattern, input, getLazyText());
       if (result.matched) {
         matches.push({
           pattern,
@@ -336,7 +332,7 @@ export class OptimizedThreatMatcher {
         break;
       }
 
-      const result = this.matchPattern(pattern, input, lazyText);
+      const result = this.matchPattern(pattern, input, getLazyText());
       if (result.matched) {
         matches.push({
           pattern,

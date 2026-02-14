@@ -56,16 +56,20 @@ export function detectResourceConstraints(): {
 /**
  * Determine optimal startup strategy based on system resources
  */
-export function resolveStartupOptimizations(config: {
-  gateway?: {
-    startup?: {
-      skipHealthCheck?: boolean;
-      parallelChannels?: boolean;
-      asyncMemory?: boolean;
-      lazyLoadModules?: boolean;
-    };
-  };
-}): StartupOptimizations {
+export function resolveStartupOptimizations(
+  config:
+    | Pick<import("../config/config.js").SecureClawConfig, "gateway">
+    | {
+        gateway?: {
+          startup?: {
+            skipHealthCheck?: boolean;
+            parallelChannels?: boolean;
+            asyncMemory?: boolean;
+            lazyLoadModules?: boolean;
+          };
+        };
+      },
+): StartupOptimizations {
   const constraints = detectResourceConstraints();
   const startupConfig = config.gateway?.startup;
 

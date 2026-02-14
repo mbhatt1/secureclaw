@@ -85,7 +85,7 @@ export class WSConnectionPool {
     for (const client of toRemove) {
       try {
         // Close idle connection
-        client.ws.close(1000, "Idle timeout");
+        client.socket.close(1000, "Idle timeout");
       } catch {
         // Already closed
       }

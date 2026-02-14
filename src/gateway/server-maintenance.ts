@@ -27,9 +27,9 @@ export function startGatewayMaintenanceTimers(params: {
   logHealth: { error: (msg: string) => void };
   dedupe: Map<string, DedupeEntry>;
   chatAbortControllers: Map<string, ChatAbortControllerEntry>;
-  chatRunState: { abortedRuns: Map<string, number> };
-  chatRunBuffers: Map<string, string>;
-  chatDeltaSentAt: Map<string, number>;
+  chatRunState: import("./server-chat.js").ChatRunState;
+  chatRunBuffers: import("./server-chat.js").ChatRunState["buffers"];
+  chatDeltaSentAt: import("./server-chat.js").ChatRunState["deltaSentAt"];
   removeChatRun: (
     sessionId: string,
     clientRunId: string,

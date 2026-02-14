@@ -76,8 +76,8 @@ export async function createGatewayRuntimeState(params: {
   agentRunSeq: Map<string, number>;
   dedupe: Map<string, DedupeEntry>;
   chatRunState: ReturnType<typeof createChatRunState>;
-  chatRunBuffers: Map<string, string>;
-  chatDeltaSentAt: Map<string, number>;
+  chatRunBuffers: ReturnType<typeof createChatRunState>["buffers"];
+  chatDeltaSentAt: ReturnType<typeof createChatRunState>["deltaSentAt"];
   addChatRun: (sessionId: string, entry: ChatRunEntry) => void;
   removeChatRun: (
     sessionId: string,

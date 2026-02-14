@@ -19,9 +19,9 @@ export type NodeEventContext = {
     sessionKey?: string,
   ) => ChatRunEntry | undefined;
   chatAbortControllers: Map<string, ChatAbortControllerEntry>;
-  chatAbortedRuns: Map<string, number>;
-  chatRunBuffers: Map<string, string>;
-  chatDeltaSentAt: Map<string, number>;
+  chatAbortedRuns: import("./server-chat.js").ChatRunState["abortedRuns"];
+  chatRunBuffers: import("./server-chat.js").ChatRunState["buffers"];
+  chatDeltaSentAt: import("./server-chat.js").ChatRunState["deltaSentAt"];
   dedupe: Map<string, DedupeEntry>;
   agentRunSeq: Map<string, number>;
   getHealthCache: () => HealthSummary | null;
