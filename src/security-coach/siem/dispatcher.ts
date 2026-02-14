@@ -66,9 +66,7 @@ export type SiemConfig = {
 export type SiemAdapter = {
   name: string;
   formatEvent(event: SiemEvent): unknown;
-  formatBatch(
-    events: SiemEvent[],
-  ): { url: string; headers: Record<string, string>; body: string };
+  formatBatch(events: SiemEvent[]): { url: string; headers: Record<string, string>; body: string };
 };
 
 export type SiemDispatcherStats = {
@@ -79,10 +77,7 @@ export type SiemDispatcherStats = {
   lastDispatchAtMs: number;
   lastErrorAtMs: number;
   lastError?: string;
-  perDestination: Record<
-    string,
-    { sent: number; failed: number; queued: number }
-  >;
+  perDestination: Record<string, { sent: number; failed: number; queued: number }>;
 };
 
 // ---------------------------------------------------------------------------
@@ -182,7 +177,9 @@ export class SiemDispatcher {
 
     for (const [key, queue] of this.queues) {
       const { dest } = queue;
-      if (!dest.enabled) continue;
+      if (!dest.enabled) {
+        continue;
+      }
 
       // Severity filter
       if (
@@ -235,10 +232,7 @@ export class SiemDispatcher {
   /** Flush all pending batches and stop all timers. */
   async shutdown(): Promise<void> {
     this.stopped = true;
-    await Promise.race([
-      this.flush(),
-      new Promise<void>((resolve) => setTimeout(resolve, 15_000)),
-    ]);
+    await Promise.race([this.flush(), new Promise<void>((resolve) => setTimeout(resolve, 15_000))]);
 
     // Clear any remaining timers (safety net).
     for (const queue of this.queues.values()) {
@@ -329,7 +323,9 @@ export class SiemDispatcher {
    */
   private async flushQueue(key: string): Promise<void> {
     const queue = this.queues.get(key);
-    if (!queue || queue.events.length === 0) return;
+    if (!queue || queue.events.length === 0) {
+      return;
+    }
 
     // Clear the timer.
     if (queue.timer) {
@@ -343,17 +339,10 @@ export class SiemDispatcher {
     // Prefer a factory (creates an adapter with the destination's actual
     // URL/token) over a fixed adapter instance.
     const factory = this.adapterFactories.get(queue.dest.type);
-    const adapter = factory
-      ? factory(queue.dest)
-      : this.adapters.get(queue.dest.type);
+    const adapter = factory ? factory(queue.dest) : this.adapters.get(queue.dest.type);
 
     if (!adapter) {
-      this.recordError(
-        new Error(
-          `No adapter registered for SIEM type "${queue.dest.type}"`,
-        ),
-        key,
-      );
+      this.recordError(new Error(`No adapter registered for SIEM type "${queue.dest.type}"`), key);
       this.stats.eventsDropped += batch.length;
       queue.stats.failed += batch.length;
       return;
@@ -381,9 +370,7 @@ export class SiemDispatcher {
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-          throw new Error(
-            `SIEM delivery failed: ${response.status} ${response.statusText}`,
-          );
+          throw new Error(`SIEM delivery failed: ${response.status} ${response.statusText}`);
         }
 
         return true;
@@ -441,8 +428,12 @@ export class SiemDispatcher {
 // ---------------------------------------------------------------------------
 
 /** Strip potentially sensitive fields from SIEM event context. */
-function sanitizeContext(ctx: Record<string, unknown> | undefined): Record<string, unknown> | undefined {
-  if (!ctx) return ctx;
+function sanitizeContext(
+  ctx: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (!ctx) {
+    return ctx;
+  }
   const sanitized = { ...ctx };
   // Remove fields that may contain secrets
   delete sanitized.command;

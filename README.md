@@ -75,6 +75,61 @@ secureclaw agent --message "Ship checklist" --thinking high
 
 Upgrading? [Updating guide](https://docs.secureclaw.app/install/updating) (and run `secureclaw doctor`).
 
+## Quick start: Raspberry Pi
+
+SecureClaw runs efficiently on Raspberry Pi with optimized profiles for resource-constrained environments.
+
+**Supported hardware:**
+
+- Raspberry Pi 4 (2GB, 4GB, 8GB)
+- Raspberry Pi 5
+- Requires 64-bit Raspberry Pi OS
+
+**Quick deploy from another machine:**
+
+```bash
+# Deploy to your Pi with optimized config
+./scripts/deploy.sh pi@raspberrypi.local pi raspberry-pi-4-4gb
+
+# Or deploy manually on the Pi:
+ssh pi@raspberrypi.local
+npm install -g secureclaw@latest
+secureclaw onboard --profile raspberry-pi-4-4gb
+```
+
+**Available profiles:**
+
+- `raspberry-pi-4-2gb` - Ultra-lightweight (target: <5s startup, <80MB idle, <1W power)
+- `raspberry-pi-4-4gb` - Balanced (target: <5s startup, <100MB idle, <1W power)
+- `raspberry-pi-4-8gb` - Full features (target: <5s startup, <150MB idle, <1.2W power)
+- `raspberry-pi-5` - High performance (target: <3s startup, <200MB idle, <2W power)
+
+**Using a profile:**
+
+```bash
+# Via CLI flag
+secureclaw gateway --profile raspberry-pi-4-4gb
+
+# Via environment variable
+export SECURECLAW_PROFILE=raspberry-pi-4-4gb
+secureclaw gateway
+
+# Or merge profile with your config
+secureclaw gateway  # Auto-detects if on Pi
+```
+
+The optimizations include:
+
+- Lazy loading of heavy modules (Playwright, etc)
+- Parallel channel initialization
+- Async memory backend loading
+- Reduced heartbeat frequency
+- CPU temperature and memory pressure monitoring
+- Disk space alerts
+- Power state monitoring (throttling, under-voltage)
+
+View performance metrics: `secureclaw doctor --bench`
+
 ## Development channels
 
 - **stable**: tagged releases (`vYYYY.M.D` or `vYYYY.M.D-<patch>`), npm dist-tag `latest`.

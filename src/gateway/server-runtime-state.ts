@@ -25,6 +25,7 @@ import { attachGatewayUpgradeHandler, createGatewayHttpServer } from "./server-h
 import { createGatewayHooksRequestHandler } from "./server/hooks.js";
 import { listenGatewayHttpServer } from "./server/http-listen.js";
 import { createGatewayPluginRequestHandler } from "./server/plugins-http.js";
+import { WSConnectionPool } from "./ws-connection-pool.js";
 
 export async function createGatewayRuntimeState(params: {
   cfg: import("../config/config.js").SecureClawConfig;
@@ -54,7 +55,7 @@ export async function createGatewayRuntimeState(params: {
   httpServers: HttpServer[];
   httpBindHosts: string[];
   wss: WebSocketServer;
-  clients: Set<GatewayWsClient>;
+  clients: WSConnectionPool;
   broadcast: (
     event: string,
     payload: unknown,
@@ -107,7 +108,13 @@ export async function createGatewayRuntimeState(params: {
     }
   }
 
-  const clients = new Set<GatewayWsClient>();
+  // Use WSConnectionPool for bounded connection management
+  // Detect Raspberry Pi by architecture for connection limits
+  const isPi = process.arch === "arm" || process.arch === "arm64";
+  const clients = new WSConnectionPool({
+    maxConnections: isPi ? 20 : 100, // Conservative limits for Pi
+    idleTimeoutMs: 300_000, // 5 minutes idle timeout
+  });
   const { broadcast, broadcastToConnIds } = createGatewayBroadcaster({ clients });
 
   const handleHooksRequest = createGatewayHooksRequestHandler({

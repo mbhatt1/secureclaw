@@ -2,6 +2,7 @@ import { normalizeVerboseLevel } from "../auto-reply/thinking.js";
 import { loadConfig } from "../config/config.js";
 import { type AgentEventPayload, getAgentRunContext } from "../infra/agent-events.js";
 import { resolveHeartbeatVisibility } from "../infra/heartbeat-visibility.js";
+import { LRUCache } from "../utils/lru-cache.js";
 import { loadSessionEntry } from "./session-utils.js";
 import { formatForLog } from "./ws-log.js";
 
@@ -92,17 +93,19 @@ export function createChatRunRegistry(): ChatRunRegistry {
 
 export type ChatRunState = {
   registry: ChatRunRegistry;
-  buffers: Map<string, string>;
-  deltaSentAt: Map<string, number>;
-  abortedRuns: Map<string, number>;
+  buffers: LRUCache<string, string>;
+  deltaSentAt: LRUCache<string, number>;
+  abortedRuns: LRUCache<string, number>;
   clear: () => void;
 };
 
 export function createChatRunState(): ChatRunState {
   const registry = createChatRunRegistry();
-  const buffers = new Map<string, string>();
-  const deltaSentAt = new Map<string, number>();
-  const abortedRuns = new Map<string, number>();
+  // Limit chat buffers to prevent unbounded memory growth
+  // 1000 concurrent chat runs should be more than enough
+  const buffers = new LRUCache<string, string>({ maxSize: 1000 });
+  const deltaSentAt = new LRUCache<string, number>({ maxSize: 1000 });
+  const abortedRuns = new LRUCache<string, number>({ maxSize: 1000, ttl: 300_000 }); // 5 min TTL
 
   const clear = () => {
     registry.clear();

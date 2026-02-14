@@ -201,11 +201,15 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
       const text = inputText(input).toUpperCase();
       // Match DELETE FROM <table> that is NOT followed by a WHERE clause
       const deleteMatch = /\bDELETE\s+FROM\s+\w+/i.exec(text);
-      if (!deleteMatch) return false;
+      if (!deleteMatch) {
+        return false;
+      }
       const afterDelete = text.slice(deleteMatch.index + deleteMatch[0].length).trim();
       // If the remaining text is just a semicolon or empty, that's a
       // DELETE FROM <table>; with no WHERE — flag it.
-      if (/^;?\s*$/.test(afterDelete)) return true;
+      if (/^;?\s*$/.test(afterDelete)) {
+        return true;
+      }
       // Otherwise flag if WHERE does not appear after the DELETE.
       return !/^WHERE\b/.test(afterDelete);
     },
@@ -240,7 +244,8 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     category: "data-exfiltration",
     severity: "high",
     title: "Uploading a file via curl POST",
-    match: /\bcurl\b.{0,500}?(-X\s*POST|--data|--data-binary|-d\s|--upload-file|-F\s).{0,500}?(@|<)/,
+    match:
+      /\bcurl\b.{0,500}?(-X\s*POST|--data|--data-binary|-d\s|--upload-file|-F\s).{0,500}?(@|<)/,
     coaching:
       "This command appears to be uploading a local file to a remote server using curl. " +
       "If the file contains sensitive data (credentials, source code, personal info), it " +
@@ -289,7 +294,8 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     title: "Piping sensitive file to network command",
     match: (input: ThreatMatchInput): boolean => {
       const cmd = input.command ?? "";
-      const sensitiveFiles = /(\.(env|pem|key|p12|pfx|crt)|\/\.ssh\/|credentials|secret|token|password)/i;
+      const sensitiveFiles =
+        /(\.(env|pem|key|p12|pfx|crt)|\/\.ssh\/|credentials|secret|token|password)/i;
       const networkCmd = /\|\s*(curl|wget|nc|ncat|netcat|scp|rsync|ftp|tftp)\b/;
       return sensitiveFiles.test(cmd) && networkCmd.test(cmd);
     },
@@ -392,7 +398,8 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     category: "credential-exposure",
     severity: "high",
     title: "Accessing system keychain or credential store",
-    match: /\b(security\s+find-(generic|internet)-password|credential-manager|secret-tool|kwallet|gnome-keyring)/,
+    match:
+      /\b(security\s+find-(generic|internet)-password|credential-manager|secret-tool|kwallet|gnome-keyring)/,
     coaching:
       "This command queries the operating system's credential store. While sometimes necessary, " +
       "it can expose passwords for other applications and services.",
@@ -407,7 +414,8 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     category: "credential-exposure",
     severity: "medium",
     title: "Printing API keys or tokens to stdout",
-    match: /\b(echo|printf|print)\s+.*(\$\{?(API_KEY|SECRET|TOKEN|PASSWORD|AWS_SECRET|GITHUB_TOKEN|OPENAI_API_KEY|ANTHROPIC_API_KEY)\}?)/,
+    match:
+      /\b(echo|printf|print)\s+.*(\$\{?(API_KEY|SECRET|TOKEN|PASSWORD|AWS_SECRET|GITHUB_TOKEN|OPENAI_API_KEY|ANTHROPIC_API_KEY)\}?)/,
     coaching:
       "This command prints a secret or API key to the terminal. Terminal output is often " +
       "logged, recorded by session managers, or captured by screen-sharing software.",
@@ -474,7 +482,8 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     title: "Writing to system directories",
     match: (input: ThreatMatchInput): boolean => {
       const text = inputText(input);
-      const systemPaths = /\b(\/etc\/|\/usr\/local\/bin\/|\/usr\/bin\/|\/usr\/sbin\/|\/sbin\/|\/boot\/|\/lib\/|\/var\/run\/)/;
+      const systemPaths =
+        /\b(\/etc\/|\/usr\/local\/bin\/|\/usr\/bin\/|\/usr\/sbin\/|\/sbin\/|\/boot\/|\/lib\/|\/var\/run\/)/;
       const writeCommands = /\b(cp|mv|tee|install|ln\s+-s|write|>|>>)\b/;
       return systemPaths.test(text) && writeCommands.test(text);
     },
@@ -543,8 +552,11 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     match: (input: ThreatMatchInput): boolean => {
       const cmd = input.command ?? "";
       const inlineExec = /\b(python[23]?|node)\s+-(c|e)\s+/.test(cmd);
-      if (!inlineExec) return false;
-      const suspicious = /(import\s+(os|subprocess|socket|http|urllib)|require\s*\(\s*["'](child_process|net|http|fs)["']\)|exec\(|spawn\(|__import__)/;
+      if (!inlineExec) {
+        return false;
+      }
+      const suspicious =
+        /(import\s+(os|subprocess|socket|http|urllib)|require\s*\(\s*["'](child_process|net|http|fs)["']\)|exec\(|spawn\(|__import__)/;
       return suspicious.test(cmd);
     },
     coaching:
@@ -562,7 +574,8 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     category: "code-injection",
     severity: "medium",
     title: "Server-side template injection pattern",
-    match: /(\{\{.*?(__|config|request|class|mro|subclasses).*?\}\}|<%.*?(Runtime|exec|system).*?%>)/,
+    match:
+      /(\{\{.*?(__|config|request|class|mro|subclasses).*?\}\}|<%.*?(Runtime|exec|system).*?%>)/,
     coaching:
       "This content contains patterns associated with server-side template injection (SSTI). " +
       "If rendered by a template engine, this could allow arbitrary code execution on the server.",
@@ -579,7 +592,8 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     category: "network-suspicious",
     severity: "critical",
     title: "Reverse shell detected",
-    match: /\/dev\/tcp\/|bash\s+-i\s+>&\s*\/dev\/tcp\/|mkfifo\s+.*\bnc\b|python.{0,500}?socket.{0,500}?connect.{0,500}?exec|ncat.*-e\s+\/bin\/(ba)?sh/,
+    match:
+      /\/dev\/tcp\/|bash\s+-i\s+>&\s*\/dev\/tcp\/|mkfifo\s+.*\bnc\b|python.{0,500}?socket.{0,500}?connect.{0,500}?exec|ncat.*-e\s+\/bin\/(ba)?sh/,
     coaching:
       "This is a reverse-shell pattern -- it opens an interactive shell session back to a " +
       "remote attacker. This is one of the most dangerous things that can appear in a " +
@@ -610,7 +624,8 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     category: "network-suspicious",
     severity: "high",
     title: "Crypto mining activity",
-    match: /\b(xmrig|minerd|cgminer|bfgminer|cpuminer|stratum\+tcp:\/\/|pool\.(minergate|nanopool|hashvault))/i,
+    match:
+      /\b(xmrig|minerd|cgminer|bfgminer|cpuminer|stratum\+tcp:\/\/|pool\.(minergate|nanopool|hashvault))/i,
     coaching:
       "This looks like cryptocurrency mining software or a connection to a mining pool. " +
       "Unauthorized mining consumes your CPU/GPU, increases your electricity bill, and is " +
@@ -652,10 +667,15 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     title: "Message impersonating system administrator",
     match: (input: ThreatMatchInput): boolean => {
       const content = (input.content ?? "").toLowerCase();
-      const impersonation = /(system\s*admin|it\s*department|security\s*team|helpdesk|tech\s*support)/;
-      const urgentAction = /(immediately|urgent|right\s*now|asap|within\s*\d+\s*(hour|minute)|account\s*will\s*be\s*(locked|suspended|disabled))/;
-      const credential = /(password|credential|log\s*in|authenticate|verify\s*(your|account)|confirm\s*your\s*(identity|account))/;
-      return impersonation.test(content) && (urgentAction.test(content) || credential.test(content));
+      const impersonation =
+        /(system\s*admin|it\s*department|security\s*team|helpdesk|tech\s*support)/;
+      const urgentAction =
+        /(immediately|urgent|right\s*now|asap|within\s*\d+\s*(hour|minute)|account\s*will\s*be\s*(locked|suspended|disabled))/;
+      const credential =
+        /(password|credential|log\s*in|authenticate|verify\s*(your|account)|confirm\s*your\s*(identity|account))/;
+      return (
+        impersonation.test(content) && (urgentAction.test(content) || credential.test(content))
+      );
     },
     coaching:
       "This message claims to be from an authority figure (system admin, IT department) and " +
@@ -672,7 +692,8 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     category: "social-engineering",
     severity: "high",
     title: "Urgent password verification request",
-    match: /(verify|confirm|validate|update)\s+(your\s+)?(password|credentials|account\s+details).*\b(immediately|urgent|now|expire|suspend)/i,
+    match:
+      /(verify|confirm|validate|update)\s+(your\s+)?(password|credentials|account\s+details).*\b(immediately|urgent|now|expire|suspend)/i,
     coaching:
       "This looks like a phishing attempt. Legitimate services almost never ask you to " +
       "'verify your password' through a chat message, especially with urgency language.",
@@ -691,10 +712,10 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
       const text = inputText(input);
       // Look for lookalike domains, suspicious URL patterns
       const phishingPatterns = [
-        /https?:\/\/[^\/]*\b(login|signin|verify|secure|account|update)\b[^\/]*\.[^\/]*\.[^\/]*\//i,
+        /https?:\/\/[^/]*\b(login|signin|verify|secure|account|update)\b[^/]*\.[^/]*\.[^/]*\//i,
         /https?:\/\/\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}[:/]/,
-        /https?:\/\/[^\/]*(g00gle|micr0soft|amaz0n|paypa1|app1e)\./i,
-        /https?:\/\/[^\/]*@[^\/]+\//,
+        /https?:\/\/[^/]*(g00gle|micr0soft|amaz0n|paypa1|app1e)\./i,
+        /https?:\/\/[^/]*@[^/]+\//,
       ];
       return phishingPatterns.some((p) => p.test(text));
     },
@@ -731,7 +752,8 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     category: "persistence-mechanism",
     severity: "high",
     title: "Modification of startup/init scripts",
-    match: /\b(>>?\s*\/etc\/(rc\.local|init\.d\/|systemd\/|cron\.d\/)|install\s+.*\.service|systemctl\s+enable)/,
+    match:
+      /\b(>>?\s*\/etc\/(rc\.local|init\.d\/|systemd\/|cron\.d\/)|install\s+.*\.service|systemctl\s+enable)/,
     coaching:
       "This command installs or modifies system startup scripts or services. This is a common " +
       "persistence technique -- once added, the code will run automatically every time the " +
@@ -804,7 +826,8 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     category: "reconnaissance",
     severity: "low",
     title: "Network enumeration",
-    match: /\b(arp\s+-a|ip\s+neigh|netstat\s+-[a-z]*[tlnp]|ss\s+-[a-z]*[tlnp]|ifconfig\b|ip\s+addr)/,
+    match:
+      /\b(arp\s+-a|ip\s+neigh|netstat\s+-[a-z]*[tlnp]|ss\s+-[a-z]*[tlnp]|ifconfig\b|ip\s+addr)/,
     coaching:
       "This command enumerates network interfaces, connections, or neighbors. While often used " +
       "for legitimate troubleshooting, it is also a reconnaissance step in lateral-movement attacks.",
@@ -884,7 +907,10 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     title: "Sending environment variables to external URL",
     match: (input: ThreatMatchInput): boolean => {
       const cmd = input.command ?? "";
-      return /\b(curl|wget|http)\b/.test(cmd) && /\$\{?(ENV|API_KEY|SECRET|TOKEN|PASSWORD|DATABASE_URL|PRIVATE_KEY)\}?/.test(cmd);
+      return (
+        /\b(curl|wget|http)\b/.test(cmd) &&
+        /\$\{?(ENV|API_KEY|SECRET|TOKEN|PASSWORD|DATABASE_URL|PRIVATE_KEY)\}?/.test(cmd)
+      );
     },
     coaching:
       "This command sends environment variable values (which often contain secrets) to an " +
@@ -918,7 +944,8 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     match: (input: ThreatMatchInput): boolean => {
       const text = inputText(input);
       // Flag connections to ports commonly used by C2 frameworks and backdoors
-      const c2Ports = /\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|[\w.-]+)\s*[: ]\s*(4444|5555|6666|1337|31337|8888|9999|12345|54321)\b/;
+      const c2Ports =
+        /\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|[\w.-]+)\s*[: ]\s*(4444|5555|6666|1337|31337|8888|9999|12345|54321)\b/;
       return c2Ports.test(text);
     },
     coaching:
@@ -971,7 +998,9 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "high",
     title: "Advance fee / inheritance scam",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = (input.content ?? "").toLowerCase();
       const scamSignals = [
         /\b(inheritance|beneficiary|next of kin|unclaimed funds|dormant account)\b/,
@@ -998,10 +1027,16 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "high",
     title: "Lottery / prize notification scam",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = (input.content ?? "").toLowerCase();
-      const won = /\b(congratulations|you\s+(have\s+)?(won|been\s+selected|been\s+chosen))\b/.test(text);
-      const prize = /\b(lottery|sweepstake|prize|jackpot|raffle|giveaway|lucky\s+winner)\b/.test(text);
+      const won = /\b(congratulations|you\s+(have\s+)?(won|been\s+selected|been\s+chosen))\b/.test(
+        text,
+      );
+      const prize = /\b(lottery|sweepstake|prize|jackpot|raffle|giveaway|lucky\s+winner)\b/.test(
+        text,
+      );
       const claim = /\b(claim|collect|redeem|contact\s+us|send\s+(your|us))\b/.test(text);
       return won && prize && claim;
     },
@@ -1021,9 +1056,14 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "critical",
     title: "OTP / verification code solicitation",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = (input.content ?? "").toLowerCase();
-      const otpMention = /\b(otp|verification\s+code|security\s+code|one.?time\s+(password|code|pin)|6.?digit\s+code|sms\s+code)\b/.test(text);
+      const otpMention =
+        /\b(otp|verification\s+code|security\s+code|one.?time\s+(password|code|pin)|6.?digit\s+code|sms\s+code)\b/.test(
+          text,
+        );
       const request = /\b(send|share|forward|give|tell)\s+(me|us|it|the)\b/.test(text);
       return otpMention && request;
     },
@@ -1043,11 +1083,22 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "high",
     title: "Cryptocurrency investment scam",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = (input.content ?? "").toLowerCase();
-      const crypto = /\b(bitcoin|btc|ethereum|eth|crypto|usdt|tether|binance|coinbase|wallet\s+address)\b/.test(text);
-      const profit = /\b(guaranteed\s+(returns?|profit)|(\d+)x\s+returns?|daily\s+(returns?|profit|earnings)|passive\s+income|investment\s+opportunity)\b/.test(text);
-      const urgency = /\b(limited\s+(time|slots?|spots?)|act\s+now|don'?t\s+miss|last\s+chance|hurry)\b/.test(text);
+      const crypto =
+        /\b(bitcoin|btc|ethereum|eth|crypto|usdt|tether|binance|coinbase|wallet\s+address)\b/.test(
+          text,
+        );
+      const profit =
+        /\b(guaranteed\s+(returns?|profit)|(\d+)x\s+returns?|daily\s+(returns?|profit|earnings)|passive\s+income|investment\s+opportunity)\b/.test(
+          text,
+        );
+      const urgency =
+        /\b(limited\s+(time|slots?|spots?)|act\s+now|don'?t\s+miss|last\s+chance|hurry)\b/.test(
+          text,
+        );
       return crypto && (profit || urgency);
     },
     coaching:
@@ -1066,10 +1117,15 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "medium",
     title: "Fake package delivery notification",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = (input.content ?? "").toLowerCase();
       const delivery = /\b(package|parcel|shipment|delivery|order)\b/.test(text);
-      const action = /\b(track|confirm|reschedule|update\s+(your|delivery)|pay.*customs|customs\s+fee)\b/.test(text);
+      const action =
+        /\b(track|confirm|reschedule|update\s+(your|delivery)|pay.*customs|customs\s+fee)\b/.test(
+          text,
+        );
       const link = /https?:\/\//.test(text);
       return delivery && action && link;
     },
@@ -1089,11 +1145,20 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "critical",
     title: "Bank / financial institution impersonation",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = (input.content ?? "").toLowerCase();
-      const bank = /\b(bank|account\s+(suspended|locked|frozen|compromised|unusual\s+activity)|transaction\s+(declined|blocked|flagged)|credit\s+card|debit\s+card)\b/.test(text);
-      const action = /\b(verify|confirm|update|click|call|reply\s+with|provide\s+(your|account))\b/.test(text);
-      const urgency = /\b(immediately|urgent|within\s+\d+\s+(hour|minute)|asap|suspended|will\s+be\s+(closed|locked|frozen))\b/.test(text);
+      const bank =
+        /\b(bank|account\s+(suspended|locked|frozen|compromised|unusual\s+activity)|transaction\s+(declined|blocked|flagged)|credit\s+card|debit\s+card)\b/.test(
+          text,
+        );
+      const action =
+        /\b(verify|confirm|update|click|call|reply\s+with|provide\s+(your|account))\b/.test(text);
+      const urgency =
+        /\b(immediately|urgent|within\s+\d+\s+(hour|minute)|asap|suspended|will\s+be\s+(closed|locked|frozen))\b/.test(
+          text,
+        );
       return bank && action && urgency;
     },
     coaching:
@@ -1112,10 +1177,18 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "medium",
     title: "Too-good-to-be-true job offer",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = (input.content ?? "").toLowerCase();
-      const job = /\b(job\s+offer|work\s+from\s+home|remote\s+(job|work|position)|hiring\s+(now|immediately)|earn\s+\$?\d+.*per\s+(day|hour|week))\b/.test(text);
-      const tooGood = /\b(no\s+experience|easy\s+money|guaranteed\s+(income|salary)|part.?time.*\$\d{3,}|flexible\s+hours.*\$\d{3,})\b/.test(text);
+      const job =
+        /\b(job\s+offer|work\s+from\s+home|remote\s+(job|work|position)|hiring\s+(now|immediately)|earn\s+\$?\d+.*per\s+(day|hour|week))\b/.test(
+          text,
+        );
+      const tooGood =
+        /\b(no\s+experience|easy\s+money|guaranteed\s+(income|salary)|part.?time.*\$\d{3,}|flexible\s+hours.*\$\d{3,})\b/.test(
+          text,
+        );
       return job && tooGood;
     },
     coaching:
@@ -1134,10 +1207,15 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "critical",
     title: "Account takeover / WhatsApp hijack attempt",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = (input.content ?? "").toLowerCase();
       const accountRef = /\b(whatsapp|telegram|signal|account|profile)\b/.test(text);
-      const takeover = /\b(re.?register|re.?verify|new\s+device|lost\s+access|help\s+me\s+(get|regain)|sent\s+(you\s+)?a\s+code\s+by\s+mistake|accidentally\s+sent)\b/.test(text);
+      const takeover =
+        /\b(re.?register|re.?verify|new\s+device|lost\s+access|help\s+me\s+(get|regain)|sent\s+(you\s+)?a\s+code\s+by\s+mistake|accidentally\s+sent)\b/.test(
+          text,
+        );
       return accountRef && takeover;
     },
     coaching:
@@ -1156,10 +1234,16 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "medium",
     title: "Potential romance / relationship scam",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = (input.content ?? "").toLowerCase();
-      const romance = /\b(love\s+you|my\s+(dear|darling|love)|soul\s*mate|destiny|meant\s+to\s+be)\b/.test(text);
-      const money = /\b(send\s+(me\s+)?money|wire\s+transfer|western\s+union|moneygram|gift\s+card|itunes\s+card|google\s+play\s+card|need\s+(financial|money)\s+help|medical\s+(emergency|bills?)|stranded|stuck\s+(in|at))\b/.test(text);
+      const romance =
+        /\b(love\s+you|my\s+(dear|darling|love)|soul\s*mate|destiny|meant\s+to\s+be)\b/.test(text);
+      const money =
+        /\b(send\s+(me\s+)?money|wire\s+transfer|western\s+union|moneygram|gift\s+card|itunes\s+card|google\s+play\s+card|need\s+(financial|money)\s+help|medical\s+(emergency|bills?)|stranded|stuck\s+(in|at))\b/.test(
+          text,
+        );
       return romance && money;
     },
     coaching:
@@ -1178,11 +1262,22 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "medium",
     title: "Fake charity or donation solicitation",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = (input.content ?? "").toLowerCase();
-      const charity = /\b(donate|donation|charity|humanitarian|relief\s+fund|disaster\s+(fund|relief)|orphan|refugee)\b/.test(text);
-      const payment = /\b(bitcoin|btc|wallet|wire\s+transfer|western\s+union|gift\s+card|zelle|venmo|cashapp|paypal\.me)\b/.test(text);
-      const urgency = /\b(urgent|immediately|every\s+(dollar|cent)\s+counts|time\s+is\s+running|limited\s+time)\b/.test(text);
+      const charity =
+        /\b(donate|donation|charity|humanitarian|relief\s+fund|disaster\s+(fund|relief)|orphan|refugee)\b/.test(
+          text,
+        );
+      const payment =
+        /\b(bitcoin|btc|wallet|wire\s+transfer|western\s+union|gift\s+card|zelle|venmo|cashapp|paypal\.me)\b/.test(
+          text,
+        );
+      const urgency =
+        /\b(urgent|immediately|every\s+(dollar|cent)\s+counts|time\s+is\s+running|limited\s+time)\b/.test(
+          text,
+        );
       return charity && (payment || urgency);
     },
     coaching:
@@ -1202,11 +1297,22 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "high",
     title: "Tech support scam",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = (input.content ?? "").toLowerCase();
-      const techSupport = /\b(tech\s*support|customer\s*(support|service)|help\s*desk|microsoft|apple|google)\b/.test(text);
-      const problem = /\b(virus|malware|hacked|compromised|infected|security\s+(breach|alert|warning)|suspicious\s+activity)\b/.test(text);
-      const action = /\b(call\s+(us|this\s+number|now)|remote\s+access|teamviewer|anydesk|install|download)\b/.test(text);
+      const techSupport =
+        /\b(tech\s*support|customer\s*(support|service)|help\s*desk|microsoft|apple|google)\b/.test(
+          text,
+        );
+      const problem =
+        /\b(virus|malware|hacked|compromised|infected|security\s+(breach|alert|warning)|suspicious\s+activity)\b/.test(
+          text,
+        );
+      const action =
+        /\b(call\s+(us|this\s+number|now)|remote\s+access|teamviewer|anydesk|install|download)\b/.test(
+          text,
+        );
       return techSupport && problem && action;
     },
     coaching:
@@ -1231,7 +1337,9 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
       const text = input.content ?? "";
       // SSN pattern: 3 digits, separator, 2 digits, separator, 4 digits
       // Only flag in message content, not commands
-      if (!input.channelId && !input.direction) return false;
+      if (!input.channelId && !input.direction) {
+        return false;
+      }
       return /\b\d{3}[-.\s]\d{2}[-.\s]\d{4}\b/.test(text);
     },
     coaching:
@@ -1251,9 +1359,13 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     title: "Credit card number in outbound message",
     match: (input: ThreatMatchInput): boolean => {
       const text = input.content ?? "";
-      if (!input.channelId && !input.direction) return false;
+      if (!input.channelId && !input.direction) {
+        return false;
+      }
       // Common card number patterns (Visa, Mastercard, Amex)
-      return /\b(?:4\d{3}|5[1-5]\d{2}|3[47]\d{2}|6(?:011|5\d{2}))[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{1,4}\b/.test(text);
+      return /\b(?:4\d{3}|5[1-5]\d{2}|3[47]\d{2}|6(?:011|5\d{2}))[-.\s]?\d{4}[-.\s]?\d{4}[-.\s]?\d{1,4}\b/.test(
+        text,
+      );
     },
     coaching:
       "This message contains what looks like a credit or debit card number. Sending card " +
@@ -1272,9 +1384,13 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     title: "Password sharing in message",
     match: (input: ThreatMatchInput): boolean => {
       const text = (input.content ?? "").toLowerCase();
-      if (!input.channelId && !input.direction) return false;
+      if (!input.channelId && !input.direction) {
+        return false;
+      }
       const passwordLabel = /\b(password|passwd|pwd|passcode|pin)\s*(is|:|\s)\s*/i.test(text);
-      const hasValue = /\b(password|passwd|pwd|passcode|pin)\s*(is|:|\s)\s*\S{4,}/i.test(input.content ?? "");
+      const hasValue = /\b(password|passwd|pwd|passcode|pin)\s*(is|:|\s)\s*\S{4,}/i.test(
+        input.content ?? "",
+      );
       return passwordLabel && hasValue;
     },
     coaching:
@@ -1295,15 +1411,17 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     title: "API key or token in outbound message",
     match: (input: ThreatMatchInput): boolean => {
       const text = input.content ?? "";
-      if (!input.channelId && !input.direction) return false;
+      if (!input.channelId && !input.direction) {
+        return false;
+      }
       // Common API key patterns
       const patterns = [
-        /\b(sk|pk)[-_](live|test)[-_][a-zA-Z0-9]{20,}\b/,        // Stripe
-        /\bghp_[a-zA-Z0-9]{36}\b/,                                 // GitHub PAT
-        /\bxoxb-[0-9]+-[0-9]+-[a-zA-Z0-9]+\b/,                   // Slack bot token
-        /\bAIza[a-zA-Z0-9_-]{35}\b/,                              // Google API key
-        /\bsk-[a-zA-Z0-9]{40,}\b/,                                // OpenAI
-        /\bAKIA[A-Z0-9]{16}\b/,                                   // AWS access key
+        /\b(sk|pk)[-_](live|test)[-_][a-zA-Z0-9]{20,}\b/, // Stripe
+        /\bghp_[a-zA-Z0-9]{36}\b/, // GitHub PAT
+        /\bxoxb-[0-9]+-[0-9]+-[a-zA-Z0-9]+\b/, // Slack bot token
+        /\bAIza[a-zA-Z0-9_-]{35}\b/, // Google API key
+        /\bsk-[a-zA-Z0-9]{40,}\b/, // OpenAI
+        /\bAKIA[A-Z0-9]{16}\b/, // AWS access key
         /\b(api[_-]?key|api[_-]?token|secret[_-]?key)\s*[:=]\s*["']?[a-zA-Z0-9_-]{20,}/i,
       ];
       return patterns.some((p) => p.test(text));
@@ -1326,10 +1444,14 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     title: "Private key material in outbound message",
     match: (input: ThreatMatchInput): boolean => {
       const text = input.content ?? "";
-      if (!input.channelId && !input.direction) return false;
-      return /-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----/.test(text) ||
-             /-----BEGIN\s+EC\s+PRIVATE\s+KEY-----/.test(text) ||
-             /-----BEGIN\s+OPENSSH\s+PRIVATE\s+KEY-----/.test(text);
+      if (!input.channelId && !input.direction) {
+        return false;
+      }
+      return (
+        /-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----/.test(text) ||
+        /-----BEGIN\s+EC\s+PRIVATE\s+KEY-----/.test(text) ||
+        /-----BEGIN\s+OPENSSH\s+PRIVATE\s+KEY-----/.test(text)
+      );
     },
     coaching:
       "You are about to send a private key through a messaging channel. Private keys give " +
@@ -1349,14 +1471,16 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     title: "Internal/private URL shared externally",
     match: (input: ThreatMatchInput): boolean => {
       const text = input.content ?? "";
-      if (!input.channelId && !input.direction) return false;
+      if (!input.channelId && !input.direction) {
+        return false;
+      }
       const internalPatterns = [
         /https?:\/\/localhost[:/]/,
         /https?:\/\/127\.0\.0\.\d+[:/]/,
         /https?:\/\/10\.\d+\.\d+\.\d+[:/]/,
         /https?:\/\/192\.168\.\d+\.\d+[:/]/,
         /https?:\/\/172\.(1[6-9]|2\d|3[01])\.\d+\.\d+[:/]/,
-        /https?:\/\/[^\/]*\.(internal|local|corp|intranet|private)\b/,
+        /https?:\/\/[^/]*\.(internal|local|corp|intranet|private)\b/,
       ];
       return internalPatterns.some((p) => p.test(text));
     },
@@ -1376,10 +1500,14 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "medium",
     title: "Suspicious shortened URL in message",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = input.content ?? "";
-      const shorteners = /https?:\/\/(bit\.ly|tinyurl\.com|t\.co|goo\.gl|is\.gd|v\.gd|shorte\.st|adf\.ly|bc\.vc|j\.mp)\/[^\s]+/i;
-      const urgency = /\b(click\s+(here|now|immediately)|open\s+this|check\s+this|look\s+at\s+this|verify|confirm|urgent)\b/i;
+      const shorteners =
+        /https?:\/\/(bit\.ly|tinyurl\.com|t\.co|goo\.gl|is\.gd|v\.gd|shorte\.st|adf\.ly|bc\.vc|j\.mp)\/[^\s]+/i;
+      const urgency =
+        /\b(click\s+(here|now|immediately)|open\s+this|check\s+this|look\s+at\s+this|verify|confirm|urgent)\b/i;
       return shorteners.test(text) && urgency.test(text);
     },
     coaching:
@@ -1399,10 +1527,16 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "medium",
     title: "Request to open suspicious attachment or file",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = (input.content ?? "").toLowerCase();
-      const fileRef = /\b(open|download|install|run|execute|extract)\b.*\b(file|attachment|document|zip|rar|exe|apk|dmg|pkg|msi|bat|scr|js)\b/.test(text);
-      const urgency = /\b(urgent|important|invoice|receipt|resume|contract|payment|order|delivery)\b/.test(text);
+      const fileRef =
+        /\b(open|download|install|run|execute|extract)\b.*\b(file|attachment|document|zip|rar|exe|apk|dmg|pkg|msi|bat|scr|js)\b/.test(
+          text,
+        );
+      const urgency =
+        /\b(urgent|important|invoice|receipt|resume|contract|payment|order|delivery)\b/.test(text);
       return fileRef && urgency;
     },
     coaching:
@@ -1421,9 +1555,14 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "high",
     title: "Fake app upgrade / premium version scam",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = (input.content ?? "").toLowerCase();
-      const fakeApp = /\b(whatsapp\s+(gold|premium|pro|plus)|telegram\s+premium\s+(free|crack)|signal\s+pro)\b/.test(text);
+      const fakeApp =
+        /\b(whatsapp\s+(gold|premium|pro|plus)|telegram\s+premium\s+(free|crack)|signal\s+pro)\b/.test(
+          text,
+        );
       const install = /\b(download|install|upgrade|update|activate|get\s+it\s+now)\b/.test(text);
       return fakeApp && install;
     },
@@ -1443,10 +1582,18 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "low",
     title: "Chain message / misinformation forward",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = (input.content ?? "").toLowerCase();
-      const chain = /\b(forward\s+(this|to)\s+\d+\s+(people|contacts|friends|groups)|share\s+with\s+everyone|spread\s+the\s+word|send\s+this\s+to)\b/.test(text);
-      const urgency = /\b(warning|urgent|danger|breaking|confirmed\s+by|government\s+announced|doctors?\s+say)\b/.test(text);
+      const chain =
+        /\b(forward\s+(this|to)\s+\d+\s+(people|contacts|friends|groups)|share\s+with\s+everyone|spread\s+the\s+word|send\s+this\s+to)\b/.test(
+          text,
+        );
+      const urgency =
+        /\b(warning|urgent|danger|breaking|confirmed\s+by|government\s+announced|doctors?\s+say)\b/.test(
+          text,
+        );
       return chain && urgency;
     },
     coaching:
@@ -1466,10 +1613,18 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "high",
     title: "Government agency impersonation",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = (input.content ?? "").toLowerCase();
-      const gov = /\b(irs|fbi|cia|dhs|customs|immigration|social\s+security\s+(admin|office)|tax\s+(department|authority|office)|police|interpol|federal)\b/.test(text);
-      const threat = /\b(arrest\s+warrant|legal\s+action|lawsuit|fine|penalty|criminal\s+charges|deportation|tax\s+(debt|owed|lien))\b/.test(text);
+      const gov =
+        /\b(irs|fbi|cia|dhs|customs|immigration|social\s+security\s+(admin|office)|tax\s+(department|authority|office)|police|interpol|federal)\b/.test(
+          text,
+        );
+      const threat =
+        /\b(arrest\s+warrant|legal\s+action|lawsuit|fine|penalty|criminal\s+charges|deportation|tax\s+(debt|owed|lien))\b/.test(
+          text,
+        );
       const action = /\b(call|pay|settle|transfer|send|contact\s+us\s+immediately)\b/.test(text);
       return gov && threat && action;
     },
@@ -1489,7 +1644,9 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     severity: "high",
     title: "Suspicious QR code sharing",
     match: (input: ThreatMatchInput): boolean => {
-      if (input.direction !== "inbound") return false;
+      if (input.direction !== "inbound") {
+        return false;
+      }
       const text = (input.content ?? "").toLowerCase();
       const qr = /\b(scan\s+(this\s+)?qr|qr\s+code)\b/.test(text);
       const action = /\b(payment|verify|login|activate|claim|receive|connect\s+your)\b/.test(text);
@@ -1512,9 +1669,15 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
     title: "Medical / health information in message",
     match: (input: ThreatMatchInput): boolean => {
       const text = (input.content ?? "").toLowerCase();
-      if (!input.channelId && !input.direction) return false;
-      const medical = /\b(diagnosis|prescription|medical\s+record|patient\s+id|health\s+insurance|policy\s+number|blood\s+type|hiv|std|mental\s+health|therapy\s+session)\b/.test(text);
-      const identifier = /\b(\d{3}[-.\s]?\d{2}[-.\s]?\d{4}|mrn\s*[:=]|patient\s*#|dob\s*[:=])\b/i.test(text);
+      if (!input.channelId && !input.direction) {
+        return false;
+      }
+      const medical =
+        /\b(diagnosis|prescription|medical\s+record|patient\s+id|health\s+insurance|policy\s+number|blood\s+type|hiv|std|mental\s+health|therapy\s+session)\b/.test(
+          text,
+        );
+      const identifier =
+        /\b(\d{3}[-.\s]?\d{2}[-.\s]?\d{4}|mrn\s*[:=]|patient\s*#|dob\s*[:=])\b/i.test(text);
       return medical && identifier;
     },
     coaching:
@@ -1535,8 +1698,20 @@ export const THREAT_PATTERNS: ThreatPattern[] = [
 /**
  * Run all threat patterns against the provided input and return any matches,
  * sorted from most severe to least severe.
+ *
+ * NOTE: This is the baseline implementation. For optimized matching,
+ * import matchThreatsOptimized from ./patterns-optimized.js or use
+ * the SecurityCoachEngine with useCache/useWorkerThreads enabled.
  */
 export function matchThreats(input: ThreatMatchInput): ThreatMatch[] {
+  return matchThreatsLegacy(input);
+}
+
+/**
+ * Legacy pattern matcher (original implementation).
+ * Preserved for backward compatibility and A/B testing.
+ */
+export function matchThreatsLegacy(input: ThreatMatchInput): ThreatMatch[] {
   const now = Date.now();
   const blob = inputText(input);
   const matches: ThreatMatch[] = [];
@@ -1544,7 +1719,9 @@ export function matchThreats(input: ThreatMatchInput): ThreatMatch[] {
 
   for (const pattern of THREAT_PATTERNS) {
     // Time budget: bail if matching takes too long (DoS protection).
-    if (Date.now() - startMs > 500) break;
+    if (Date.now() - startMs > 500) {
+      break;
+    }
 
     let matched = false;
     let context: string | undefined;

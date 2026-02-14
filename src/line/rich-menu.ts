@@ -1,8 +1,9 @@
-import { messagingApi } from "@line/bot-sdk";
+import type { messagingApi } from "@line/bot-sdk";
 import { readFile } from "node:fs/promises";
 import { loadConfig } from "../config/config.js";
 import { logVerbose } from "../globals.js";
 import { resolveLineAccount } from "./accounts.js";
+import { loadLineSDK } from "./lazy-loader.js";
 
 type RichMenuRequest = messagingApi.RichMenuRequest;
 type RichMenuResponse = messagingApi.RichMenuResponse;
@@ -53,27 +54,31 @@ function resolveToken(
   return params.channelAccessToken.trim();
 }
 
-function getClient(opts: RichMenuOpts = {}): messagingApi.MessagingApiClient {
+async function getClient(
+  opts: RichMenuOpts = {},
+): Promise<InstanceType<typeof import("@line/bot-sdk").messagingApi.MessagingApiClient>> {
   const cfg = loadConfig();
   const account = resolveLineAccount({
     cfg,
     accountId: opts.accountId,
   });
   const token = resolveToken(opts.channelAccessToken, account);
-
+  const { messagingApi } = await loadLineSDK();
   return new messagingApi.MessagingApiClient({
     channelAccessToken: token,
   });
 }
 
-function getBlobClient(opts: RichMenuOpts = {}): messagingApi.MessagingApiBlobClient {
+async function getBlobClient(
+  opts: RichMenuOpts = {},
+): Promise<InstanceType<typeof import("@line/bot-sdk").messagingApi.MessagingApiBlobClient>> {
   const cfg = loadConfig();
   const account = resolveLineAccount({
     cfg,
     accountId: opts.accountId,
   });
   const token = resolveToken(opts.channelAccessToken, account);
-
+  const { messagingApi } = await loadLineSDK();
   return new messagingApi.MessagingApiBlobClient({
     channelAccessToken: token,
   });
@@ -87,7 +92,7 @@ export async function createRichMenu(
   menu: CreateRichMenuParams,
   opts: RichMenuOpts = {},
 ): Promise<string> {
-  const client = getClient(opts);
+  const client = await getClient(opts);
 
   const richMenuRequest: RichMenuRequest = {
     size: menu.size,
@@ -118,7 +123,7 @@ export async function uploadRichMenuImage(
   imagePath: string,
   opts: RichMenuOpts = {},
 ): Promise<void> {
-  const blobClient = getBlobClient(opts);
+  const blobClient = await getBlobClient(opts);
 
   const imageData = await readFile(imagePath);
   const contentType = imagePath.toLowerCase().endsWith(".png") ? "image/png" : "image/jpeg";
@@ -137,7 +142,7 @@ export async function setDefaultRichMenu(
   richMenuId: string,
   opts: RichMenuOpts = {},
 ): Promise<void> {
-  const client = getClient(opts);
+  const client = await getClient(opts);
 
   await client.setDefaultRichMenu(richMenuId);
 
@@ -150,7 +155,7 @@ export async function setDefaultRichMenu(
  * Cancel the default rich menu
  */
 export async function cancelDefaultRichMenu(opts: RichMenuOpts = {}): Promise<void> {
-  const client = getClient(opts);
+  const client = await getClient(opts);
 
   await client.cancelDefaultRichMenu();
 
@@ -163,7 +168,7 @@ export async function cancelDefaultRichMenu(opts: RichMenuOpts = {}): Promise<vo
  * Get the default rich menu ID
  */
 export async function getDefaultRichMenuId(opts: RichMenuOpts = {}): Promise<string | null> {
-  const client = getClient(opts);
+  const client = await getClient(opts);
 
   try {
     const response = await client.getDefaultRichMenuId();
@@ -181,7 +186,7 @@ export async function linkRichMenuToUser(
   richMenuId: string,
   opts: RichMenuOpts = {},
 ): Promise<void> {
-  const client = getClient(opts);
+  const client = await getClient(opts);
 
   await client.linkRichMenuIdToUser(userId, richMenuId);
 
@@ -198,7 +203,7 @@ export async function linkRichMenuToUsers(
   richMenuId: string,
   opts: RichMenuOpts = {},
 ): Promise<void> {
-  const client = getClient(opts);
+  const client = await getClient(opts);
 
   // LINE allows max 500 users per request
   const batches = [];
@@ -225,7 +230,7 @@ export async function unlinkRichMenuFromUser(
   userId: string,
   opts: RichMenuOpts = {},
 ): Promise<void> {
-  const client = getClient(opts);
+  const client = await getClient(opts);
 
   await client.unlinkRichMenuIdFromUser(userId);
 
@@ -241,7 +246,7 @@ export async function unlinkRichMenuFromUsers(
   userIds: string[],
   opts: RichMenuOpts = {},
 ): Promise<void> {
-  const client = getClient(opts);
+  const client = await getClient(opts);
 
   // LINE allows max 500 users per request
   const batches = [];
@@ -267,7 +272,7 @@ export async function getRichMenuIdOfUser(
   userId: string,
   opts: RichMenuOpts = {},
 ): Promise<string | null> {
-  const client = getClient(opts);
+  const client = await getClient(opts);
 
   try {
     const response = await client.getRichMenuIdOfUser(userId);
@@ -281,7 +286,7 @@ export async function getRichMenuIdOfUser(
  * Get a list of all rich menus
  */
 export async function getRichMenuList(opts: RichMenuOpts = {}): Promise<RichMenuResponse[]> {
-  const client = getClient(opts);
+  const client = await getClient(opts);
 
   const response = await client.getRichMenuList();
   return response.richmenus ?? [];
@@ -294,7 +299,7 @@ export async function getRichMenu(
   richMenuId: string,
   opts: RichMenuOpts = {},
 ): Promise<RichMenuResponse | null> {
-  const client = getClient(opts);
+  const client = await getClient(opts);
 
   try {
     return await client.getRichMenu(richMenuId);
@@ -307,7 +312,7 @@ export async function getRichMenu(
  * Delete a rich menu
  */
 export async function deleteRichMenu(richMenuId: string, opts: RichMenuOpts = {}): Promise<void> {
-  const client = getClient(opts);
+  const client = await getClient(opts);
 
   await client.deleteRichMenu(richMenuId);
 
@@ -324,7 +329,7 @@ export async function createRichMenuAlias(
   aliasId: string,
   opts: RichMenuOpts = {},
 ): Promise<void> {
-  const client = getClient(opts);
+  const client = await getClient(opts);
 
   await client.createRichMenuAlias({
     richMenuId,
@@ -340,7 +345,7 @@ export async function createRichMenuAlias(
  * Delete a rich menu alias
  */
 export async function deleteRichMenuAlias(aliasId: string, opts: RichMenuOpts = {}): Promise<void> {
-  const client = getClient(opts);
+  const client = await getClient(opts);
 
   await client.deleteRichMenuAlias(aliasId);
 

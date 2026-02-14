@@ -225,7 +225,9 @@ export class AlertHistoryStore {
    * keeping the active file small for query performance.
    */
   async rotateIfNeeded(): Promise<void> {
-    if (this.rotating) return; // Already rotating — prevent concurrent rotations.
+    if (this.rotating) {
+      return;
+    } // Already rotating — prevent concurrent rotations.
     this.rotating = true;
     try {
       let stat: fs.Stats;

@@ -147,10 +147,7 @@ export class CoachMetrics {
 
     // Pattern frequency.
     for (const patternId of opts.patternIds) {
-      this._patternFrequency.set(
-        patternId,
-        (this._patternFrequency.get(patternId) ?? 0) + 1,
-      );
+      this._patternFrequency.set(patternId, (this._patternFrequency.get(patternId) ?? 0) + 1);
     }
   }
 
@@ -192,8 +189,7 @@ export class CoachMetrics {
 
     // Record decision time in circular buffer.
     this._decisionTimes[this._decisionTimesIndex] = opts.durationMs;
-    this._decisionTimesIndex =
-      (this._decisionTimesIndex + 1) % MAX_DECISION_TIMES;
+    this._decisionTimesIndex = (this._decisionTimesIndex + 1) % MAX_DECISION_TIMES;
     if (this._decisionTimesCount < MAX_DECISION_TIMES) {
       this._decisionTimesCount++;
     }
@@ -202,10 +198,7 @@ export class CoachMetrics {
   /**
    * Record an automatic decision made by a saved rule.
    */
-  recordAutoDecision(opts: {
-    decision: "allow" | "deny";
-    patternId: string;
-  }): void {
+  recordAutoDecision(opts: { decision: "allow" | "deny"; patternId: string }): void {
     if (opts.decision === "allow") {
       this._totalAutoAllowed++;
     } else {
@@ -246,19 +239,13 @@ export class CoachMetrics {
     this.pruneTimestamps(this._blockTimestamps, oneHourAgo);
 
     // Per-category map -> record.
-    const byCategory: Record<
-      string,
-      { alerts: number; blocked: number; allowed: number }
-    > = {};
+    const byCategory: Record<string, { alerts: number; blocked: number; allowed: number }> = {};
     for (const [key, value] of this._byCategory) {
       byCategory[key] = { ...value };
     }
 
     // Per-severity map -> record.
-    const bySeverity: Record<
-      string,
-      { alerts: number; blocked: number; allowed: number }
-    > = {};
+    const bySeverity: Record<string, { alerts: number; blocked: number; allowed: number }> = {};
     for (const [key, value] of this._bySeverity) {
       bySeverity[key] = { ...value };
     }
@@ -266,7 +253,7 @@ export class CoachMetrics {
     // Top patterns.
     const topPatterns = Array.from(this._patternFrequency.entries())
       .map(([patternId, count]) => ({ patternId, count }))
-      .sort((a, b) => b.count - a.count)
+      .toSorted((a, b) => b.count - a.count)
       .slice(0, TOP_PATTERNS_COUNT);
 
     return {
@@ -359,7 +346,7 @@ export class CoachMetrics {
    */
   private pruneTimestamps(arr: number[], cutoff: number): void {
     let dropCount = 0;
-    while (dropCount < arr.length && arr[dropCount]! < cutoff) {
+    while (dropCount < arr.length && arr[dropCount] < cutoff) {
       dropCount++;
     }
     if (dropCount > 0) {
@@ -377,7 +364,7 @@ export class CoachMetrics {
 
     let sum = 0;
     for (let i = 0; i < this._decisionTimesCount; i++) {
-      sum += this._decisionTimes[i]!;
+      sum += this._decisionTimes[i];
     }
     return Math.round(sum / this._decisionTimesCount);
   }
@@ -396,8 +383,8 @@ export class CoachMetrics {
 
     const mid = Math.floor(active.length / 2);
     if (active.length % 2 === 0) {
-      return Math.round((active[mid - 1]! + active[mid]!) / 2);
+      return Math.round((active[mid - 1] + active[mid]) / 2);
     }
-    return active[mid]!;
+    return active[mid];
   }
 }

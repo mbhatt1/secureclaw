@@ -1,0 +1,94 @@
+{
+  // Full-featured profile for Raspberry Pi 4 with 8GB RAM
+  // Target: <4s startup, <120MB idle RAM, <1W idle power
+  "mode": "standard",
+
+  "agents": {
+    "defaults": {
+      "workspace": "~/.secureclaw/workspace",
+
+      "model": {
+        "primary": "anthropic/claude-sonnet-4-20250514",
+        "fallbacks": ["openai/gpt-4o-mini"]
+      },
+
+      "memory": {
+        "backend": "sqlite",
+        "path": "~/.secureclaw/memory.db",
+
+        "options": {
+          "journalMode": "WAL",
+          "synchronous": "NORMAL",
+          // 8MB cache for 8GB RAM
+          "cacheSize": 8000,
+          // 50MB mmap
+          "mmapSize": 50000000,
+          "tempStore": "MEMORY"
+        },
+
+        "embeddings": {
+          "provider": "voyage",
+          "batchSize": 100,
+          "quantization": "int8"
+        },
+
+        "indexing": {
+          // Can afford real-time indexing with 8GB
+          "mode": "realtime"
+        },
+
+        "writeBuffer": {
+          "enabled": true,
+          "maxSize": 100,
+          "flushInterval": "30s"
+        }
+      },
+
+      "tools": {
+        "browser": { "enabled": true },
+        "tts": { "enabled": true },
+        "media": { "enabled": true }
+      },
+
+      "heartbeat": {
+        "every": "2m"
+      },
+
+      "logging": {
+        "level": "info",
+        "buffer": {
+          "enabled": true,
+          "maxSize": 200,
+          "flushInterval": "1m"
+        }
+      }
+    }
+  },
+
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "polling": {
+        "interval": 3000
+      }
+    },
+    "whatsapp": {
+      "enabled": true
+    }
+  },
+
+  "gateway": {
+    "port": 18789,
+    // Bind to Tailscale for remote access
+    "bind": "tailnet",
+
+    "controlUI": {
+      "enabled": true
+    },
+
+    "startup": {
+      "parallelChannels": true,
+      "asyncMemory": true
+    }
+  }
+}

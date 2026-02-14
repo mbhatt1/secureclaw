@@ -1,6 +1,21 @@
 import type { CDPSession, Page } from "playwright-core";
-import { devices as playwrightDevices } from "playwright-core";
 import { ensurePageState, getPageForTargetId } from "./pw-session.js";
+
+// Lazy-load playwright-core devices
+type PlaywrightModule = typeof import("playwright-core");
+let playwrightModulePromise: Promise<PlaywrightModule> | null = null;
+
+async function loadPlaywrightCore(): Promise<PlaywrightModule> {
+  if (!playwrightModulePromise) {
+    playwrightModulePromise = import("playwright-core").catch((err) => {
+      playwrightModulePromise = null;
+      throw new Error(
+        `Optional dependency playwright-core is required for browser automation: ${String(err)}`,
+      );
+    });
+  }
+  return playwrightModulePromise;
+}
 
 async function withCdpSession<T>(page: Page, fn: (session: CDPSession) => Promise<T>): Promise<T> {
   const session = await page.context().newCDPSession(page);
@@ -162,6 +177,7 @@ export async function setDeviceViaPlaywright(opts: {
   if (!name) {
     throw new Error("device name is required");
   }
+  const { devices: playwrightDevices } = await loadPlaywrightCore();
   const descriptor = (playwrightDevices as Record<string, unknown>)[name] as
     | {
         userAgent?: string;

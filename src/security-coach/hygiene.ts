@@ -6,9 +6,9 @@
 // Think "access review reminder" — the coach nudges users to clean up.
 // ---------------------------------------------------------------------------
 
+import { randomUUID } from "node:crypto";
 import type { SecurityCoachBroadcastFn } from "./hooks.js";
 import { SECURITY_COACH_EVENTS } from "./events.js";
-import { randomUUID } from "node:crypto";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -131,7 +131,9 @@ export function runHygieneCheck(input: HygieneScanInput): HygieneFinding[] {
 
   for (const device of input.devices ?? []) {
     for (const [tokenId, token] of Object.entries(device.tokens ?? {})) {
-      if (token.revokedAtMs) continue; // Already revoked, skip.
+      if (token.revokedAtMs) {
+        continue;
+      } // Already revoked, skip.
 
       // Token never used
       if (!token.lastUsedAtMs || token.lastUsedAtMs === 0) {
@@ -256,8 +258,8 @@ export function runHygieneCheck(input: HygieneScanInput): HygieneFinding[] {
     // Overly permissive node
     const caps = node.caps ?? [];
     const perms = node.permissions ?? {};
-    const hasShellAccess = caps.includes("shell") || perms["shell"] === true;
-    const hasFileAccess = caps.includes("files") || perms["files"] === true;
+    const hasShellAccess = caps.includes("shell") || perms["shell"];
+    const hasFileAccess = caps.includes("files") || perms["files"];
     if (hasShellAccess && hasFileAccess) {
       findings.push({
         id: randomUUID(),
@@ -354,7 +356,9 @@ export function runHygieneCheck(input: HygieneScanInput): HygieneFinding[] {
   // ── Cron jobs ──────────────────────────────────────────────────────
 
   for (const job of input.cronJobs ?? []) {
-    if (!job.enabled) continue;
+    if (!job.enabled) {
+      continue;
+    }
 
     // Failing cron jobs
     if (job.consecutiveErrors && job.consecutiveErrors >= 5) {
@@ -406,7 +410,9 @@ export function runHygieneCheck(input: HygieneScanInput): HygieneFinding[] {
 
   for (const rule of input.coachRules ?? []) {
     // Skip expired rules
-    if (rule.expiresAt !== 0 && rule.expiresAt <= now) continue;
+    if (rule.expiresAt !== 0 && rule.expiresAt <= now) {
+      continue;
+    }
 
     // "allow" rules that haven't been triggered in 30+ days
     if (rule.decision === "allow" && rule.lastHitAt > 0) {
@@ -442,9 +448,7 @@ export function runHygieneCheck(input: HygieneScanInput): HygieneFinding[] {
     low: 3,
     info: 4,
   };
-  findings.sort(
-    (a, b) => (severityOrder[a.severity] ?? 9) - (severityOrder[b.severity] ?? 9),
-  );
+  findings.sort((a, b) => (severityOrder[a.severity] ?? 9) - (severityOrder[b.severity] ?? 9));
 
   return findings;
 }
@@ -460,7 +464,9 @@ export function broadcastHygieneFindings(
   findings: HygieneFinding[],
   broadcast: SecurityCoachBroadcastFn,
 ): void {
-  if (findings.length === 0) return;
+  if (findings.length === 0) {
+    return;
+  }
 
   // Group into a single summary alert rather than spamming the UI.
   const criticalCount = findings.filter((f) => f.severity === "critical").length;
@@ -468,8 +474,7 @@ export function broadcastHygieneFindings(
   const mediumCount = findings.filter((f) => f.severity === "medium").length;
   const total = findings.length;
 
-  const level =
-    criticalCount > 0 ? "warn" : highCount > 0 ? "warn" : "inform";
+  const level = criticalCount > 0 ? "warn" : highCount > 0 ? "warn" : "inform";
 
   const summaryLines = findings.slice(0, 5).map((f) => `• ${f.title}`);
   if (total > 5) {

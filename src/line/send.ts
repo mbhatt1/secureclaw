@@ -1,9 +1,10 @@
-import { messagingApi } from "@line/bot-sdk";
+import type { messagingApi } from "@line/bot-sdk";
 import type { LineSendResult } from "./types.js";
 import { loadConfig } from "../config/config.js";
 import { logVerbose } from "../globals.js";
 import { recordChannelActivity } from "../infra/channel-activity.js";
 import { resolveLineAccount } from "./accounts.js";
+import { loadLineSDK } from "./lazy-loader.js";
 
 // Use the messaging API types directly
 type Message = messagingApi.Message;
@@ -44,6 +45,20 @@ function resolveToken(
     );
   }
   return params.channelAccessToken.trim();
+}
+
+async function createMessagingApiClient(
+  channelAccessToken: string,
+): Promise<InstanceType<typeof import("@line/bot-sdk").messagingApi.MessagingApiClient>> {
+  const { messagingApi } = await loadLineSDK();
+  return new messagingApi.MessagingApiClient({ channelAccessToken });
+}
+
+async function createMessagingApiBlobClient(
+  channelAccessToken: string,
+): Promise<InstanceType<typeof import("@line/bot-sdk").messagingApi.MessagingApiBlobClient>> {
+  const { messagingApi } = await loadLineSDK();
+  return new messagingApi.MessagingApiBlobClient({ channelAccessToken });
 }
 
 function normalizeTarget(to: string): string {
@@ -124,9 +139,7 @@ export async function sendMessageLine(
   const token = resolveToken(opts.channelAccessToken, account);
   const chatId = normalizeTarget(to);
 
-  const client = new messagingApi.MessagingApiClient({
-    channelAccessToken: token,
-  });
+  const client = await createMessagingApiClient(token);
 
   const messages: Message[] = [];
 
@@ -210,9 +223,7 @@ export async function replyMessageLine(
   });
   const token = resolveToken(opts.channelAccessToken, account);
 
-  const client = new messagingApi.MessagingApiClient({
-    channelAccessToken: token,
-  });
+  const client = await createMessagingApiClient(token);
 
   await client.replyMessage({
     replyToken,
@@ -247,9 +258,7 @@ export async function pushMessagesLine(
   const token = resolveToken(opts.channelAccessToken, account);
   const chatId = normalizeTarget(to);
 
-  const client = new messagingApi.MessagingApiClient({
-    channelAccessToken: token,
-  });
+  const client = await createMessagingApiClient(token);
 
   await client
     .pushMessage({
@@ -305,9 +314,7 @@ export async function pushImageMessage(
   const token = resolveToken(opts.channelAccessToken, account);
   const chatId = normalizeTarget(to);
 
-  const client = new messagingApi.MessagingApiClient({
-    channelAccessToken: token,
-  });
+  const client = await createMessagingApiClient(token);
 
   const imageMessage = createImageMessage(originalContentUrl, previewImageUrl);
 
@@ -353,9 +360,7 @@ export async function pushLocationMessage(
   const token = resolveToken(opts.channelAccessToken, account);
   const chatId = normalizeTarget(to);
 
-  const client = new messagingApi.MessagingApiClient({
-    channelAccessToken: token,
-  });
+  const client = await createMessagingApiClient(token);
 
   const locationMessage = createLocationMessage(location);
 
@@ -397,9 +402,7 @@ export async function pushFlexMessage(
   const token = resolveToken(opts.channelAccessToken, account);
   const chatId = normalizeTarget(to);
 
-  const client = new messagingApi.MessagingApiClient({
-    channelAccessToken: token,
-  });
+  const client = await createMessagingApiClient(token);
 
   const flexMessage: FlexMessage = {
     type: "flex",
@@ -449,9 +452,7 @@ export async function pushTemplateMessage(
   const token = resolveToken(opts.channelAccessToken, account);
   const chatId = normalizeTarget(to);
 
-  const client = new messagingApi.MessagingApiClient({
-    channelAccessToken: token,
-  });
+  const client = await createMessagingApiClient(token);
 
   await client.pushMessage({
     to: chatId,
@@ -491,9 +492,7 @@ export async function pushTextMessageWithQuickReplies(
   const token = resolveToken(opts.channelAccessToken, account);
   const chatId = normalizeTarget(to);
 
-  const client = new messagingApi.MessagingApiClient({
-    channelAccessToken: token,
-  });
+  const client = await createMessagingApiClient(token);
 
   const message = createTextMessageWithQuickReplies(text, quickReplyLabels);
 
@@ -561,9 +560,7 @@ export async function showLoadingAnimation(
   });
   const token = resolveToken(opts.channelAccessToken, account);
 
-  const client = new messagingApi.MessagingApiClient({
-    channelAccessToken: token,
-  });
+  const client = await createMessagingApiClient(token);
 
   try {
     await client.showLoadingAnimation({
@@ -601,9 +598,7 @@ export async function getUserProfile(
   });
   const token = resolveToken(opts.channelAccessToken, account);
 
-  const client = new messagingApi.MessagingApiClient({
-    channelAccessToken: token,
-  });
+  const client = await createMessagingApiClient(token);
 
   try {
     const profile = await client.getProfile(userId);

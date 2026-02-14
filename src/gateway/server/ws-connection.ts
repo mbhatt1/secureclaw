@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { createSubsystemLogger } from "../../logging/subsystem.js";
 import type { ResolvedGatewayAuth } from "../auth.js";
 import type { GatewayRequestContext, GatewayRequestHandlers } from "../server-methods/types.js";
+import type { WSConnectionPool } from "../ws-connection-pool.js";
 import type { GatewayWsClient } from "./ws-types.js";
 import { resolveCanvasHostUrl } from "../../infra/canvas-host-url.js";
 import { listSystemPresence, upsertPresence } from "../../infra/system-presence.js";
@@ -18,7 +19,7 @@ type SubsystemLogger = ReturnType<typeof createSubsystemLogger>;
 
 export function attachGatewayWsConnectionHandler(params: {
   wss: WebSocketServer;
-  clients: Set<GatewayWsClient>;
+  clients: Set<GatewayWsClient> | WSConnectionPool;
   port: number;
   gatewayHost?: string;
   canvasHostEnabled: boolean;
@@ -131,7 +132,12 @@ export function attachGatewayWsConnectionHandler(params: {
       closed = true;
       clearTimeout(handshakeTimer);
       if (client) {
-        clients.delete(client);
+        // Handle both Set and WSConnectionPool
+        if (clients instanceof Set) {
+          clients.delete(client);
+        } else {
+          clients.remove(client);
+        }
       }
       try {
         socket.close(code, reason);
@@ -251,7 +257,18 @@ export function attachGatewayWsConnectionHandler(params: {
       getClient: () => client,
       setClient: (next) => {
         client = next;
-        clients.add(next);
+        // Handle both Set and WSConnectionPool
+        if (clients instanceof Set) {
+          clients.add(next);
+        } else {
+          const added = clients.add(next);
+          if (!added) {
+            // Connection limit reached
+            setCloseCause("connection_limit_reached");
+            close(1008, "Connection limit reached");
+            return;
+          }
+        }
       },
       setHandshakeState: (next) => {
         handshakeState = next;

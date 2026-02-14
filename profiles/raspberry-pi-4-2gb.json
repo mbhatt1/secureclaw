@@ -1,0 +1,97 @@
+{
+  // Minimal profile for Raspberry Pi 4 with 2GB RAM
+  // Target: <6s startup, <80MB idle RAM, <0.9W idle power
+  // Requires swap to be configured (see docs)
+  "mode": "minimal",
+
+  "agents": {
+    "defaults": {
+      "workspace": "~/.secureclaw/workspace",
+
+      "model": {
+        "primary": "anthropic/claude-sonnet-4-20250514",
+        "fallbacks": ["openai/gpt-4o-mini"]
+      },
+
+      "memory": {
+        "backend": "sqlite",
+        "path": "~/.secureclaw/memory.db",
+
+        "options": {
+          "journalMode": "WAL",
+          "synchronous": "NORMAL",
+          // Minimal cache for 2GB RAM
+          "cacheSize": 2000,
+          "mmapSize": 20000000,
+          "tempStore": "MEMORY"
+        },
+
+        "embeddings": {
+          "provider": "voyage",
+          "batchSize": 25,
+          "quantization": "int8"
+        },
+
+        "indexing": {
+          "mode": "batch",
+          "batchSize": 50,
+          "flushInterval": "15m"
+        },
+
+        "writeBuffer": {
+          "enabled": true,
+          "maxSize": 25,
+          "flushInterval": "2m"
+        }
+      },
+
+      "tools": {
+        // Disable heavy tools to save RAM
+        "browser": { "enabled": false },
+        "tts": { "enabled": false },
+        "media": { "enabled": false }
+      },
+
+      "heartbeat": {
+        // More aggressive power saving
+        "every": "10m"
+      },
+
+      "logging": {
+        "level": "warn",
+        "buffer": {
+          "enabled": true,
+          "maxSize": 50,
+          "flushInterval": "1m"
+        }
+      }
+    }
+  },
+
+  "channels": {
+    // Telegram only (lightest channel)
+    "telegram": {
+      "enabled": true,
+      "polling": {
+        // 10s polling to reduce CPU usage
+        "interval": 10000
+      }
+    }
+  },
+
+  "gateway": {
+    "port": 18789,
+    "bind": "127.0.0.1",
+
+    "controlUI": {
+      // Disable UI to save RAM
+      "enabled": false
+    },
+
+    "startup": {
+      "skipHealthCheck": true,
+      "parallelChannels": true,
+      "asyncMemory": true
+    }
+  }
+}

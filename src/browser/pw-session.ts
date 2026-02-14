@@ -6,8 +6,23 @@ import type {
   Request,
   Response,
 } from "playwright-core";
-import { chromium } from "playwright-core";
 import { formatErrorMessage } from "../infra/errors.js";
+
+// Lazy-load playwright-core to avoid bundling it
+type PlaywrightModule = typeof import("playwright-core");
+let playwrightModulePromise: Promise<PlaywrightModule> | null = null;
+
+async function loadPlaywrightCore(): Promise<PlaywrightModule> {
+  if (!playwrightModulePromise) {
+    playwrightModulePromise = import("playwright-core").catch((err) => {
+      playwrightModulePromise = null;
+      throw new Error(
+        `Optional dependency playwright-core is required for browser automation: ${String(err)}`,
+      );
+    });
+  }
+  return playwrightModulePromise;
+}
 import { appendCdpPath, fetchJson, getHeadersWithAuth, withCdpSocket } from "./cdp.helpers.js";
 import { normalizeCdpWsUrl } from "./cdp.js";
 import { getChromeWebSocketUrl } from "./chrome.js";
@@ -334,6 +349,7 @@ async function connectBrowser(cdpUrl: string): Promise<ConnectedBrowser> {
         const wsUrl = await getChromeWebSocketUrl(normalized, timeout).catch(() => null);
         const endpoint = wsUrl ?? normalized;
         const headers = getHeadersWithAuth(endpoint);
+        const { chromium } = await loadPlaywrightCore();
         const browser = await chromium.connectOverCDP(endpoint, { timeout, headers });
         const onDisconnected = () => {
           if (cached?.browser === browser) {

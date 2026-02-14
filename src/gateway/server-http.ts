@@ -10,6 +10,7 @@ import { createServer as createHttpsServer } from "node:https";
 import type { CanvasHostHandler } from "../canvas-host/server.js";
 import type { createSubsystemLogger } from "../logging/subsystem.js";
 import type { GatewayWsClient } from "./server/ws-types.js";
+import type { WSConnectionPool } from "./ws-connection-pool.js";
 import { resolveAgentAvatar } from "../agents/identity-avatar.js";
 import {
   A2UI_PATH,
@@ -91,8 +92,12 @@ function isCanvasPath(pathname: string): boolean {
   );
 }
 
-function hasAuthorizedWsClientForIp(clients: Set<GatewayWsClient>, clientIp: string): boolean {
-  for (const client of clients) {
+function hasAuthorizedWsClientForIp(
+  clients: Set<GatewayWsClient> | WSConnectionPool,
+  clientIp: string,
+): boolean {
+  const clientSet = clients instanceof Set ? clients : clients.getAll();
+  for (const client of clientSet) {
     if (client.clientIp && client.clientIp === clientIp) {
       return true;
     }
@@ -104,7 +109,7 @@ async function authorizeCanvasRequest(params: {
   req: IncomingMessage;
   auth: ResolvedGatewayAuth;
   trustedProxies: string[];
-  clients: Set<GatewayWsClient>;
+  clients: Set<GatewayWsClient> | WSConnectionPool;
 }): Promise<boolean> {
   const { req, auth, trustedProxies, clients } = params;
   if (isLocalDirectRequest(req, trustedProxies)) {
@@ -362,7 +367,7 @@ export function createHooksRequestHandler(
 
 export function createGatewayHttpServer(opts: {
   canvasHost: CanvasHostHandler | null;
-  clients: Set<GatewayWsClient>;
+  clients: Set<GatewayWsClient> | WSConnectionPool;
   controlUiEnabled: boolean;
   controlUiBasePath: string;
   controlUiRoot?: ControlUiRootState;
@@ -518,7 +523,7 @@ export function attachGatewayUpgradeHandler(opts: {
   httpServer: HttpServer;
   wss: WebSocketServer;
   canvasHost: CanvasHostHandler | null;
-  clients: Set<GatewayWsClient>;
+  clients: Set<GatewayWsClient> | WSConnectionPool;
   resolvedAuth: ResolvedGatewayAuth;
 }) {
   const { httpServer, wss, canvasHost, clients, resolvedAuth } = opts;

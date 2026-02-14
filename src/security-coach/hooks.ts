@@ -1,23 +1,23 @@
-import type { SecurityCoachEngine, CoachAlert } from "./engine.js";
-import type { ThreatMatchInput } from "./patterns.js";
-import {
-  SECURITY_COACH_EVENTS,
-  type SecurityCoachAlertEvent,
-  type SecurityCoachTipEvent,
-} from "./events.js";
 import type { SecurityCoachAuditLog } from "./audit.js";
+import type { SecurityCoachEngine, CoachAlert } from "./engine.js";
+import type { AlertHistoryStore } from "./history.js";
+import type { CoachMetrics } from "./metrics.js";
+import type { ThreatMatchInput } from "./patterns.js";
+import type { SiemDispatcher } from "./siem/dispatcher.js";
+import type { AlertThrottle } from "./throttle.js";
 import {
   auditAlertCreated,
   auditAlertResolved,
   auditAlertExpired,
   auditAutoDecision,
 } from "./audit.js";
-import type { AlertThrottle } from "./throttle.js";
-import { buildContextKey } from "./throttle.js";
-import type { CoachMetrics } from "./metrics.js";
-import type { AlertHistoryStore } from "./history.js";
-import type { SiemDispatcher } from "./siem/dispatcher.js";
+import {
+  SECURITY_COACH_EVENTS,
+  type SecurityCoachAlertEvent,
+  type SecurityCoachTipEvent,
+} from "./events.js";
 import { createAlertSiemEvent, createDecisionSiemEvent } from "./siem/dispatcher.js";
+import { buildContextKey } from "./throttle.js";
 
 // ---------------------------------------------------------------------------
 // Secret redaction
@@ -25,31 +25,41 @@ import { createAlertSiemEvent, createDecisionSiemEvent } from "./siem/dispatcher
 
 /** Redact common secret patterns from a string before logging/broadcasting. */
 function redactSecrets(text: string | undefined): string | undefined {
-  if (!text) return text;
-  return text
-    // Bearer tokens
-    .replace(/(Bearer\s+)[^\s"']+/gi, "$1[REDACTED]")
-    // Authorization headers in curl/wget
-    .replace(/([-]-header\s+["']?Authorization:\s*)[^\s"']+/gi, "$1[REDACTED]")
-    .replace(/(-H\s+["']?Authorization:\s*)[^\s"']+/gi, "$1[REDACTED]")
-    // API keys in common header formats
-    .replace(/([-]-header\s+["']?[Xx][-_][Aa][Pp][Ii][-_][Kk][Ee][Yy]:\s*)[^\s"']+/gi, "$1[REDACTED]")
-    .replace(/(-H\s+["']?[Xx][-_][Aa][Pp][Ii][-_][Kk][Ee][Yy]:\s*)[^\s"']+/gi, "$1[REDACTED]")
-    // Environment variable assignments with secret-looking names
-    .replace(/((?:API_KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL|AUTH|ACCESS_KEY|PRIVATE_KEY)\s*=\s*)[^\s;]+/gi, "$1[REDACTED]")
-    // MySQL/Postgres password flags
-    .replace(/(-p)([^\s]+)/g, "$1[REDACTED]")
-    .replace(/(--password[=\s]+)[^\s]+/gi, "$1[REDACTED]")
-    // AWS keys (AKIA...)
-    .replace(/\b(AKIA[0-9A-Z]{16})\b/g, "[REDACTED_AWS_KEY]")
-    // Generic long hex/base64 tokens (40+ chars that look like tokens)
-    .replace(/\b([A-Za-z0-9+/]{40,}={0,2})\b/g, (match) => {
-      // Only redact if it looks like a token (high entropy, no spaces)
-      if (/^[A-Za-z0-9+/=_-]+$/.test(match) && match.length >= 40) {
-        return "[REDACTED_TOKEN]";
-      }
-      return match;
-    });
+  if (!text) {
+    return text;
+  }
+  return (
+    text
+      // Bearer tokens
+      .replace(/(Bearer\s+)[^\s"']+/gi, "$1[REDACTED]")
+      // Authorization headers in curl/wget
+      .replace(/([-]-header\s+["']?Authorization:\s*)[^\s"']+/gi, "$1[REDACTED]")
+      .replace(/(-H\s+["']?Authorization:\s*)[^\s"']+/gi, "$1[REDACTED]")
+      // API keys in common header formats
+      .replace(
+        /([-]-header\s+["']?[Xx][-_][Aa][Pp][Ii][-_][Kk][Ee][Yy]:\s*)[^\s"']+/gi,
+        "$1[REDACTED]",
+      )
+      .replace(/(-H\s+["']?[Xx][-_][Aa][Pp][Ii][-_][Kk][Ee][Yy]:\s*)[^\s"']+/gi, "$1[REDACTED]")
+      // Environment variable assignments with secret-looking names
+      .replace(
+        /((?:API_KEY|SECRET|TOKEN|PASSWORD|CREDENTIAL|AUTH|ACCESS_KEY|PRIVATE_KEY)\s*=\s*)[^\s;]+/gi,
+        "$1[REDACTED]",
+      )
+      // MySQL/Postgres password flags
+      .replace(/(-p)([^\s]+)/g, "$1[REDACTED]")
+      .replace(/(--password[=\s]+)[^\s]+/gi, "$1[REDACTED]")
+      // AWS keys (AKIA...)
+      .replace(/\b(AKIA[0-9A-Z]{16})\b/g, "[REDACTED_AWS_KEY]")
+      // Generic long hex/base64 tokens (40+ chars that look like tokens)
+      .replace(/\b([A-Za-z0-9+/]{40,}={0,2})\b/g, (match) => {
+        // Only redact if it looks like a token (high entropy, no spaces)
+        if (/^[A-Za-z0-9+/=_-]+$/.test(match) && match.length >= 40) {
+          return "[REDACTED_TOKEN]";
+        }
+        return match;
+      })
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -93,8 +103,16 @@ export function extractCommand(
   params: Record<string, unknown>,
 ): string | undefined {
   for (const key of [
-    "command", "cmd", "script",
-    "shell_command", "exec", "shell", "bash_command", "run", "execute", "sh",
+    "command",
+    "cmd",
+    "script",
+    "shell_command",
+    "exec",
+    "shell",
+    "bash_command",
+    "run",
+    "execute",
+    "sh",
   ] as const) {
     const val = params[key];
     if (typeof val === "string" && val.length > 0) {
@@ -136,8 +154,18 @@ export function extractFilePath(
   params: Record<string, unknown>,
 ): string | undefined {
   for (const key of [
-    "file_path", "filePath", "path",
-    "filename", "file", "target_path", "source_path", "dest", "destination", "src", "target", "filepath",
+    "file_path",
+    "filePath",
+    "path",
+    "filename",
+    "file",
+    "target_path",
+    "source_path",
+    "dest",
+    "destination",
+    "src",
+    "target",
+    "filepath",
   ] as const) {
     const val = params[key];
     if (typeof val === "string" && val.length > 0) {
@@ -171,13 +199,17 @@ export function extractFilePath(
  *
  * Falls back to a heuristic scan of all string values for URL-like patterns.
  */
-export function extractUrl(
-  _toolName: string,
-  params: Record<string, unknown>,
-): string | undefined {
+export function extractUrl(_toolName: string, params: Record<string, unknown>): string | undefined {
   for (const key of [
-    "url", "uri",
-    "href", "endpoint", "target_url", "link", "address", "remote", "server",
+    "url",
+    "uri",
+    "href",
+    "endpoint",
+    "target_url",
+    "link",
+    "address",
+    "remote",
+    "server",
   ] as const) {
     const val = params[key];
     if (typeof val === "string" && val.length > 0) {
@@ -187,7 +219,11 @@ export function extractUrl(
 
   // Heuristic fallback: scan all string values for URL-like patterns.
   for (const val of Object.values(params)) {
-    if (typeof val === "string" && val.length > 0 && (val.startsWith("http://") || val.startsWith("https://"))) {
+    if (
+      typeof val === "string" &&
+      val.length > 0 &&
+      (val.startsWith("http://") || val.startsWith("https://"))
+    ) {
       return val;
     }
   }
@@ -350,22 +386,24 @@ export function createSecurityCoachHooks(
 
       // SIEM: dispatch alert event.
       if (siem) {
-        siem.dispatch(createAlertSiemEvent(
-          {
-            id: result.alert.id,
-            level: result.alert.level,
-            title: result.alert.title,
-            threats: result.alert.threats.map((t) => ({
-              patternId: t.pattern.id,
-              category: t.pattern.category,
-              severity: t.pattern.severity,
-              title: t.pattern.title,
-            })),
-            coachMessage: result.alert.coachMessage,
-            recommendation: result.alert.recommendation,
-          },
-          { toolName: event.toolName, command: redactSecrets(input.command) },
-        ));
+        siem.dispatch(
+          createAlertSiemEvent(
+            {
+              id: result.alert.id,
+              level: result.alert.level,
+              title: result.alert.title,
+              threats: result.alert.threats.map((t) => ({
+                patternId: t.pattern.id,
+                category: t.pattern.category,
+                severity: t.pattern.severity,
+                title: t.pattern.title,
+              })),
+              coachMessage: result.alert.coachMessage,
+              recommendation: result.alert.recommendation,
+            },
+            { toolName: event.toolName, command: redactSecrets(input.command) },
+          ),
+        );
       }
 
       const alertPayload = alertToEvent(result.alert, {
@@ -428,10 +466,7 @@ export function createSecurityCoachHooks(
 
           // SIEM: dispatch decision event.
           if (siem) {
-            siem.dispatch(createDecisionSiemEvent(
-              result.alert.id,
-              decision ?? "expired",
-            ));
+            siem.dispatch(createDecisionSiemEvent(result.alert.id, decision ?? "expired"));
           }
 
           return {
@@ -591,11 +626,7 @@ export function createSecurityCoachHooks(
         sessionKey: undefined,
       });
 
-      broadcast(
-        SECURITY_COACH_EVENTS.ALERT_REQUESTED,
-        alertPayload,
-        { dropIfSlow: true },
-      );
+      broadcast(SECURITY_COACH_EVENTS.ALERT_REQUESTED, alertPayload, { dropIfSlow: true });
 
       const decision = await engine.waitForDecision(result.alert.id);
 
@@ -613,11 +644,7 @@ export function createSecurityCoachHooks(
     // Non-blocking alert — broadcast tip but don't cancel.
     if (result.alert) {
       const alertPayload = alertToEvent(result.alert, undefined);
-      broadcast(
-        SECURITY_COACH_EVENTS.ALERT_REQUESTED,
-        alertPayload,
-        { dropIfSlow: true },
-      );
+      broadcast(SECURITY_COACH_EVENTS.ALERT_REQUESTED, alertPayload, { dropIfSlow: true });
       return undefined;
     }
 
@@ -678,11 +705,7 @@ export function createSecurityCoachHooks(
         conversationId: event.conversationId,
       });
 
-      broadcast(
-        SECURITY_COACH_EVENTS.ALERT_REQUESTED,
-        alertPayload,
-        { dropIfSlow: true },
-      );
+      broadcast(SECURITY_COACH_EVENTS.ALERT_REQUESTED, alertPayload, { dropIfSlow: true });
 
       // If the alert requires a decision (blocking-level threat), signal cancellation.
       if (result.alert.requiresDecision) {
@@ -737,11 +760,7 @@ export function createSecurityCoachHooks(
         conversationId: event.to,
       });
 
-      broadcast(
-        SECURITY_COACH_EVENTS.ALERT_REQUESTED,
-        alertPayload,
-        { dropIfSlow: true },
-      );
+      broadcast(SECURITY_COACH_EVENTS.ALERT_REQUESTED, alertPayload, { dropIfSlow: true });
 
       // If the alert requires a decision (e.g. credential leak detected), signal cancellation.
       if (result.alert.requiresDecision) {

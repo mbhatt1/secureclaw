@@ -1,0 +1,114 @@
+{
+  // Balanced profile for Raspberry Pi 4 with 4GB RAM
+  // Target: <5s startup, <100MB idle RAM, <1W idle power
+  "mode": "standard",
+
+  "agents": {
+    "defaults": {
+      "workspace": "~/.secureclaw/workspace",
+
+      "model": {
+        "primary": "anthropic/claude-sonnet-4-20250514",
+        "fallbacks": ["openai/gpt-4o-mini"]
+      },
+
+      "memory": {
+        "backend": "sqlite",
+        "path": "~/.secureclaw/memory.db",
+
+        "options": {
+          // Use WAL mode for better concurrency
+          "journalMode": "WAL",
+
+          // Sync only on critical writes
+          "synchronous": "NORMAL",
+
+          // 4MB cache for 4GB RAM
+          "cacheSize": 4000,
+
+          // Memory-mapped I/O for faster reads
+          "mmapSize": 30000000,
+
+          // Temp files in memory
+          "tempStore": "MEMORY"
+        },
+
+        "embeddings": {
+          "provider": "voyage",
+          "batchSize": 50,
+          "quantization": "int8"
+        },
+
+        "indexing": {
+          // Batch mode to reduce CPU wake-ups
+          "mode": "batch",
+          "batchSize": 100,
+          "flushInterval": "10m"
+        },
+
+        "writeBuffer": {
+          "enabled": true,
+          "maxSize": 50,
+          "flushInterval": "1m"
+        }
+      },
+
+      "tools": {
+        "browser": {
+          "enabled": true,
+          // Don't load Playwright until needed
+          "lazyLoad": true
+        },
+        "tts": { "enabled": false },
+        "media": { "enabled": false }
+      },
+
+      "heartbeat": {
+        // Reduce heartbeat frequency to save power
+        "every": "5m"
+      },
+
+      "logging": {
+        "level": "info",
+        "buffer": {
+          "enabled": true,
+          "maxSize": 100,
+          "flushInterval": "30s"
+        }
+      }
+    }
+  },
+
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "polling": {
+        // 5s polling instead of 1s to reduce CPU wake-ups
+        "interval": 5000
+      }
+    }
+  },
+
+  "gateway": {
+    "port": 18789,
+    // Bind to localhost (use Tailscale for remote access)
+    "bind": "127.0.0.1",
+
+    "controlUI": {
+      "enabled": true,
+      // Don't build UI until accessed
+      "lazyLoad": true
+    },
+
+    "startup": {
+      // Skip expensive checks on boot
+      "skipHealthCheck": false,
+
+      // Load channels in parallel for faster startup
+      "parallelChannels": true,
+
+      // Load memory backend async
+      "asyncMemory": true
+    }
+  }
+}

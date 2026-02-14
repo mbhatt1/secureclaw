@@ -1,7 +1,10 @@
 import type { AnyAgentTool } from "./tools/common.js";
 import { createSubsystemLogger } from "../logging/subsystem.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
-import { getGlobalSecurityCoachHooks, isSecurityCoachInitialized } from "../security-coach/global.js";
+import {
+  getGlobalSecurityCoachHooks,
+  isSecurityCoachInitialized,
+} from "../security-coach/global.js";
 import { isPlainObject } from "../utils.js";
 import { normalizeToolName } from "./tool-policy.js";
 
@@ -36,7 +39,7 @@ export async function runBeforeToolCallHook(args: {
 
   if (coachHooks) {
     try {
-      const normalizedParams = isPlainObject(params) ? (params as Record<string, unknown>) : {};
+      const normalizedParams = isPlainObject(params) ? params : {};
       const coachResult = await coachHooks.beforeToolCall({
         toolName,
         params: normalizedParams,
@@ -51,7 +54,9 @@ export async function runBeforeToolCallHook(args: {
       }
     } catch (err) {
       const toolCallId = args.toolCallId ? ` toolCallId=${args.toolCallId}` : "";
-      log.warn(`security coach before_tool_call failed: tool=${toolName}${toolCallId} error=${String(err)}`);
+      log.warn(
+        `security coach before_tool_call failed: tool=${toolName}${toolCallId} error=${String(err)}`,
+      );
       return {
         blocked: true,
         reason: "Security Coach: internal error — tool blocked as precaution",
@@ -87,22 +92,30 @@ export async function runBeforeToolCallHook(args: {
     }
 
     if (hookResult?.params && isPlainObject(hookResult.params)) {
-      const modifiedParams = isPlainObject(params) ? { ...params, ...hookResult.params } : hookResult.params;
+      const modifiedParams = isPlainObject(params)
+        ? { ...params, ...hookResult.params }
+        : hookResult.params;
 
       // Re-evaluate with security coach if params changed
       if (coachHooks && JSON.stringify(modifiedParams) !== JSON.stringify(params)) {
         try {
           const recheck = await coachHooks.beforeToolCall({
             toolName,
-            params: modifiedParams as Record<string, unknown>,
+            params: modifiedParams,
             agentId: args.ctx?.agentId,
             sessionKey: args.ctx?.sessionKey,
           });
           if (recheck && recheck.block) {
-            return { blocked: true, reason: recheck.blockReason ?? "Blocked by security coach (post-plugin recheck)" };
+            return {
+              blocked: true,
+              reason: recheck.blockReason ?? "Blocked by security coach (post-plugin recheck)",
+            };
           }
         } catch {
-          return { blocked: true, reason: "Security Coach: internal error on recheck — tool blocked" };
+          return {
+            blocked: true,
+            reason: "Security Coach: internal error on recheck — tool blocked",
+          };
         }
       }
 

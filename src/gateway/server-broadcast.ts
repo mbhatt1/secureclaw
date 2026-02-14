@@ -1,4 +1,5 @@
 import type { GatewayWsClient } from "./server/ws-types.js";
+import type { WSConnectionPool } from "./ws-connection-pool.js";
 import { MAX_BUFFERED_BYTES } from "./server-constants.js";
 import { logWs, summarizeAgentEventForWsLog } from "./ws-log.js";
 
@@ -37,7 +38,9 @@ function hasEventScope(client: GatewayWsClient, event: string): boolean {
   return required.some((scope) => scopes.includes(scope));
 }
 
-export function createGatewayBroadcaster(params: { clients: Set<GatewayWsClient> }) {
+export function createGatewayBroadcaster(params: {
+  clients: Set<GatewayWsClient> | WSConnectionPool;
+}) {
   let seq = 0;
 
   const broadcastInternal = (
@@ -58,10 +61,12 @@ export function createGatewayBroadcaster(params: { clients: Set<GatewayWsClient>
       seq: eventSeq,
       stateVersion: opts?.stateVersion,
     });
+    // Get clients Set from pool or use Set directly
+    const clientSet = params.clients instanceof Set ? params.clients : params.clients.getAll();
     const logMeta: Record<string, unknown> = {
       event,
       seq: eventSeq ?? "targeted",
-      clients: params.clients.size,
+      clients: clientSet.size,
       targets: targetConnIds ? targetConnIds.size : undefined,
       dropIfSlow: opts?.dropIfSlow,
       presenceVersion: opts?.stateVersion?.presence,
@@ -71,7 +76,7 @@ export function createGatewayBroadcaster(params: { clients: Set<GatewayWsClient>
       Object.assign(logMeta, summarizeAgentEventForWsLog(payload));
     }
     logWs("out", "event", logMeta);
-    for (const c of params.clients) {
+    for (const c of clientSet) {
       if (targetConnIds && !targetConnIds.has(c.connId)) {
         continue;
       }

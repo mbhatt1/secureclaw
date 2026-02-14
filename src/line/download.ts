@@ -1,8 +1,9 @@
-import { messagingApi } from "@line/bot-sdk";
+import type { messagingApi } from "@line/bot-sdk";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { logVerbose } from "../globals.js";
+import { loadLineSDK } from "./lazy-loader.js";
 
 interface DownloadResult {
   path: string;
@@ -15,6 +16,7 @@ export async function downloadLineMedia(
   channelAccessToken: string,
   maxBytes = 10 * 1024 * 1024,
 ): Promise<DownloadResult> {
+  const { messagingApi } = await loadLineSDK();
   const client = new messagingApi.MessagingApiBlobClient({
     channelAccessToken,
   });

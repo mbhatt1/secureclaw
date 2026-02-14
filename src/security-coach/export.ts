@@ -2,11 +2,10 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-
 import type { CoachConfig } from "./engine.js";
-import { THREAT_PATTERNS } from "./patterns.js";
 import type { SecurityCoachRule } from "./rules.js";
 import { resolveStateDir } from "../config/paths.js";
+import { THREAT_PATTERNS } from "./patterns.js";
 import { assertNotSymlink } from "./utils.js";
 
 // ---------------------------------------------------------------------------
@@ -98,18 +97,32 @@ function isValidConfig(config: unknown): config is CoachConfig {
   }
   const c = config as Record<string, unknown>;
 
-  if (typeof c.enabled !== "boolean") return false;
-  if (typeof c.blockOnCritical !== "boolean") return false;
-  if (typeof c.educationalMode !== "boolean") return false;
+  if (typeof c.enabled !== "boolean") {
+    return false;
+  }
+  if (typeof c.blockOnCritical !== "boolean") {
+    return false;
+  }
+  if (typeof c.educationalMode !== "boolean") {
+    return false;
+  }
 
   // Validate minSeverity is a known severity level
-  if (typeof c.minSeverity !== "string") return false;
+  if (typeof c.minSeverity !== "string") {
+    return false;
+  }
   const validSeverities = ["critical", "high", "medium", "low", "info"];
-  if (!validSeverities.includes(c.minSeverity)) return false;
+  if (!validSeverities.includes(c.minSeverity)) {
+    return false;
+  }
 
   // Validate decisionTimeoutMs is within acceptable bounds
-  if (typeof c.decisionTimeoutMs !== "number") return false;
-  if (c.decisionTimeoutMs < 5000 || c.decisionTimeoutMs > 300000) return false;
+  if (typeof c.decisionTimeoutMs !== "number") {
+    return false;
+  }
+  if (c.decisionTimeoutMs < 5000 || c.decisionTimeoutMs > 300000) {
+    return false;
+  }
 
   return true;
 }
@@ -119,18 +132,39 @@ function isValidRule(rule: unknown): rule is SecurityCoachRule {
     return false;
   }
   const r = rule as Record<string, unknown>;
-  if (typeof r.id !== "string") return false;
-  if (typeof r.patternId !== "string") return false;
-  if (r.matchValue !== undefined && typeof r.matchValue !== "string") return false;
-  if (r.decision !== "allow" && r.decision !== "deny") return false;
-  if (typeof r.createdAt !== "number") return false;
-  if (typeof r.expiresAt !== "number") return false;
-  if (typeof r.hitCount !== "number") return false;
-  if (typeof r.lastHitAt !== "number") return false;
-  if (r.note !== undefined && typeof r.note !== "string") return false;
+  if (typeof r.id !== "string") {
+    return false;
+  }
+  if (typeof r.patternId !== "string") {
+    return false;
+  }
+  if (r.matchValue !== undefined && typeof r.matchValue !== "string") {
+    return false;
+  }
+  if (r.decision !== "allow" && r.decision !== "deny") {
+    return false;
+  }
+  if (typeof r.createdAt !== "number") {
+    return false;
+  }
+  if (typeof r.expiresAt !== "number") {
+    return false;
+  }
+  if (typeof r.hitCount !== "number") {
+    return false;
+  }
+  if (typeof r.lastHitAt !== "number") {
+    return false;
+  }
+  if (r.note !== undefined && typeof r.note !== "string") {
+    return false;
+  }
 
   // Reject wildcard allow rules (no matchValue) — too dangerous to import.
-  if (r.decision === "allow" && (!r.matchValue || (typeof r.matchValue === "string" && r.matchValue.trim() === ""))) {
+  if (
+    r.decision === "allow" &&
+    (!r.matchValue || (typeof r.matchValue === "string" && r.matchValue.trim() === ""))
+  ) {
     return false;
   }
 
@@ -145,19 +179,25 @@ function isValidRule(rule: unknown): rule is SecurityCoachRule {
   return true;
 }
 
-function isValidMetadata(
-  metadata: unknown,
-): metadata is ExportBundle["metadata"] {
+function isValidMetadata(metadata: unknown): metadata is ExportBundle["metadata"] {
   if (metadata === null || typeof metadata !== "object") {
     return false;
   }
   const m = metadata as Record<string, unknown>;
-  if (m.description !== undefined && typeof m.description !== "string") return false;
-  if (m.environment !== undefined && typeof m.environment !== "string") return false;
+  if (m.description !== undefined && typeof m.description !== "string") {
+    return false;
+  }
+  if (m.environment !== undefined && typeof m.environment !== "string") {
+    return false;
+  }
   if (m.tags !== undefined) {
-    if (!Array.isArray(m.tags)) return false;
+    if (!Array.isArray(m.tags)) {
+      return false;
+    }
     for (const tag of m.tags) {
-      if (typeof tag !== "string") return false;
+      if (typeof tag !== "string") {
+        return false;
+      }
     }
   }
   return true;
@@ -238,10 +278,7 @@ export function serializeBundle(bundle: ExportBundle): string {
  * Write an export bundle to a file using an atomic write pattern
  * (write to a temp file in the same directory, then rename).
  */
-export async function exportToFile(
-  bundle: ExportBundle,
-  filePath: string,
-): Promise<void> {
+export async function exportToFile(bundle: ExportBundle, filePath: string): Promise<void> {
   assertSafePath(filePath);
   const dir = path.dirname(filePath);
   await fs.mkdir(dir, { recursive: true });
@@ -335,9 +372,7 @@ export function mergeRules(
 
     case "append": {
       const existingKeys = new Set(existing.map(ruleKey));
-      const appended = preparedImported.filter(
-        (rule) => !existingKeys.has(ruleKey(rule)),
-      );
+      const appended = preparedImported.filter((rule) => !existingKeys.has(ruleKey(rule)));
       return [...existing, ...appended];
     }
   }
@@ -400,11 +435,21 @@ function collectValidationIssues(value: unknown): string[] {
       issues.push("config must be an object");
     } else {
       const c = b.config as Record<string, unknown>;
-      if (typeof c.enabled !== "boolean") issues.push("config.enabled must be a boolean");
-      if (typeof c.minSeverity !== "string") issues.push("config.minSeverity must be a string");
-      if (typeof c.blockOnCritical !== "boolean") issues.push("config.blockOnCritical must be a boolean");
-      if (typeof c.decisionTimeoutMs !== "number") issues.push("config.decisionTimeoutMs must be a number");
-      if (typeof c.educationalMode !== "boolean") issues.push("config.educationalMode must be a boolean");
+      if (typeof c.enabled !== "boolean") {
+        issues.push("config.enabled must be a boolean");
+      }
+      if (typeof c.minSeverity !== "string") {
+        issues.push("config.minSeverity must be a string");
+      }
+      if (typeof c.blockOnCritical !== "boolean") {
+        issues.push("config.blockOnCritical must be a boolean");
+      }
+      if (typeof c.decisionTimeoutMs !== "number") {
+        issues.push("config.decisionTimeoutMs must be a number");
+      }
+      if (typeof c.educationalMode !== "boolean") {
+        issues.push("config.educationalMode must be a boolean");
+      }
     }
   }
 
@@ -419,18 +464,30 @@ function collectValidationIssues(value: unknown): string[] {
           issues.push(`rules[${i}] must be an object`);
           continue;
         }
-        if (typeof rule.id !== "string") issues.push(`rules[${i}].id must be a string`);
-        if (typeof rule.patternId !== "string") issues.push(`rules[${i}].patternId must be a string`);
+        if (typeof rule.id !== "string") {
+          issues.push(`rules[${i}].id must be a string`);
+        }
+        if (typeof rule.patternId !== "string") {
+          issues.push(`rules[${i}].patternId must be a string`);
+        }
         if (rule.matchValue !== undefined && typeof rule.matchValue !== "string") {
           issues.push(`rules[${i}].matchValue must be a string if present`);
         }
         if (rule.decision !== "allow" && rule.decision !== "deny") {
           issues.push(`rules[${i}].decision must be "allow" or "deny"`);
         }
-        if (typeof rule.createdAt !== "number") issues.push(`rules[${i}].createdAt must be a number`);
-        if (typeof rule.expiresAt !== "number") issues.push(`rules[${i}].expiresAt must be a number`);
-        if (typeof rule.hitCount !== "number") issues.push(`rules[${i}].hitCount must be a number`);
-        if (typeof rule.lastHitAt !== "number") issues.push(`rules[${i}].lastHitAt must be a number`);
+        if (typeof rule.createdAt !== "number") {
+          issues.push(`rules[${i}].createdAt must be a number`);
+        }
+        if (typeof rule.expiresAt !== "number") {
+          issues.push(`rules[${i}].expiresAt must be a number`);
+        }
+        if (typeof rule.hitCount !== "number") {
+          issues.push(`rules[${i}].hitCount must be a number`);
+        }
+        if (typeof rule.lastHitAt !== "number") {
+          issues.push(`rules[${i}].lastHitAt must be a number`);
+        }
         if (rule.note !== undefined && typeof rule.note !== "string") {
           issues.push(`rules[${i}].note must be a string if present`);
         }

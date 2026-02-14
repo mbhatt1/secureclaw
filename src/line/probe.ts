@@ -1,5 +1,6 @@
-import { messagingApi } from "@line/bot-sdk";
+import type { messagingApi } from "@line/bot-sdk";
 import type { LineProbeResult } from "./types.js";
+import { loadLineSDK } from "./lazy-loader.js";
 
 export async function probeLineBot(
   channelAccessToken: string,
@@ -9,6 +10,7 @@ export async function probeLineBot(
     return { ok: false, error: "Channel access token not configured" };
   }
 
+  const { messagingApi } = await loadLineSDK();
   const client = new messagingApi.MessagingApiClient({
     channelAccessToken: channelAccessToken.trim(),
   });

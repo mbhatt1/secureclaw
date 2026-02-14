@@ -1,16 +1,17 @@
+import type { SecurityCoachAuditLog } from "../../security-coach/audit.js";
 import type { SecurityCoachEngine } from "../../security-coach/engine.js";
+import type { ExportBundle } from "../../security-coach/export.js";
+import type { AlertHistoryStore } from "../../security-coach/history.js";
 import type { HygieneScanInput } from "../../security-coach/hygiene.js";
+import type { CoachMetrics } from "../../security-coach/metrics.js";
 import type { SecurityCoachRuleStore } from "../../security-coach/rules.js";
+import type { SiemDispatcher } from "../../security-coach/siem/dispatcher.js";
 import type { GatewayClient, GatewayRequestHandlers, RespondFn } from "./types.js";
-import { ErrorCodes, errorShape } from "../protocol/index.js";
 import { listChannelPlugins } from "../../channels/plugins/index.js";
 import { loadConfig } from "../../config/config.js";
 import { listDevicePairing } from "../../infra/device-pairing.js";
 import { readExecApprovalsSnapshot } from "../../infra/exec-approvals.js";
 import { listNodePairing } from "../../infra/node-pairing.js";
-import { SECURITY_COACH_EVENTS } from "../../security-coach/events.js";
-import { broadcastHygieneFindings, runHygieneCheck } from "../../security-coach/hygiene.js";
-import type { SecurityCoachAuditLog } from "../../security-coach/audit.js";
 import {
   auditAlertResolved,
   auditRuleCreated,
@@ -18,17 +19,11 @@ import {
   auditConfigUpdated,
   auditHygieneScan,
 } from "../../security-coach/audit.js";
-import type { CoachMetrics } from "../../security-coach/metrics.js";
-import type { AlertHistoryStore } from "../../security-coach/history.js";
-import type { SiemDispatcher } from "../../security-coach/siem/dispatcher.js";
+import { SECURITY_COACH_EVENTS } from "../../security-coach/events.js";
+import { exportAll, exportRules, mergeRules, validateBundle } from "../../security-coach/export.js";
+import { broadcastHygieneFindings, runHygieneCheck } from "../../security-coach/hygiene.js";
 import { createDecisionSiemEvent } from "../../security-coach/siem/dispatcher.js";
-import type { ExportBundle } from "../../security-coach/export.js";
-import {
-  exportAll,
-  exportRules,
-  mergeRules,
-  validateBundle,
-} from "../../security-coach/export.js";
+import { ErrorCodes, errorShape } from "../protocol/index.js";
 
 const ADMIN_SCOPE = "operator.admin";
 const SECURITY_COACH_SCOPE = "operator.security-coach";
@@ -39,7 +34,9 @@ const RATE_LIMIT_WINDOW_MS = 10_000; // 10 seconds
 const RATE_LIMIT_MAX = 50; // max 50 calls per window
 
 function isRateLimited(clientId: string | undefined): boolean {
-  if (!clientId) return false; // Can't rate limit without identity
+  if (!clientId) {
+    return false;
+  } // Can't rate limit without identity
   const now = Date.now();
   let entry = rateLimitMap.get(clientId);
   if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
@@ -65,19 +62,17 @@ setInterval(() => {
  * When the client lacks the required scope, an error response is sent
  * automatically and the function returns `false`.
  */
-function requireScope(
-  client: GatewayClient | null,
-  scope: string,
-  respond: RespondFn,
-): boolean {
+function requireScope(client: GatewayClient | null, scope: string, respond: RespondFn): boolean {
   if (!client?.connect) {
-    respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "unauthorized: insufficient scope for this operation"));
+    respond(
+      false,
+      undefined,
+      errorShape(ErrorCodes.INVALID_REQUEST, "unauthorized: insufficient scope for this operation"),
+    );
     return false;
   }
 
-  const scopes = Array.isArray(client.connect.scopes)
-    ? client.connect.scopes
-    : [];
+  const scopes = Array.isArray(client.connect.scopes) ? client.connect.scopes : [];
 
   // Admin scope grants access to everything.
   if (scopes.includes(ADMIN_SCOPE)) {
@@ -88,7 +83,11 @@ function requireScope(
     return true;
   }
 
-  respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "unauthorized: insufficient scope for this operation"));
+  respond(
+    false,
+    undefined,
+    errorShape(ErrorCodes.INVALID_REQUEST, "unauthorized: insufficient scope for this operation"),
+  );
   return false;
 }
 
@@ -111,7 +110,9 @@ export function createSecurityCoachHandlers(
     // Resolve a pending security alert (user clicked allow/deny in the UI)
     // -----------------------------------------------------------------------
     "security.coach.resolve": async ({ params, respond, client, context }) => {
-      if (!requireScope(client, SECURITY_COACH_SCOPE, respond)) return;
+      if (!requireScope(client, SECURITY_COACH_SCOPE, respond)) {
+        return;
+      }
 
       const clientId = client?.connect?.client?.id;
       if (isRateLimited(clientId)) {
@@ -120,27 +121,48 @@ export function createSecurityCoachHandlers(
       }
 
       if (typeof params.id !== "string" || params.id.trim().length === 0) {
-        respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "invalid security.coach.resolve params: missing or empty id"));
+        respond(
+          false,
+          undefined,
+          errorShape(
+            ErrorCodes.INVALID_REQUEST,
+            "invalid security.coach.resolve params: missing or empty id",
+          ),
+        );
         return;
       }
 
       if (typeof params.decision !== "string") {
-        respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "invalid security.coach.resolve params: missing decision"));
+        respond(
+          false,
+          undefined,
+          errorShape(
+            ErrorCodes.INVALID_REQUEST,
+            "invalid security.coach.resolve params: missing decision",
+          ),
+        );
         return;
       }
 
-      const decision = params.decision as string;
+      const decision = params.decision;
       if (
         decision !== "allow-once" &&
         decision !== "allow-always" &&
         decision !== "deny" &&
         decision !== "learn-more"
       ) {
-        respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "invalid security.coach.resolve params: decision must be allow-once, allow-always, deny, or learn-more"));
+        respond(
+          false,
+          undefined,
+          errorShape(
+            ErrorCodes.INVALID_REQUEST,
+            "invalid security.coach.resolve params: decision must be allow-once, allow-always, deny, or learn-more",
+          ),
+        );
         return;
       }
 
-      const id = (params.id as string).trim();
+      const id = params.id.trim();
 
       // Capture the alert data BEFORE resolving — resolve() deletes
       // the alert from the pending map, so getAlert() would return null
@@ -160,8 +182,7 @@ export function createSecurityCoachHandlers(
         return;
       }
 
-      const resolvedBy =
-        client?.connect?.client?.displayName ?? client?.connect?.client?.id;
+      const resolvedBy = client?.connect?.client?.displayName ?? client?.connect?.client?.id;
 
       // Audit: resolved.
       if (auditLog) {
@@ -188,9 +209,7 @@ export function createSecurityCoachHandlers(
           }
           // Best-effort persist to disk.
           void ruleStore.save().catch((err) => {
-            context.logGateway?.error?.(
-              `security coach: failed to save rule: ${String(err)}`,
-            );
+            context.logGateway?.error?.(`security coach: failed to save rule: ${String(err)}`);
           });
         }
       }
@@ -208,7 +227,9 @@ export function createSecurityCoachHandlers(
     // Get current security coach config
     // -----------------------------------------------------------------------
     "security.coach.config.get": async ({ respond, client }) => {
-      if (!requireScope(client, SECURITY_COACH_SCOPE, respond)) return;
+      if (!requireScope(client, SECURITY_COACH_SCOPE, respond)) {
+        return;
+      }
 
       try {
         const config = engine.getConfig();
@@ -222,7 +243,9 @@ export function createSecurityCoachHandlers(
     // Update security coach config
     // -----------------------------------------------------------------------
     "security.coach.config.update": async ({ params, respond, client }) => {
-      if (!requireScope(client, ADMIN_SCOPE, respond)) return;
+      if (!requireScope(client, ADMIN_SCOPE, respond)) {
+        return;
+      }
 
       const clientId = client?.connect?.client?.id;
       if (isRateLimited(clientId)) {
@@ -237,8 +260,15 @@ export function createSecurityCoachHandlers(
       }
       if (typeof params.minSeverity === "string") {
         const validSeverities = ["critical", "high", "medium", "low", "info"];
-        if (!validSeverities.includes(params.minSeverity as string)) {
-          respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, `invalid minSeverity: must be one of ${validSeverities.join(", ")}`));
+        if (!validSeverities.includes(params.minSeverity)) {
+          respond(
+            false,
+            undefined,
+            errorShape(
+              ErrorCodes.INVALID_REQUEST,
+              `invalid minSeverity: must be one of ${validSeverities.join(", ")}`,
+            ),
+          );
           return;
         }
         patch.minSeverity = params.minSeverity;
@@ -248,7 +278,14 @@ export function createSecurityCoachHandlers(
       }
       if (typeof params.decisionTimeoutMs === "number") {
         if (params.decisionTimeoutMs < 5000 || params.decisionTimeoutMs > 300000) {
-          respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "decisionTimeoutMs must be between 5000 and 300000"));
+          respond(
+            false,
+            undefined,
+            errorShape(
+              ErrorCodes.INVALID_REQUEST,
+              "decisionTimeoutMs must be between 5000 and 300000",
+            ),
+          );
           return;
         }
         patch.decisionTimeoutMs = params.decisionTimeoutMs;
@@ -258,7 +295,14 @@ export function createSecurityCoachHandlers(
       }
 
       if (Object.keys(patch).length === 0) {
-        respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "invalid security.coach.config.update params: no valid fields provided"));
+        respond(
+          false,
+          undefined,
+          errorShape(
+            ErrorCodes.INVALID_REQUEST,
+            "invalid security.coach.config.update params: no valid fields provided",
+          ),
+        );
         return;
       }
 
@@ -279,7 +323,9 @@ export function createSecurityCoachHandlers(
     // List all saved rules
     // -----------------------------------------------------------------------
     "security.coach.rules.list": async ({ respond, client }) => {
-      if (!requireScope(client, SECURITY_COACH_SCOPE, respond)) return;
+      if (!requireScope(client, SECURITY_COACH_SCOPE, respond)) {
+        return;
+      }
 
       try {
         const rules = ruleStore.getAllRules();
@@ -293,7 +339,9 @@ export function createSecurityCoachHandlers(
     // Delete a saved rule
     // -----------------------------------------------------------------------
     "security.coach.rules.delete": async ({ params, respond, client }) => {
-      if (!requireScope(client, ADMIN_SCOPE, respond)) return;
+      if (!requireScope(client, ADMIN_SCOPE, respond)) {
+        return;
+      }
 
       const clientId = client?.connect?.client?.id;
       if (isRateLimited(clientId)) {
@@ -301,15 +349,19 @@ export function createSecurityCoachHandlers(
         return;
       }
 
-      if (
-        typeof params.ruleId !== "string" ||
-        params.ruleId.trim().length === 0
-      ) {
-        respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "invalid security.coach.rules.delete params: missing or empty ruleId"));
+      if (typeof params.ruleId !== "string" || params.ruleId.trim().length === 0) {
+        respond(
+          false,
+          undefined,
+          errorShape(
+            ErrorCodes.INVALID_REQUEST,
+            "invalid security.coach.rules.delete params: missing or empty ruleId",
+          ),
+        );
         return;
       }
 
-      const ruleId = (params.ruleId as string).trim();
+      const ruleId = params.ruleId.trim();
       const removed = ruleStore.removeRule(ruleId);
 
       if (!removed) {
@@ -336,7 +388,9 @@ export function createSecurityCoachHandlers(
     // Get security coach status / stats
     // -----------------------------------------------------------------------
     "security.coach.status": async ({ respond, client }) => {
-      if (!requireScope(client, SECURITY_COACH_SCOPE, respond)) return;
+      if (!requireScope(client, SECURITY_COACH_SCOPE, respond)) {
+        return;
+      }
 
       try {
         const pending = engine.getPendingAlerts();
@@ -364,13 +418,19 @@ export function createSecurityCoachHandlers(
     // Get pending alerts
     // -----------------------------------------------------------------------
     "security.coach.alerts.pending": async ({ respond, client }) => {
-      if (!requireScope(client, SECURITY_COACH_SCOPE, respond)) return;
+      if (!requireScope(client, SECURITY_COACH_SCOPE, respond)) {
+        return;
+      }
 
       try {
         const alerts = engine.getPendingAlerts();
         respond(true, { alerts }, undefined);
       } catch (err) {
-        respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, "failed to get pending alerts"));
+        respond(
+          false,
+          undefined,
+          errorShape(ErrorCodes.UNAVAILABLE, "failed to get pending alerts"),
+        );
       }
     },
 
@@ -378,7 +438,9 @@ export function createSecurityCoachHandlers(
     // Run a hygiene scan on-demand
     // -----------------------------------------------------------------------
     "security.coach.hygiene.run": async ({ respond, client, context }) => {
-      if (!requireScope(client, ADMIN_SCOPE, respond)) return;
+      if (!requireScope(client, ADMIN_SCOPE, respond)) {
+        return;
+      }
 
       try {
         const input = await gatherHygieneScanInput(context.cron, ruleStore);
@@ -421,10 +483,16 @@ export function createSecurityCoachHandlers(
     // Query alert history
     // -----------------------------------------------------------------------
     "security.coach.history.query": async ({ params, respond, client }) => {
-      if (!requireScope(client, SECURITY_COACH_SCOPE, respond)) return;
+      if (!requireScope(client, SECURITY_COACH_SCOPE, respond)) {
+        return;
+      }
 
       if (!history) {
-        respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, "alert history not available"));
+        respond(
+          false,
+          undefined,
+          errorShape(ErrorCodes.UNAVAILABLE, "alert history not available"),
+        );
         return;
       }
 
@@ -449,7 +517,9 @@ export function createSecurityCoachHandlers(
     // Get metrics snapshot
     // -----------------------------------------------------------------------
     "security.coach.metrics": async ({ respond, client }) => {
-      if (!requireScope(client, SECURITY_COACH_SCOPE, respond)) return;
+      if (!requireScope(client, SECURITY_COACH_SCOPE, respond)) {
+        return;
+      }
 
       if (!metrics) {
         respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, "metrics not available"));
@@ -468,7 +538,9 @@ export function createSecurityCoachHandlers(
     // Query audit trail
     // -----------------------------------------------------------------------
     "security.coach.audit.query": async ({ params, respond, client }) => {
-      if (!requireScope(client, ADMIN_SCOPE, respond)) return;
+      if (!requireScope(client, ADMIN_SCOPE, respond)) {
+        return;
+      }
 
       if (!auditLog) {
         respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, "audit log not available"));
@@ -492,7 +564,9 @@ export function createSecurityCoachHandlers(
     // Export rules and/or config
     // -----------------------------------------------------------------------
     "security.coach.export": async ({ params, respond, client }) => {
-      if (!requireScope(client, ADMIN_SCOPE, respond)) return;
+      if (!requireScope(client, ADMIN_SCOPE, respond)) {
+        return;
+      }
 
       try {
         const includeRules = params.rules !== false;
@@ -523,7 +597,9 @@ export function createSecurityCoachHandlers(
     // Import rules and/or config from a bundle
     // -----------------------------------------------------------------------
     "security.coach.import": async ({ params, respond, client }) => {
-      if (!requireScope(client, ADMIN_SCOPE, respond)) return;
+      if (!requireScope(client, ADMIN_SCOPE, respond)) {
+        return;
+      }
 
       const clientId = client?.connect?.client?.id;
       if (isRateLimited(clientId)) {
@@ -532,21 +608,32 @@ export function createSecurityCoachHandlers(
       }
 
       if (typeof params.bundle !== "object" || params.bundle === null) {
-        respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "invalid params: missing bundle object"));
+        respond(
+          false,
+          undefined,
+          errorShape(ErrorCodes.INVALID_REQUEST, "invalid params: missing bundle object"),
+        );
         return;
       }
 
       try {
         if (!validateBundle(params.bundle)) {
-          respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, "invalid bundle format"));
+          respond(
+            false,
+            undefined,
+            errorShape(ErrorCodes.INVALID_REQUEST, "invalid bundle format"),
+          );
           return;
         }
 
-        const bundle = params.bundle as ExportBundle;
-        const strategy = (
+        const bundle = params.bundle;
+        const strategy =
           typeof params.strategy === "string" &&
-          (params.strategy === "replace" || params.strategy === "merge" || params.strategy === "append")
-        ) ? params.strategy : "merge";
+          (params.strategy === "replace" ||
+            params.strategy === "merge" ||
+            params.strategy === "append")
+            ? params.strategy
+            : "merge";
 
         let rulesImported = 0;
         let configImported = false;
@@ -571,7 +658,9 @@ export function createSecurityCoachHandlers(
             });
           }
           rulesImported = merged.length;
-          void ruleStore.save().catch(() => { /* best-effort */ });
+          void ruleStore.save().catch(() => {
+            /* best-effort */
+          });
         }
 
         // Import config.
@@ -599,26 +688,29 @@ export function createSecurityCoachHandlers(
  * Collect data from all system stores to feed the hygiene scanner.
  */
 export async function gatherHygieneScanInput(
-  cron: { list: (opts?: { includeDisabled?: boolean }) => Promise<Array<{
-    id: string;
-    name: string;
-    enabled: boolean;
-    createdAtMs: number;
-    state: {
-      lastRunAtMs?: number;
-      consecutiveErrors?: number;
-      lastError?: string;
-    };
-  }>> },
+  cron: {
+    list: (opts?: { includeDisabled?: boolean }) => Promise<
+      Array<{
+        id: string;
+        name: string;
+        enabled: boolean;
+        createdAtMs: number;
+        state: {
+          lastRunAtMs?: number;
+          consecutiveErrors?: number;
+          lastError?: string;
+        };
+      }>
+    >;
+  },
   ruleStore: SecurityCoachRuleStore,
 ): Promise<HygieneScanInput> {
-  const [devicePairing, nodePairing, execSnapshot, cronJobs] =
-    await Promise.all([
-      listDevicePairing().catch(() => ({ pending: [], paired: [] })),
-      listNodePairing().catch(() => ({ pending: [], paired: [] })),
-      Promise.resolve(readExecApprovalsSnapshot()).catch(() => null),
-      cron.list({ includeDisabled: true }).catch(() => []),
-    ]);
+  const [devicePairing, nodePairing, execSnapshot, cronJobs] = await Promise.all([
+    listDevicePairing().catch(() => ({ pending: [], paired: [] })),
+    listNodePairing().catch(() => ({ pending: [], paired: [] })),
+    Promise.resolve(readExecApprovalsSnapshot()).catch(() => null),
+    cron.list({ includeDisabled: true }).catch(() => []),
+  ]);
 
   // Map device pairing data.
   const devices = devicePairing.paired.map((d) => ({
@@ -674,9 +766,7 @@ export async function gatherHygieneScanInput(
     const cfg = loadConfig();
     const channelIds = listChannelPlugins().map((p) => p.id);
     for (const chId of channelIds) {
-      const chCfg = cfg.channels?.[chId] as
-        | { dmPolicy?: string }
-        | undefined;
+      const chCfg = cfg.channels?.[chId] as { dmPolicy?: string } | undefined;
       if (chCfg?.dmPolicy === "open") {
         dmPolicy = "open";
         break;

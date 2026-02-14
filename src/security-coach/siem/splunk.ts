@@ -92,16 +92,36 @@ function formatHecEvent(event: SiemEvent): Record<string, unknown> {
     splunkSeverity: mapSeverity(event.severity),
   };
 
-  if (event.alertId !== undefined) inner.alertId = event.alertId;
-  if (event.title !== undefined) inner.title = event.title;
-  if (event.message !== undefined) inner.message = event.message;
-  if (event.decision !== undefined) inner.decision = event.decision;
-  if (event.resolvedBy !== undefined) inner.resolvedBy = event.resolvedBy;
-  if (event.category !== undefined) inner.category = event.category;
-  if (event.patternId !== undefined) inner.patternId = event.patternId;
-  if (event.threats !== undefined) inner.threats = event.threats;
-  if (event.context !== undefined) inner.context = event.context;
-  if (event.tags !== undefined) inner.tags = event.tags;
+  if (event.alertId !== undefined) {
+    inner.alertId = event.alertId;
+  }
+  if (event.title !== undefined) {
+    inner.title = event.title;
+  }
+  if (event.message !== undefined) {
+    inner.message = event.message;
+  }
+  if (event.decision !== undefined) {
+    inner.decision = event.decision;
+  }
+  if (event.resolvedBy !== undefined) {
+    inner.resolvedBy = event.resolvedBy;
+  }
+  if (event.category !== undefined) {
+    inner.category = event.category;
+  }
+  if (event.patternId !== undefined) {
+    inner.patternId = event.patternId;
+  }
+  if (event.threats !== undefined) {
+    inner.threats = event.threats;
+  }
+  if (event.context !== undefined) {
+    inner.context = event.context;
+  }
+  if (event.tags !== undefined) {
+    inner.tags = event.tags;
+  }
 
   return {
     time: toEpochSeconds(event.timestamp),
@@ -149,9 +169,7 @@ export function createSplunkAdapter(destination: SiemDestination): SiemAdapter {
       headers: Record<string, string>;
       body: string;
     } {
-      const body = events
-        .map((e) => JSON.stringify(formatHecEvent(e)))
-        .join("\n");
+      const body = events.map((e) => JSON.stringify(formatHecEvent(e))).join("\n");
 
       return {
         url: hecUrl,

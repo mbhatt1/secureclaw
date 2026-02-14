@@ -9,6 +9,10 @@ title: "Raspberry Pi"
 
 # SecureClaw on Raspberry Pi
 
+<Tip>
+**Looking for performance optimization?** See the [Raspberry Pi Optimization Guide](/platforms/OPTIMIZATION-RASPBERRY-PI) for ARM-specific optimizations, startup tuning, and power efficiency.
+</Tip>
+
 ## Goal
 
 Run a persistent, always-on SecureClaw Gateway on a Raspberry Pi for **~$35-80** one-time cost (no monthly fees).
@@ -109,13 +113,33 @@ sudo sysctl -p
 
 ## 6) Install SecureClaw
 
-### Option A: Standard Install (Recommended)
+### Option A: Automated Deployment (Easiest)
+
+Use our deployment script with optimized config profiles:
+
+```bash
+# On your laptop/desktop
+git clone https://github.com/mbhatt1/secureclaw.git
+cd secureclaw
+
+# Deploy to Pi (automatically installs and configures)
+./scripts/raspberry-pi/deploy.sh gateway-host pi raspberry-pi-4-4gb
+```
+
+This automatically:
+
+- Installs SecureClaw
+- Applies optimized configuration
+- Sets up systemd service
+- Configures power optimizations
+
+### Option B: Standard Install
 
 ```bash
 curl -fsSL https://secureclaw.app/install.sh | bash
 ```
 
-### Option B: Hackable Install (For tinkering)
+### Option C: Hackable Install (For tinkering)
 
 ```bash
 git clone https://github.com/mbhatt1/secureclaw.git
@@ -176,6 +200,31 @@ sudo tailscale up
 secureclaw config set gateway.bind tailnet
 sudo systemctl restart secureclaw
 ```
+
+---
+
+## Optimized Configuration Profiles
+
+SecureClaw includes pre-tuned configuration profiles for each Pi model:
+
+| Profile              | Target   | Startup | Idle RAM | Features                |
+| -------------------- | -------- | ------- | -------- | ----------------------- |
+| `raspberry-pi-4-2gb` | Pi 4 2GB | <6s     | <80MB    | Minimal (Telegram only) |
+| `raspberry-pi-4-4gb` | Pi 4 4GB | <5s     | <100MB   | Standard (recommended)  |
+| `raspberry-pi-4-8gb` | Pi 4 8GB | <4s     | <120MB   | Full features           |
+| `raspberry-pi-5`     | Pi 5     | <3s     | <100MB   | Best performance        |
+
+**Apply a profile:**
+
+```bash
+# Copy profile to config
+cp ~/secureclaw/profiles/raspberry-pi-4-4gb.json ~/.secureclaw/secureclaw.json
+
+# Restart gateway
+systemctl --user restart secureclaw
+```
+
+See [profiles/README.md](https://github.com/mbhatt1/secureclaw/tree/main/profiles) for detailed comparison and customization options.
 
 ---
 
@@ -349,10 +398,35 @@ echo 'wireless-power off' | sudo tee -a /etc/network/interfaces
 
 ---
 
+## Performance Benchmarking
+
+Run the benchmark script to measure your Pi's performance:
+
+```bash
+# From your laptop
+./scripts/raspberry-pi/benchmark.sh gateway-host pi
+
+# Or on the Pi directly
+secureclaw doctor --bench
+```
+
+This measures:
+
+- Startup time
+- Memory usage
+- CPU temperature
+- Power consumption estimate
+- Database performance
+- Storage type (SD card vs SSD)
+
+---
+
 ## See Also
 
+- **[Raspberry Pi Optimization Guide](/platforms/OPTIMIZATION-RASPBERRY-PI)** — ARM optimizations, lazy loading, power efficiency
 - [Linux guide](/platforms/linux) — general Linux setup
 - [DigitalOcean guide](/platforms/digitalocean) — cloud alternative
 - [Hetzner guide](/install/hetzner) — Docker setup
 - [Tailscale](/gateway/tailscale) — remote access
 - [Nodes](/nodes) — pair your laptop/phone with the Pi gateway
+- [Configuration Profiles](https://github.com/mbhatt1/secureclaw/tree/main/profiles) — Pre-tuned configs

@@ -1,11 +1,21 @@
-import {
-  DisconnectReason,
-  fetchLatestBaileysVersion,
-  makeCacheableSignalKeyStore,
-  makeWASocket,
-  useMultiFileAuthState,
-} from "@whiskeysockets/baileys";
+import type { DisconnectReason, WASocket } from "@whiskeysockets/baileys";
 import { randomUUID } from "node:crypto";
+
+// Lazy-load @whiskeysockets/baileys to make it optional
+type BaileysModule = typeof import("@whiskeysockets/baileys");
+let baileysModulePromise: Promise<BaileysModule> | null = null;
+
+async function loadBaileys(): Promise<BaileysModule> {
+  if (!baileysModulePromise) {
+    baileysModulePromise = import("@whiskeysockets/baileys").catch((err) => {
+      baileysModulePromise = null;
+      throw new Error(
+        `Optional dependency @whiskeysockets/baileys is required for WhatsApp messaging: ${String(err)}`,
+      );
+    });
+  }
+  return baileysModulePromise;
+}
 import fsSync from "node:fs";
 import qrcode from "qrcode-terminal";
 import { formatCliCommand } from "../cli/command-format.js";
@@ -95,7 +105,7 @@ export async function createWaSocket(
   printQr: boolean,
   verbose: boolean,
   opts: { authDir?: string; onQr?: (qr: string) => void } = {},
-): Promise<ReturnType<typeof makeWASocket>> {
+): Promise<WASocket> {
   const baseLogger = getChildLogger(
     { module: "baileys" },
     {
@@ -107,12 +117,14 @@ export async function createWaSocket(
   await ensureDir(authDir);
   const sessionLogger = getChildLogger({ module: "web-session" });
   maybeRestoreCredsFromBackup(authDir);
-  const { state, saveCreds } = await useMultiFileAuthState(authDir);
-  const { version } = await fetchLatestBaileysVersion();
-  const sock = makeWASocket({
+  const baileys = await loadBaileys();
+  const { DisconnectReason } = baileys;
+  const { state, saveCreds } = await baileys.useMultiFileAuthState(authDir);
+  const { version } = await baileys.fetchLatestBaileysVersion();
+  const sock = baileys.makeWASocket({
     auth: {
       creds: state.creds,
-      keys: makeCacheableSignalKeyStore(state.keys, logger),
+      keys: baileys.makeCacheableSignalKeyStore(state.keys, logger),
     },
     version,
     logger,
@@ -164,7 +176,7 @@ export async function createWaSocket(
   return sock;
 }
 
-export async function waitForWaConnection(sock: ReturnType<typeof makeWASocket>) {
+export async function waitForWaConnection(sock: WASocket) {
   return new Promise<void>((resolve, reject) => {
     type OffCapable = {
       off?: (event: string, listener: (...args: unknown[]) => void) => void;

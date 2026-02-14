@@ -134,9 +134,7 @@ export class SecurityCoach extends LitElement {
       const minutes = Math.floor(totalSeconds / 60);
       const seconds = totalSeconds % 60;
       this.countdown =
-        minutes > 0
-          ? `${minutes}:${String(seconds).padStart(2, "0")}`
-          : `${seconds}s`;
+        minutes > 0 ? `${minutes}:${String(seconds).padStart(2, "0")}` : `${seconds}s`;
     }, 250);
   }
 
@@ -231,15 +229,19 @@ export class SecurityCoach extends LitElement {
   // ---------------------------------------------------------------------------
 
   render() {
-    if (!this.enabled) return nothing;
+    if (!this.enabled) {
+      return nothing;
+    }
 
     if (this.minimized) {
       return html`
         <div class="coach-minimized" @click=${this.toggleMinimized}>
           <span class="coach-mini-icon">🛡️</span>
-          ${this.alerts.length > 0
-            ? html`<span class="badge">${this.alerts.length}</span>`
-            : nothing}
+          ${
+            this.alerts.length > 0
+              ? html`<span class="badge">${this.alerts.length}</span>`
+              : nothing
+          }
         </div>
       `;
     }
@@ -258,20 +260,36 @@ export class SecurityCoach extends LitElement {
     return html`
       <div class="coach-character ${stateClass}" @click=${this.handleCharacterClick}>
         <span class="coach-icon" role="img" aria-label="Security Coach">🛡️</span>
-        ${this.characterState === "coaching"
-          ? html`<span class="speech-indicator">💬</span>`
-          : nothing}
-        ${this.characterState === "thinking"
-          ? html`<span class="thinking-dots">
-              <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-            </span>`
-          : nothing}
-        ${this.characterState === "celebrating"
-          ? html`<span class="sparkle">✨</span>`
-          : nothing}
-        ${this.characterState === "sleeping"
-          ? html`<span class="zzz">💤</span>`
-          : nothing}
+        ${
+          this.characterState === "coaching"
+            ? html`
+                <span class="speech-indicator">💬</span>
+              `
+            : nothing
+        }
+        ${
+          this.characterState === "thinking"
+            ? html`
+                <span class="thinking-dots">
+                  <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                </span>
+              `
+            : nothing
+        }
+        ${
+          this.characterState === "celebrating"
+            ? html`
+                <span class="sparkle">✨</span>
+              `
+            : nothing
+        }
+        ${
+          this.characterState === "sleeping"
+            ? html`
+                <span class="zzz">💤</span>
+              `
+            : nothing
+        }
         <button
           class="minimize-btn"
           @click=${(e: Event) => {
@@ -309,7 +327,9 @@ export class SecurityCoach extends LitElement {
   }
 
   private renderSpeechBubble() {
-    if (!this.speechBubble) return nothing;
+    if (!this.speechBubble) {
+      return nothing;
+    }
     return html`
       <div class="speech-bubble speech-${this.speechBubble.style}">
         <p class="speech-text">${this.speechBubble.message}</p>
@@ -330,7 +350,9 @@ export class SecurityCoach extends LitElement {
 
   private renderAlertCard() {
     const alert = this.currentAlert;
-    if (!alert) return nothing;
+    if (!alert) {
+      return nothing;
+    }
 
     const borderColor = this.levelColor(alert.level);
 
@@ -344,9 +366,11 @@ export class SecurityCoach extends LitElement {
             ${alert.level.toUpperCase()}
           </span>
           <span class="alert-title">${alert.title}</span>
-          ${this.countdown
-            ? html`<span class="alert-countdown" title="Time remaining">⏱ ${this.countdown}</span>`
-            : nothing}
+          ${
+            this.countdown
+              ? html`<span class="alert-countdown" title="Time remaining">⏱ ${this.countdown}</span>`
+              : nothing
+          }
           <button
             class="alert-close"
             @click=${() => this.emitDismiss(alert.id)}
@@ -362,13 +386,15 @@ export class SecurityCoach extends LitElement {
           <p class="recommendation">${alert.recommendation}</p>
         </div>
 
-        ${alert.threats.length > 0
-          ? html`
+        ${
+          alert.threats.length > 0
+            ? html`
               <button class="details-toggle" @click=${this.toggleDetails}>
                 ${this.showDetails ? "▾ Hide threats" : "▸ Show threats"} (${alert.threats.length})
               </button>
-              ${this.showDetails
-                ? html`
+              ${
+                this.showDetails
+                  ? html`
                     <div class="threat-list">
                       ${alert.threats.map(
                         (t) => html`
@@ -388,12 +414,15 @@ export class SecurityCoach extends LitElement {
                       )}
                     </div>
                   `
-                : nothing}
+                  : nothing
+              }
             `
-          : nothing}
+            : nothing
+        }
 
-        ${alert.requiresDecision
-          ? html`
+        ${
+          alert.requiresDecision
+            ? html`
               <div class="alert-actions">
                 <button
                   class="action-btn allow-once"
@@ -425,7 +454,7 @@ export class SecurityCoach extends LitElement {
                 </button>
               </div>
             `
-          : html`
+            : html`
               <div class="alert-actions">
                 <button
                   class="action-btn dismiss"
@@ -434,7 +463,8 @@ export class SecurityCoach extends LitElement {
                   Dismiss
                 </button>
               </div>
-            `}
+            `
+        }
       </div>
     `;
   }

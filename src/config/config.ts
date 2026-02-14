@@ -8,6 +8,15 @@ export {
 } from "./io.js";
 export { migrateLegacyConfig } from "./legacy-migrate.js";
 export * from "./paths.js";
+export {
+  autoDetectProfile,
+  detectProfileFromEnv,
+  getAvailableProfiles,
+  getSystemMemory,
+  hasProfile,
+  isRaspberryPi,
+  loadProfile,
+} from "./profiles.js";
 export * from "./runtime-overrides.js";
 export * from "./types.js";
 export {

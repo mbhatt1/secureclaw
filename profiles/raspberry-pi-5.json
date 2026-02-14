@@ -1,0 +1,111 @@
+{
+  // High-performance profile for Raspberry Pi 5
+  // Target: <3s startup, <100MB idle RAM, <0.8W idle power
+  "mode": "full",
+
+  "agents": {
+    "defaults": {
+      "workspace": "~/.secureclaw/workspace",
+
+      "model": {
+        "primary": "anthropic/claude-sonnet-4-20250514",
+        "fallbacks": ["openai/gpt-4o-mini", "anthropic/claude-opus-4-6"]
+      },
+
+      "memory": {
+        "backend": "sqlite",
+        "path": "~/.secureclaw/memory.db",
+
+        "options": {
+          "journalMode": "WAL",
+          "synchronous": "NORMAL",
+          // 10MB cache for Pi 5
+          "cacheSize": 10000,
+          // 100MB mmap
+          "mmapSize": 100000000,
+          "tempStore": "MEMORY"
+        },
+
+        "embeddings": {
+          "provider": "voyage",
+          "batchSize": 200,
+          // Better quality on Pi 5
+          "quantization": "fp16",
+
+          "vectorOps": {
+            "useSimd": true,
+            // Use ARM NEON SIMD instructions
+            "simdBackend": "neon"
+          }
+        },
+
+        "indexing": {
+          "mode": "realtime"
+        },
+
+        "writeBuffer": {
+          "enabled": true,
+          "maxSize": 200,
+          "flushInterval": "30s"
+        }
+      },
+
+      "tools": {
+        "browser": { "enabled": true },
+        "tts": { "enabled": true },
+        "media": {
+          "enabled": true,
+          "video": {
+            // Use hardware decoder on Pi 5
+            "decoder": "h264_v4l2m2m",
+            "maxResolution": "1080p"
+          }
+        }
+      },
+
+      "heartbeat": {
+        "every": "2m"
+      },
+
+      "logging": {
+        "level": "info",
+        "buffer": {
+          "enabled": true,
+          "maxSize": 200,
+          "flushInterval": "1m"
+        }
+      }
+    }
+  },
+
+  "channels": {
+    "telegram": {
+      "enabled": true,
+      "polling": {
+        "interval": 2000
+      }
+    },
+    "whatsapp": {
+      "enabled": true
+    },
+    "discord": {
+      "enabled": true
+    }
+  },
+
+  "gateway": {
+    "port": 18789,
+    "bind": "tailnet",
+
+    "controlUI": {
+      "enabled": true
+    },
+
+    "startup": {
+      "parallelChannels": true,
+      "asyncMemory": true,
+      // Pre-warm most commonly used modules
+      "preload": ["telegram", "whatsapp"]
+    }
+  }
+}

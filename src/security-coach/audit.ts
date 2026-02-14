@@ -198,7 +198,9 @@ export class SecurityCoachAuditLog {
    * keeping the active file small for query performance.
    */
   async rotateIfNeeded(): Promise<void> {
-    if (this.rotating) return; // Already rotating — prevent concurrent rotations.
+    if (this.rotating) {
+      return;
+    } // Already rotating — prevent concurrent rotations.
     this.rotating = true;
     try {
       let stat: fs.Stats;
@@ -290,10 +292,7 @@ export function auditAlertResolved(
 /**
  * Log when an alert expires without a user decision (timeout).
  */
-export function auditAlertExpired(
-  log: SecurityCoachAuditLog,
-  alertId: string,
-): void {
+export function auditAlertExpired(log: SecurityCoachAuditLog, alertId: string): void {
   log.append({
     ts: Date.now(),
     type: "alert.expired",
@@ -345,10 +344,7 @@ export function auditRuleCreated(
 /**
  * Log when a security coach rule is deleted.
  */
-export function auditRuleDeleted(
-  log: SecurityCoachAuditLog,
-  ruleId: string,
-): void {
+export function auditRuleDeleted(log: SecurityCoachAuditLog, ruleId: string): void {
   log.append({
     ts: Date.now(),
     type: "rule.deleted",
@@ -373,10 +369,7 @@ export function auditConfigUpdated(
 /**
  * Log when a hygiene scan is executed, recording how many findings were produced.
  */
-export function auditHygieneScan(
-  log: SecurityCoachAuditLog,
-  findingsCount: number,
-): void {
+export function auditHygieneScan(log: SecurityCoachAuditLog, findingsCount: number): void {
   log.append({
     ts: Date.now(),
     type: "hygiene.scan",

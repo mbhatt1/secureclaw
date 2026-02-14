@@ -32,16 +32,13 @@ export const COACH_PERSONALITY: CoachPersonality = {
 
 /** Pick a random element from an array. */
 function pick<T>(items: readonly T[]): T {
-  return items[Math.floor(Math.random() * items.length)]!;
+  return items[Math.floor(Math.random() * items.length)];
 }
 
 /**
  * Interpolate `{key}` placeholders in a template string.
  */
-function interpolate(
-  template: string,
-  vars: Record<string, string | undefined>,
-): string {
+function interpolate(template: string, vars: Record<string, string | undefined>): string {
   return template.replace(/\{(\w+)\}/g, (_, key: string) => vars[key] ?? "");
 }
 
@@ -145,7 +142,7 @@ export function generateCoachMessage(
     return {
       title: "Security check",
       message: "Something caught my attention, but I couldn't determine the details.",
-      recommendation: pick(RECOMMENDATION_BY_LEVEL["inform"]!),
+      recommendation: pick(RECOMMENDATION_BY_LEVEL["inform"]),
     };
   }
 
@@ -159,9 +156,7 @@ export function generateCoachMessage(
     toolName: undefined,
   });
 
-  const recommendation = pick(
-    RECOMMENDATION_BY_LEVEL[level] ?? RECOMMENDATION_BY_LEVEL["inform"]!,
-  );
+  const recommendation = pick(RECOMMENDATION_BY_LEVEL[level] ?? RECOMMENDATION_BY_LEVEL["inform"]);
 
   return { title, message, recommendation };
 }
@@ -174,10 +169,10 @@ function buildTitle(threats: ThreatMatchLike[]): string {
     return "Security check";
   }
   if (threats.length === 1) {
-    return threats[0]!.title;
+    return threats[0].title;
   }
   // Multiple threats: lead with the first, mention the count.
-  return `${threats[0]!.title} (+${threats.length - 1} more)`;
+  return `${threats[0].title} (+${threats.length - 1} more)`;
 }
 
 // ---------------------------------------------------------------------------
@@ -288,10 +283,7 @@ const GENERIC_TIPS: readonly string[] = [
 /**
  * Generate an educational tip based on what just happened.
  */
-export function generateTip(opts: {
-  category: string;
-  context?: string;
-}): string {
+export function generateTip(opts: { category: string; context?: string }): string {
   const categoryTips = TIPS_BY_CATEGORY[opts.category];
   if (categoryTips && categoryTips.length > 0) {
     const tip = pick(categoryTips);
@@ -310,9 +302,7 @@ export function generateTip(opts: {
  * Maps alert levels to the `CoachCharacterState` values defined in
  * `events.ts`.
  */
-export function getCharacterState(
-  level: string,
-): "blocking" | "alert" | "coaching" | "idle" {
+export function getCharacterState(level: string): "blocking" | "alert" | "coaching" | "idle" {
   switch (level) {
     case "block":
       return "blocking";

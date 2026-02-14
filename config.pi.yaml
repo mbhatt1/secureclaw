@@ -1,0 +1,132 @@
+# =============================================================================
+# SecureClaw Raspberry Pi Configuration
+# =============================================================================
+# Optimized for Raspberry Pi 4GB RAM
+# Target: <500MB memory usage under load
+# =============================================================================
+
+# Gateway Configuration
+gateway:
+  # Restrict to 20 concurrent connections
+  maxConnections: 20
+
+  # Trust local proxies only
+  trustedProxies:
+    - "127.0.0.1"
+    - "::1"
+
+  # Smaller message buffer
+  messageBufferSize: 1000
+  messageBufferTTL: 300000 # 5 minutes
+
+# Memory Manager Configuration
+memory:
+  # Enable caching with strict limits
+  cache:
+    enabled: true
+    maxEntries: 5000 # ~50MB max
+
+  # Database storage
+  store:
+    path: ~/.secureclaw/memory.db
+    vector:
+      enabled: true # sqlite-vec is lightweight
+
+  # Sync configuration
+  sync:
+    intervalMinutes: 30 # Less frequent syncs
+    watch: false # Disable file watching
+    watchDebounceMs: 5000
+    onSearch: true
+    onSessionStart: false # Lazy load
+    sessions:
+      deltaBytes: 8192 # 8KB threshold
+      deltaMessages: 5 # 5 message threshold
+
+  # Chunking configuration
+  chunking:
+    tokens: 512 # Smaller chunks
+    overlap: 50
+
+  # Query configuration
+  query:
+    maxResults: 10 # Fewer results
+    minScore: 0.7
+    hybrid:
+      enabled: true # Hybrid search is efficient
+      vectorWeight: 0.7
+      textWeight: 0.3
+      candidateMultiplier: 2
+
+  # Sources to index
+  sources:
+    - memory
+    - sessions
+
+# Security Coach Configuration
+securityCoach:
+  enabled: true
+  minSeverity: medium # Only medium+ threats
+  blockOnCritical: true
+  decisionTimeoutMs: 30000 # 30 seconds
+  educationalMode: true
+
+  # LLM Judge with caching
+  llmJudge:
+    enabled: true
+    cacheEnabled: true
+    cacheTTL: 3600000 # 1 hour
+    cacheMaxEntries: 1000 # ~1-2MB
+    maxLatency: 2000 # Allow longer latency on Pi
+    confidenceThreshold: 75
+    fallbackToPatterns: true
+    useLLMForSeverity:
+      - medium
+      - low
+
+# Agent Configuration
+agents:
+  # Session manager
+  sessionManager:
+    cacheTTL: 45000 # 45 seconds
+    preloadEnabled: false # Disable preloading
+
+  # Disable expensive features
+  thinking:
+    enabled: false
+
+  voice:
+    enabled: false
+
+  # Smaller context window
+  maxContextTokens: 100000
+
+# Media Processing
+media:
+  image:
+    maxWidth: 1920
+    maxHeight: 1080
+    quality: 80
+
+  video:
+    enabled: false # Too memory-intensive
+
+# Logging Configuration
+logging:
+  level: info # Reduce verbosity
+  maxFiles: 7
+  maxSizeMB: 50
+
+# Database Configuration (SQLite)
+database:
+  wal: true # Better concurrency
+  cacheSize: -2000 # 2MB cache
+  mmapSize: 0 # Disable mmap
+
+# Memory Monitoring
+monitoring:
+  memory:
+    enabled: true
+    maxHeapMB: 450
+    warningThresholdPct: 80
+    checkIntervalMs: 30000

@@ -5,6 +5,7 @@
 import * as crypto from "node:crypto";
 import type { LLMJudgeConfig, LLMJudgeResult } from "./llm-judge-schemas.js";
 import type { ThreatMatchInput, ThreatMatch } from "./patterns.js";
+import { LRUCache } from "../utils/lru-cache.js";
 import { LLM_JUDGE_RESPONSE_SCHEMA } from "./llm-judge-schemas.js";
 
 // ---------------------------------------------------------------------------
@@ -17,11 +18,13 @@ type CacheEntry = {
 };
 
 class LLMJudgeCache {
-  private cache: Map<string, CacheEntry> = new Map();
+  private cache: LRUCache<string, CacheEntry>;
   private ttl: number;
 
   constructor(ttl: number) {
     this.ttl = ttl;
+    // Limit to 1000 LLM responses to prevent unbounded growth
+    this.cache = new LRUCache({ maxSize: 1000, ttl });
   }
 
   get(key: string): LLMJudgeResult | null {
@@ -50,7 +53,7 @@ class LLMJudgeCache {
   }
 
   size(): number {
-    return this.cache.size;
+    return this.cache.size();
   }
 }
 

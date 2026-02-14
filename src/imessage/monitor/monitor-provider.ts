@@ -43,6 +43,7 @@ import {
 } from "../../pairing/pairing-store.js";
 import { resolveAgentRoute } from "../../routing/resolve-route.js";
 import { truncateUtf16Safe } from "../../utils.js";
+import { LRUCache } from "../../utils/lru-cache.js";
 import { resolveIMessageAccount } from "../accounts.js";
 import { createIMessageRpcClient } from "../client.js";
 import { DEFAULT_IMESSAGE_PROBE_TIMEOUT_MS } from "../constants.js";
@@ -117,8 +118,13 @@ function describeReplyContext(message: IMessagePayload): IMessageReplyContext | 
  * Entries expire after 5 seconds; we do not forget on match so multiple echo deliveries are all filtered.
  */
 class SentMessageCache {
-  private cache = new Map<string, number>();
+  private cache: LRUCache<string, number>;
   private readonly ttlMs = 5000; // 5 seconds
+
+  constructor() {
+    // Limit to 500 entries for echo detection (should be plenty for 5 second window)
+    this.cache = new LRUCache({ maxSize: 500, ttl: this.ttlMs });
+  }
 
   remember(scope: string, text: string): void {
     if (!text?.trim()) {
@@ -126,7 +132,7 @@ class SentMessageCache {
     }
     const key = `${scope}:${text.trim()}`;
     this.cache.set(key, Date.now());
-    this.cleanup();
+    // LRUCache handles cleanup automatically
   }
 
   has(scope: string, text: string): boolean {
@@ -144,15 +150,6 @@ class SentMessageCache {
       return false;
     }
     return true;
-  }
-
-  private cleanup(): void {
-    const now = Date.now();
-    for (const [text, timestamp] of this.cache.entries()) {
-      if (now - timestamp > this.ttlMs) {
-        this.cache.delete(text);
-      }
-    }
   }
 }
 

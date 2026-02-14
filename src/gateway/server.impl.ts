@@ -38,6 +38,14 @@ import {
   refreshRemoteBinsForConnectedNodes,
   setSkillsRemoteRegistry,
 } from "../infra/skills-remote.js";
+import {
+  createStartupMetrics,
+  detectResourceConstraints,
+  logStartupInfo,
+  resolveStartupOptimizations,
+  startPiHealthMonitoring,
+  watchStartupMemory,
+} from "../infra/startup-optimizations.js";
 import { scheduleGatewayUpdateCheck } from "../infra/update-startup.js";
 import { startDiagnosticHeartbeat, stopDiagnosticHeartbeat } from "../logging/diagnostic.js";
 import { createSubsystemLogger, runtimeForLogger } from "../logging/subsystem.js";
@@ -55,6 +63,7 @@ import { SiemDispatcher } from "../security-coach/siem/dispatcher.js";
 import { createSentinelAdapter } from "../security-coach/siem/sentinel.js";
 import { createSplunkAdapter } from "../security-coach/siem/splunk.js";
 import { AlertThrottle } from "../security-coach/throttle.js";
+import { MemoryMonitor } from "../utils/memory-monitor.js";
 import { runOnboardingWizard } from "../wizard/onboarding.js";
 import { startGatewayConfigReloader } from "./config-reload.js";
 import { ExecApprovalManager } from "./exec-approval-manager.js";
@@ -174,6 +183,10 @@ export async function startGatewayServer(
   port = 18789,
   opts: GatewayServerOptions = {},
 ): Promise<GatewayServer> {
+  // Initialize startup metrics and optimizations
+  const { metrics, mark, complete } = createStartupMetrics();
+  const stopMemoryWatch = watchStartupMemory({ logger: log });
+
   // Ensure all default port derivations (browser/canvas) see the actual runtime port.
   process.env.SECURECLAW_GATEWAY_PORT = String(port);
   logAcceptedEnvOption({
@@ -186,6 +199,7 @@ export async function startGatewayServer(
   });
 
   let configSnapshot = await readConfigFileSnapshot();
+  mark("configLoadTime");
   if (configSnapshot.legacyIssues.length > 0) {
     if (isNixMode) {
       throw new Error(
@@ -236,6 +250,17 @@ export async function startGatewayServer(
   }
 
   const cfgAtStart = loadConfig();
+
+  // Detect resource constraints and apply optimizations
+  const constraints = detectResourceConstraints();
+  const optimizations = resolveStartupOptimizations(cfgAtStart);
+
+  if (constraints.isConstrained) {
+    log.info(
+      `[startup] Detected ${constraints.reason}${constraints.memoryMB ? ` (${constraints.memoryMB.toFixed(0)}MB RAM)` : ""} - applying optimizations`,
+    );
+  }
+
   const diagnosticsEnabled = isDiagnosticsEnabled(cfgAtStart);
   if (diagnosticsEnabled) {
     startDiagnosticHeartbeat();
@@ -252,6 +277,7 @@ export async function startGatewayServer(
     coreGatewayHandlers,
     baseMethods,
   });
+  mark("pluginLoadTime");
   const channelLogs = Object.fromEntries(
     listChannelPlugins().map((plugin) => [plugin.id, logChannels.child(plugin.id)]),
   ) as Record<ChannelId, ReturnType<typeof createSubsystemLogger>>;
@@ -420,6 +446,32 @@ export async function startGatewayServer(
   );
   setGlobalSecurityCoachHooks(securityCoachHooks);
   log.info?.("Security Coach initialized and ready");
+
+  // MEMORY MONITOR: Initialize memory monitoring for resource-constrained environments
+  // Configure thresholds based on environment (Raspberry Pi vs normal systems)
+  const isPi = process.arch === "arm" || process.arch === "arm64";
+  const memoryMonitor = new MemoryMonitor({
+    maxHeapMB: isPi ? 450 : 1024, // Conservative limits for Pi, more headroom for servers
+    warningThresholdPct: 80, // Warn at 80% usage
+    checkIntervalMs: 30_000, // Check every 30 seconds
+  });
+
+  // Register cleanup handler to clear caches when memory is high
+  memoryMonitor.onWarning((usage) => {
+    log.warn?.(
+      `Memory warning: ${usage.heapUsedMB.toFixed(0)}MB / ${memoryMonitor.getStats().maxHeapMB}MB (${((usage.heapUsedMB / memoryMonitor.getStats().maxHeapMB) * 100).toFixed(1)}%)`,
+    );
+    // Trigger cache cleanup
+    dedupe.clear();
+    chatRunState.clear();
+    // Force GC if available
+    if (global.gc) {
+      global.gc();
+    }
+  });
+
+  memoryMonitor.start();
+  log.info?.("Memory monitor started");
 
   let bonjourStop: (() => Promise<void>) | null = null;
   const nodeRegistry = new NodeRegistry();
@@ -635,6 +687,14 @@ export async function startGatewayServer(
     log,
     isNixMode,
   });
+  mark("channelLoadTime");
+
+  // Start Pi health monitoring if enabled
+  const stopPiMonitoring = startPiHealthMonitoring({
+    enabled: optimizations.enablePiMonitoring,
+    logger: log,
+  });
+
   scheduleGatewayUpdateCheck({ cfg: cfgAtStart, log, isNixMode });
   const tailscaleCleanup = await startGatewayTailscaleExposure({
     tailscaleMode,
@@ -656,6 +716,12 @@ export async function startGatewayServer(
     logChannels,
     logBrowser,
   }));
+  mark("memoryInitTime");
+
+  // Stop memory watch and log startup metrics
+  stopMemoryWatch();
+  const finalMetrics = complete();
+  logStartupInfo({ metrics: finalMetrics, optimizations, constraints, logger: log });
 
   // Run gateway_start plugin hook (fire-and-forget)
   {
@@ -726,6 +792,7 @@ export async function startGatewayServer(
     clients,
     configReloader,
     browserControl,
+    memoryMonitor,
     wss,
     httpServer,
     httpServers,
@@ -771,6 +838,10 @@ export async function startGatewayServer(
       void securityCoachHistory.rotateIfNeeded().catch(() => {
         /* best-effort */
       });
+      // Stop Pi health monitoring if running
+      if (stopPiMonitoring) {
+        stopPiMonitoring();
+      }
       skillsChangeUnsub();
       await close(opts);
     },

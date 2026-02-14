@@ -32,6 +32,7 @@ import { findLegacyConfigIssues } from "./legacy.js";
 import { applyMergePatch } from "./merge-patch.js";
 import { normalizeConfigPaths } from "./normalize-paths.js";
 import { resolveConfigPath, resolveDefaultConfigCandidates, resolveStateDir } from "./paths.js";
+import { detectProfileFromEnv, loadProfile } from "./profiles.js";
 import { applyConfigOverrides } from "./runtime-overrides.js";
 import {
   validateConfigObjectRawWithPlugins,
@@ -272,6 +273,23 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
   function loadConfig(): SecureClawConfig {
     try {
       maybeLoadDotEnvForConfig(deps.env);
+
+      // Check for profile flag/env var
+      const profileName = detectProfileFromEnv();
+      let baseConfig: unknown = {};
+
+      if (profileName) {
+        try {
+          baseConfig = loadProfile(profileName);
+          // Note: logger may not have info method in some contexts
+          if ("info" in deps.logger && typeof deps.logger.info === "function") {
+            deps.logger.info(`[profiles] Loaded profile: ${profileName}`);
+          }
+        } catch (err) {
+          deps.logger.warn(`[profiles] Failed to load profile '${profileName}':`, err);
+        }
+      }
+
       if (!deps.fs.existsSync(configPath)) {
         if (shouldEnableShellEnvFallback(deps.env) && !shouldDeferShellEnvFallback(deps.env)) {
           loadShellEnvFallback({
@@ -282,13 +300,17 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
             timeoutMs: resolveShellEnvFallbackTimeoutMs(deps.env),
           });
         }
-        return {};
+        // Return profile config if we have one, otherwise empty
+        return baseConfig as SecureClawConfig;
       }
       const raw = deps.fs.readFileSync(configPath, "utf-8");
       const parsed = deps.json5.parse(raw);
 
+      // Merge profile with user config (user config takes precedence)
+      const mergedConfig = profileName ? applyMergePatch(baseConfig, parsed) : parsed;
+
       // Resolve $include directives before validation
-      const resolved = resolveConfigIncludes(parsed, configPath, {
+      const resolved = resolveConfigIncludes(mergedConfig, configPath, {
         readFile: (p) => deps.fs.readFileSync(p, "utf-8"),
         parseJson: (raw) => deps.json5.parse(raw),
       });

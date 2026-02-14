@@ -1,5 +1,6 @@
 import type { ChannelDirectoryEntryKind, ChannelId } from "../../channels/plugins/types.js";
 import type { SecureClawConfig } from "../../config/config.js";
+import { LRUCache } from "../../utils/lru-cache.js";
 
 type CacheEntry<T> = {
   value: T;
@@ -20,10 +21,13 @@ export function buildDirectoryCacheKey(key: DirectoryCacheKey): string {
 }
 
 export class DirectoryCache<T> {
-  private readonly cache = new Map<string, CacheEntry<T>>();
+  private readonly cache: LRUCache<string, CacheEntry<T>>;
   private lastConfigRef: SecureClawConfig | null = null;
 
-  constructor(private readonly ttlMs: number) {}
+  constructor(private readonly ttlMs: number) {
+    // Limit cache to 1000 entries to prevent unbounded growth
+    this.cache = new LRUCache({ maxSize: 1000, ttl: ttlMs });
+  }
 
   get(key: string, cfg: SecureClawConfig): T | undefined {
     this.resetIfConfigChanged(cfg);
@@ -31,6 +35,7 @@ export class DirectoryCache<T> {
     if (!entry) {
       return undefined;
     }
+    // LRUCache handles TTL automatically, but we check fetchedAt for custom TTL
     if (Date.now() - entry.fetchedAt > this.ttlMs) {
       this.cache.delete(key);
       return undefined;

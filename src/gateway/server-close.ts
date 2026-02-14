@@ -3,6 +3,7 @@ import type { WebSocketServer } from "ws";
 import type { CanvasHostHandler, CanvasHostServer } from "../canvas-host/server.js";
 import type { HeartbeatRunner } from "../infra/heartbeat-runner.js";
 import type { PluginServicesHandle } from "../plugins/services.js";
+import type { MemoryMonitor } from "../utils/memory-monitor.js";
 import { type ChannelId, listChannelPlugins } from "../channels/plugins/index.js";
 import { stopGmailWatcher } from "../hooks/gmail-watcher.js";
 
@@ -23,9 +24,15 @@ export function createGatewayCloseHandler(params: {
   agentUnsub: (() => void) | null;
   heartbeatUnsub: (() => void) | null;
   chatRunState: { clear: () => void };
-  clients: Set<{ socket: { close: (code: number, reason: string) => void } }>;
+  clients:
+    | Set<{ socket: { close: (code: number, reason: string) => void } }>
+    | {
+        getAll: () => Set<{ socket: { close: (code: number, reason: string) => void } }>;
+        stop: () => void;
+      };
   configReloader: { stop: () => Promise<void> };
   browserControl: { stop: () => Promise<void> } | null;
+  memoryMonitor: MemoryMonitor;
   wss: WebSocketServer;
   httpServer: HttpServer;
   httpServers?: HttpServer[];
@@ -96,14 +103,22 @@ export function createGatewayCloseHandler(params: {
       }
     }
     params.chatRunState.clear();
-    for (const c of params.clients) {
+    params.memoryMonitor.stop();
+    // Get client set and stop pool if using WSConnectionPool
+    const clientSet = params.clients instanceof Set ? params.clients : params.clients.getAll();
+    for (const c of clientSet) {
       try {
         c.socket.close(1012, "service restart");
       } catch {
         /* ignore */
       }
     }
-    params.clients.clear();
+    // Clear clients and stop pool if applicable
+    if (params.clients instanceof Set) {
+      params.clients.clear();
+    } else {
+      params.clients.stop();
+    }
     await params.configReloader.stop().catch(() => {});
     if (params.browserControl) {
       await params.browserControl.stop().catch(() => {});

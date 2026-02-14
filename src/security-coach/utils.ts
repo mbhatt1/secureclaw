@@ -9,6 +9,8 @@ export function assertNotSymlink(filePath: string): void {
     }
   } catch (err: any) {
     // ENOENT is fine — file doesn't exist yet
-    if (err.code !== "ENOENT") throw err;
+    if (err.code !== "ENOENT") {
+      throw err;
+    }
   }
 }

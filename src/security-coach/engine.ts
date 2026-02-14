@@ -48,6 +48,14 @@ export type CoachConfig = {
   educationalMode: boolean;
   /** LLM judge configuration (optional) */
   llmJudge?: Partial<LLMJudgeConfig>;
+  /** Enable worker thread pool for pattern matching (default: false) */
+  useWorkerThreads?: boolean;
+  /** Enable pattern match caching (default: true) */
+  useCache?: boolean;
+  /** Cache size in entries (default: 1000) */
+  cacheSize?: number;
+  /** Cache TTL in milliseconds (default: 60000) */
+  cacheTTL?: number;
 };
 
 export const DEFAULT_COACH_CONFIG: CoachConfig = {
@@ -57,6 +65,10 @@ export const DEFAULT_COACH_CONFIG: CoachConfig = {
   decisionTimeoutMs: 60_000,
   educationalMode: true,
   llmJudge: undefined, // Disabled by default
+  useWorkerThreads: false, // Disabled by default (requires explicit opt-in)
+  useCache: true, // Enabled by default (low overhead, high benefit)
+  cacheSize: 1000,
+  cacheTTL: 60_000, // 1 minute
 };
 
 // ---------------------------------------------------------------------------
@@ -95,6 +107,8 @@ export class SecurityCoachEngine {
   private pendingAlerts: Map<string, PendingEntry> = new Map();
   private pendingPerSession: Map<string, number> = new Map();
   private llmJudge: LLMJudge | null = null;
+  private cache: any = null; // PatternMatchCache (lazy loaded)
+  private workerPool: any = null; // SecurityCoachWorkerPool (lazy loaded)
 
   constructor(config?: Partial<CoachConfig>, rules?: SecurityCoachRuleStore, stateDir?: string) {
     this.config = { ...DEFAULT_COACH_CONFIG, ...config };
@@ -116,7 +130,48 @@ export class SecurityCoachEngine {
       this.llmJudge = new LLMJudge(this.config.llmJudge);
     }
 
+    // Note: Cache and worker pool are initialized lazily on first use
+    // to avoid blocking constructor with async operations
     this.loadConfig();
+  }
+
+  /**
+   * Ensure cache is initialized (lazy initialization).
+   */
+  private async ensureCacheInitialized(): Promise<void> {
+    if (this.config.useCache && !this.cache) {
+      await this.initializeCache();
+    }
+  }
+
+  /**
+   * Ensure worker pool is initialized (lazy initialization).
+   */
+  private async ensureWorkerPoolInitialized(): Promise<void> {
+    if (this.config.useWorkerThreads && !this.workerPool) {
+      await this.initializeWorkerPool();
+    }
+  }
+
+  private async initializeCache(): Promise<void> {
+    try {
+      const { PatternMatchCache } = await import("./cache-optimized.js");
+      this.cache = new PatternMatchCache(this.config.cacheSize, this.config.cacheTTL);
+    } catch (err) {
+      console.warn("[security-coach] Failed to initialize cache:", err);
+      this.config.useCache = false;
+    }
+  }
+
+  private async initializeWorkerPool(): Promise<void> {
+    try {
+      const { getWorkerPool } = await import("./worker-pool.js");
+      this.workerPool = getWorkerPool();
+      await this.workerPool.initialize();
+    } catch (err) {
+      console.warn("[security-coach] Failed to initialize worker pool:", err);
+      this.config.useWorkerThreads = false;
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -154,7 +209,8 @@ export class SecurityCoachEngine {
     }
 
     // LAYER 1: Pattern matching (fast, deterministic)
-    const allThreats = matchThreats(input);
+    // Use cache + worker pool if enabled
+    const allThreats = await this.matchThreatsWithOptimizations(input);
     const minRank = SEVERITY_RANK[this.config.minSeverity];
     const threats = allThreats.filter((t) => SEVERITY_RANK[t.pattern.severity] >= minRank);
 
@@ -410,6 +466,33 @@ export class SecurityCoachEngine {
     }
     this.pendingAlerts.clear();
     this.pendingPerSession.clear();
+
+    // Shutdown worker pool if enabled
+    if (this.workerPool) {
+      void this.workerPool.shutdown().catch(() => {
+        /* ignore */
+      });
+    }
+  }
+
+  /** Get cache statistics (if cache is enabled). */
+  getCacheStats(): any {
+    return this.cache?.getStats() ?? null;
+  }
+
+  /** Get worker pool statistics (if workers are enabled). */
+  getWorkerStats(): any {
+    return this.workerPool?.getStats() ?? null;
+  }
+
+  /** Prune expired cache entries. */
+  pruneCache(): number {
+    return this.cache?.prune() ?? 0;
+  }
+
+  /** Clear the cache. */
+  clearCache(): void {
+    this.cache?.clear();
   }
 
   /** Get all currently pending alerts. */
@@ -503,6 +586,49 @@ export class SecurityCoachEngine {
   // -----------------------------------------------------------------------
   // Private helpers
   // -----------------------------------------------------------------------
+
+  /**
+   * Match threats with optimizations (cache + worker threads).
+   */
+  private async matchThreatsWithOptimizations(input: ThreatMatchInput): Promise<ThreatMatch[]> {
+    // Ensure cache is initialized
+    await this.ensureCacheInitialized();
+
+    // OPTIMIZATION 1: Check cache first
+    if (this.cache) {
+      const cached = this.cache.get(input);
+      if (cached) {
+        return cached;
+      }
+    }
+
+    let matches: ThreatMatch[];
+
+    // Ensure worker pool is initialized
+    await this.ensureWorkerPoolInitialized();
+
+    // OPTIMIZATION 2: Use worker threads if enabled
+    if (this.config.useWorkerThreads && this.workerPool) {
+      try {
+        const { matchThreatsAsync } = await import("./worker-pool.js");
+        matches = await matchThreatsAsync(input);
+      } catch (err) {
+        // Fallback to main thread
+        console.warn("[security-coach] Worker thread failed, falling back to main thread:", err);
+        matches = matchThreats(input);
+      }
+    } else {
+      // Use main thread (already optimized via patterns.ts)
+      matches = matchThreats(input);
+    }
+
+    // OPTIMIZATION 3: Cache result
+    if (this.cache) {
+      this.cache.set(input, matches);
+    }
+
+    return matches;
+  }
 
   /** Map a threat severity to the alert level shown to the user. */
   private severityToAlertLevel(severity: ThreatSeverity): CoachAlertLevel {
