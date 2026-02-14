@@ -1,5 +1,5 @@
 import Foundation
-import OpenClawKit
+import SecureClawKit
 
 /// Single source of truth for "how we connect" to the current gateway.
 ///

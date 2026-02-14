@@ -1,6 +1,11 @@
 import type { AgentTool } from "@mariozechner/pi-agent-core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { toToolDefinitions } from "./pi-tool-definition-adapter.js";
+
+vi.mock("../security-coach/global.js", () => ({
+  isSecurityCoachInitialized: () => true,
+  getGlobalSecurityCoachHooks: () => null,
+}));
 
 describe("pi tool definition adapter", () => {
   it("wraps tool errors into a tool result", async () => {

@@ -1,6 +1,6 @@
 # Changelog
 
-Docs: https://docs.openclaw.ai
+Docs: https://docs.secureclaw.app
 
 ## 2026.2.13 (Unreleased)
 

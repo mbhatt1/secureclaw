@@ -1,4 +1,4 @@
-import { MarkdownConfigSchema } from "openclaw/plugin-sdk";
+import { MarkdownConfigSchema } from "secureclaw/plugin-sdk";
 import { z } from "zod";
 
 /**

@@ -1,0 +1,15 @@
+{
+  "name": "openclaw",
+  "version": "2026.2.12",
+  "description": "Compatibility shim that forwards to secureclaw",
+  "type": "module",
+  "exports": {
+    ".": "./index.js",
+    "./plugin-sdk": {
+      "import": "secureclaw/plugin-sdk"
+    }
+  },
+  "dependencies": {
+    "secureclaw": "workspace:*"
+  }
+}

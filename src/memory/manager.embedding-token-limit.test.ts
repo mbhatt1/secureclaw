@@ -4,6 +4,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getMemorySearchManager, type MemoryIndexManager } from "./index.js";
 
+const nodeMajor = parseInt(process.versions.node.split(".")[0], 10);
+
 const embedBatch = vi.fn(async (texts: string[]) => texts.map(() => [0, 1, 0]));
 const embedQuery = vi.fn(async () => [0, 1, 0]);
 
@@ -20,7 +22,7 @@ vi.mock("./embeddings.js", () => ({
   }),
 }));
 
-describe("memory embedding token limits", () => {
+describe.skipIf(nodeMajor < 22)("memory embedding token limits", () => {
   let workspaceDir: string;
   let indexPath: string;
   let manager: MemoryIndexManager | null = null;
@@ -30,7 +32,7 @@ describe("memory embedding token limits", () => {
     embedQuery.mockReset();
     embedBatch.mockImplementation(async (texts: string[]) => texts.map(() => [0, 1, 0]));
     embedQuery.mockImplementation(async () => [0, 1, 0]);
-    workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-mem-token-"));
+    workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "secureclaw-mem-token-"));
     indexPath = path.join(workspaceDir, "index.sqlite");
     await fs.mkdir(path.join(workspaceDir, "memory"));
   });

@@ -7,27 +7,27 @@ describe("onboard (non-interactive): LiteLLM", () => {
   it("stores the API key and configures the default model", async () => {
     const prev = {
       home: process.env.HOME,
-      stateDir: process.env.OPENCLAW_STATE_DIR,
-      configPath: process.env.OPENCLAW_CONFIG_PATH,
-      skipChannels: process.env.OPENCLAW_SKIP_CHANNELS,
-      skipGmail: process.env.OPENCLAW_SKIP_GMAIL_WATCHER,
-      skipCron: process.env.OPENCLAW_SKIP_CRON,
-      skipCanvas: process.env.OPENCLAW_SKIP_CANVAS_HOST,
-      token: process.env.OPENCLAW_GATEWAY_TOKEN,
-      password: process.env.OPENCLAW_GATEWAY_PASSWORD,
+      stateDir: process.env.SECURECLAW_STATE_DIR,
+      configPath: process.env.SECURECLAW_CONFIG_PATH,
+      skipChannels: process.env.SECURECLAW_SKIP_CHANNELS,
+      skipGmail: process.env.SECURECLAW_SKIP_GMAIL_WATCHER,
+      skipCron: process.env.SECURECLAW_SKIP_CRON,
+      skipCanvas: process.env.SECURECLAW_SKIP_CANVAS_HOST,
+      token: process.env.SECURECLAW_GATEWAY_TOKEN,
+      password: process.env.SECURECLAW_GATEWAY_PASSWORD,
     };
 
-    process.env.OPENCLAW_SKIP_CHANNELS = "1";
-    process.env.OPENCLAW_SKIP_GMAIL_WATCHER = "1";
-    process.env.OPENCLAW_SKIP_CRON = "1";
-    process.env.OPENCLAW_SKIP_CANVAS_HOST = "1";
-    delete process.env.OPENCLAW_GATEWAY_TOKEN;
-    delete process.env.OPENCLAW_GATEWAY_PASSWORD;
+    process.env.SECURECLAW_SKIP_CHANNELS = "1";
+    process.env.SECURECLAW_SKIP_GMAIL_WATCHER = "1";
+    process.env.SECURECLAW_SKIP_CRON = "1";
+    process.env.SECURECLAW_SKIP_CANVAS_HOST = "1";
+    delete process.env.SECURECLAW_GATEWAY_TOKEN;
+    delete process.env.SECURECLAW_GATEWAY_PASSWORD;
 
-    const tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-onboard-litellm-"));
+    const tempHome = await fs.mkdtemp(path.join(os.tmpdir(), "secureclaw-onboard-litellm-"));
     process.env.HOME = tempHome;
-    process.env.OPENCLAW_STATE_DIR = tempHome;
-    process.env.OPENCLAW_CONFIG_PATH = path.join(tempHome, "openclaw.json");
+    process.env.SECURECLAW_STATE_DIR = tempHome;
+    process.env.SECURECLAW_CONFIG_PATH = path.join(tempHome, "secureclaw.json");
     vi.resetModules();
 
     const runtime = {
@@ -78,14 +78,14 @@ describe("onboard (non-interactive): LiteLLM", () => {
     } finally {
       await fs.rm(tempHome, { recursive: true, force: true });
       process.env.HOME = prev.home;
-      process.env.OPENCLAW_STATE_DIR = prev.stateDir;
-      process.env.OPENCLAW_CONFIG_PATH = prev.configPath;
-      process.env.OPENCLAW_SKIP_CHANNELS = prev.skipChannels;
-      process.env.OPENCLAW_SKIP_GMAIL_WATCHER = prev.skipGmail;
-      process.env.OPENCLAW_SKIP_CRON = prev.skipCron;
-      process.env.OPENCLAW_SKIP_CANVAS_HOST = prev.skipCanvas;
-      process.env.OPENCLAW_GATEWAY_TOKEN = prev.token;
-      process.env.OPENCLAW_GATEWAY_PASSWORD = prev.password;
+      process.env.SECURECLAW_STATE_DIR = prev.stateDir;
+      process.env.SECURECLAW_CONFIG_PATH = prev.configPath;
+      process.env.SECURECLAW_SKIP_CHANNELS = prev.skipChannels;
+      process.env.SECURECLAW_SKIP_GMAIL_WATCHER = prev.skipGmail;
+      process.env.SECURECLAW_SKIP_CRON = prev.skipCron;
+      process.env.SECURECLAW_SKIP_CANVAS_HOST = prev.skipCanvas;
+      process.env.SECURECLAW_GATEWAY_TOKEN = prev.token;
+      process.env.SECURECLAW_GATEWAY_PASSWORD = prev.password;
     }
   }, 60_000);
 });

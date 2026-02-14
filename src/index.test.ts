@@ -1,5 +1,12 @@
-import { describe, expect, it } from "vitest";
-import { assertWebChannel, normalizeE164, toWhatsappJid } from "./index.js";
+import { describe, expect, it, vi } from "vitest";
+
+// Mock the runtime guard so that importing ./index.js does not call process.exit
+// when tests run on a Node version below the minimum (e.g. Node 20 in CI).
+vi.mock("./infra/runtime-guard.js", () => ({
+  assertSupportedRuntime: vi.fn(),
+}));
+
+const { assertWebChannel, normalizeE164, toWhatsappJid } = await import("./index.js");
 
 describe("normalizeE164", () => {
   it("strips whatsapp prefix and whitespace", () => {

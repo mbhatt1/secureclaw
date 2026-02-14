@@ -76,7 +76,7 @@ function resolveHecUrl(baseUrl: string): string {
  * {
  *   "time": 1694000000.123,
  *   "host": "machine-name",
- *   "source": "openclaw-security-coach",
+ *   "source": "secureclaw-security-coach",
  *   "sourcetype": "_json",
  *   "index": "main",
  *   "event": { ... }

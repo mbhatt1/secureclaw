@@ -18,7 +18,7 @@ export type SiemEvent = {
   timestamp: string; // ISO 8601
   eventType: string; // "security.coach.alert" | "security.coach.decision" | "security.coach.hygiene" etc.
   severity: string; // critical | high | medium | low | info
-  source: "openclaw-security-coach";
+  source: "secureclaw-security-coach";
   host?: string; // machine hostname
   alertId?: string;
   title?: string;
@@ -372,7 +372,7 @@ export class SiemDispatcher {
           method: "POST",
           headers: {
             ...headers,
-            "User-Agent": "openclaw-security-coach-siem/1.0",
+            "User-Agent": "secureclaw-security-coach-siem/1.0",
           },
           body,
           signal: controller.signal,
@@ -480,7 +480,7 @@ export function createSiemEvent(opts: {
     timestamp: new Date().toISOString(),
     eventType: opts.eventType,
     severity: opts.severity,
-    source: "openclaw-security-coach",
+    source: "secureclaw-security-coach",
     host: LOCAL_HOST,
     alertId: opts.alertId,
     title: opts.title,

@@ -9,7 +9,7 @@ title: "Logging"
 
 # Logging
 
-OpenClaw logs in two places:
+SecureClaw logs in two places:
 
 - **File logs** (JSON lines) written by the Gateway.
 - **Console output** shown in terminals and the Control UI.
@@ -21,16 +21,16 @@ levels and formats.
 
 By default, the Gateway writes a rolling log file under:
 
-`/tmp/openclaw/openclaw-YYYY-MM-DD.log`
+`/tmp/secureclaw/secureclaw-YYYY-MM-DD.log`
 
 The date uses the gateway host's local timezone.
 
-You can override this in `~/.openclaw/openclaw.json`:
+You can override this in `~/.secureclaw/secureclaw.json`:
 
 ```json
 {
   "logging": {
-    "file": "/path/to/openclaw.log"
+    "file": "/path/to/secureclaw.log"
   }
 }
 ```
@@ -42,7 +42,7 @@ You can override this in `~/.openclaw/openclaw.json`:
 Use the CLI to tail the gateway log file via RPC:
 
 ```bash
-openclaw logs --follow
+secureclaw logs --follow
 ```
 
 Output modes:
@@ -63,7 +63,7 @@ In JSON mode, the CLI emits `type`-tagged objects:
 If the Gateway is unreachable, the CLI prints a short hint to run:
 
 ```bash
-openclaw doctor
+secureclaw doctor
 ```
 
 ### Control UI (web)
@@ -76,7 +76,7 @@ See [/web/control-ui](/web/control-ui) for how to open it.
 To filter channel activity (WhatsApp/Telegram/etc), use:
 
 ```bash
-openclaw channels logs --channel whatsapp
+secureclaw channels logs --channel whatsapp
 ```
 
 ## Log formats
@@ -98,13 +98,13 @@ Console formatting is controlled by `logging.consoleStyle`.
 
 ## Configuring logging
 
-All logging configuration lives under `logging` in `~/.openclaw/openclaw.json`.
+All logging configuration lives under `logging` in `~/.secureclaw/secureclaw.json`.
 
 ```json
 {
   "logging": {
     "level": "info",
-    "file": "/tmp/openclaw/openclaw-YYYY-MM-DD.log",
+    "file": "/tmp/secureclaw/secureclaw-YYYY-MM-DD.log",
     "consoleLevel": "info",
     "consoleStyle": "pretty",
     "redactSensitive": "tools",
@@ -150,7 +150,7 @@ diagnostics + the exporter plugin are enabled.
 
 - **OpenTelemetry (OTel)**: the data model + SDKs for traces, metrics, and logs.
 - **OTLP**: the wire protocol used to export OTel data to a collector/backend.
-- OpenClaw exports via **OTLP/HTTP (protobuf)** today.
+- SecureClaw exports via **OTLP/HTTP (protobuf)** today.
 
 ### Signals exported
 
@@ -210,7 +210,7 @@ Flags are case-insensitive and support wildcards (e.g. `telegram.*` or `*`).
 Env override (one-off):
 
 ```
-OPENCLAW_DIAGNOSTICS=telegram.http,telegram.payload
+SECURECLAW_DIAGNOSTICS=telegram.http,telegram.payload
 ```
 
 Notes:
@@ -240,7 +240,7 @@ works with any OpenTelemetry collector/backend that accepts OTLP/HTTP.
       "enabled": true,
       "endpoint": "http://otel-collector:4318",
       "protocol": "http/protobuf",
-      "serviceName": "openclaw-gateway",
+      "serviceName": "secureclaw-gateway",
       "traces": true,
       "metrics": true,
       "logs": true,
@@ -253,7 +253,7 @@ works with any OpenTelemetry collector/backend that accepts OTLP/HTTP.
 
 Notes:
 
-- You can also enable the plugin with `openclaw plugins enable diagnostics-otel`.
+- You can also enable the plugin with `secureclaw plugins enable diagnostics-otel`.
 - `protocol` currently supports `http/protobuf` only. `grpc` is ignored.
 - Metrics include token usage, cost, context size, run duration, and message-flow
   counters/histograms (webhooks, queueing, session state, queue depth/wait).
@@ -267,60 +267,60 @@ Notes:
 
 Model usage:
 
-- `openclaw.tokens` (counter, attrs: `openclaw.token`, `openclaw.channel`,
-  `openclaw.provider`, `openclaw.model`)
-- `openclaw.cost.usd` (counter, attrs: `openclaw.channel`, `openclaw.provider`,
-  `openclaw.model`)
-- `openclaw.run.duration_ms` (histogram, attrs: `openclaw.channel`,
-  `openclaw.provider`, `openclaw.model`)
-- `openclaw.context.tokens` (histogram, attrs: `openclaw.context`,
-  `openclaw.channel`, `openclaw.provider`, `openclaw.model`)
+- `secureclaw.tokens` (counter, attrs: `secureclaw.token`, `secureclaw.channel`,
+  `secureclaw.provider`, `secureclaw.model`)
+- `secureclaw.cost.usd` (counter, attrs: `secureclaw.channel`, `secureclaw.provider`,
+  `secureclaw.model`)
+- `secureclaw.run.duration_ms` (histogram, attrs: `secureclaw.channel`,
+  `secureclaw.provider`, `secureclaw.model`)
+- `secureclaw.context.tokens` (histogram, attrs: `secureclaw.context`,
+  `secureclaw.channel`, `secureclaw.provider`, `secureclaw.model`)
 
 Message flow:
 
-- `openclaw.webhook.received` (counter, attrs: `openclaw.channel`,
-  `openclaw.webhook`)
-- `openclaw.webhook.error` (counter, attrs: `openclaw.channel`,
-  `openclaw.webhook`)
-- `openclaw.webhook.duration_ms` (histogram, attrs: `openclaw.channel`,
-  `openclaw.webhook`)
-- `openclaw.message.queued` (counter, attrs: `openclaw.channel`,
-  `openclaw.source`)
-- `openclaw.message.processed` (counter, attrs: `openclaw.channel`,
-  `openclaw.outcome`)
-- `openclaw.message.duration_ms` (histogram, attrs: `openclaw.channel`,
-  `openclaw.outcome`)
+- `secureclaw.webhook.received` (counter, attrs: `secureclaw.channel`,
+  `secureclaw.webhook`)
+- `secureclaw.webhook.error` (counter, attrs: `secureclaw.channel`,
+  `secureclaw.webhook`)
+- `secureclaw.webhook.duration_ms` (histogram, attrs: `secureclaw.channel`,
+  `secureclaw.webhook`)
+- `secureclaw.message.queued` (counter, attrs: `secureclaw.channel`,
+  `secureclaw.source`)
+- `secureclaw.message.processed` (counter, attrs: `secureclaw.channel`,
+  `secureclaw.outcome`)
+- `secureclaw.message.duration_ms` (histogram, attrs: `secureclaw.channel`,
+  `secureclaw.outcome`)
 
 Queues + sessions:
 
-- `openclaw.queue.lane.enqueue` (counter, attrs: `openclaw.lane`)
-- `openclaw.queue.lane.dequeue` (counter, attrs: `openclaw.lane`)
-- `openclaw.queue.depth` (histogram, attrs: `openclaw.lane` or
-  `openclaw.channel=heartbeat`)
-- `openclaw.queue.wait_ms` (histogram, attrs: `openclaw.lane`)
-- `openclaw.session.state` (counter, attrs: `openclaw.state`, `openclaw.reason`)
-- `openclaw.session.stuck` (counter, attrs: `openclaw.state`)
-- `openclaw.session.stuck_age_ms` (histogram, attrs: `openclaw.state`)
-- `openclaw.run.attempt` (counter, attrs: `openclaw.attempt`)
+- `secureclaw.queue.lane.enqueue` (counter, attrs: `secureclaw.lane`)
+- `secureclaw.queue.lane.dequeue` (counter, attrs: `secureclaw.lane`)
+- `secureclaw.queue.depth` (histogram, attrs: `secureclaw.lane` or
+  `secureclaw.channel=heartbeat`)
+- `secureclaw.queue.wait_ms` (histogram, attrs: `secureclaw.lane`)
+- `secureclaw.session.state` (counter, attrs: `secureclaw.state`, `secureclaw.reason`)
+- `secureclaw.session.stuck` (counter, attrs: `secureclaw.state`)
+- `secureclaw.session.stuck_age_ms` (histogram, attrs: `secureclaw.state`)
+- `secureclaw.run.attempt` (counter, attrs: `secureclaw.attempt`)
 
 ### Exported spans (names + key attributes)
 
-- `openclaw.model.usage`
-  - `openclaw.channel`, `openclaw.provider`, `openclaw.model`
-  - `openclaw.sessionKey`, `openclaw.sessionId`
-  - `openclaw.tokens.*` (input/output/cache_read/cache_write/total)
-- `openclaw.webhook.processed`
-  - `openclaw.channel`, `openclaw.webhook`, `openclaw.chatId`
-- `openclaw.webhook.error`
-  - `openclaw.channel`, `openclaw.webhook`, `openclaw.chatId`,
-    `openclaw.error`
-- `openclaw.message.processed`
-  - `openclaw.channel`, `openclaw.outcome`, `openclaw.chatId`,
-    `openclaw.messageId`, `openclaw.sessionKey`, `openclaw.sessionId`,
-    `openclaw.reason`
-- `openclaw.session.stuck`
-  - `openclaw.state`, `openclaw.ageMs`, `openclaw.queueDepth`,
-    `openclaw.sessionKey`, `openclaw.sessionId`
+- `secureclaw.model.usage`
+  - `secureclaw.channel`, `secureclaw.provider`, `secureclaw.model`
+  - `secureclaw.sessionKey`, `secureclaw.sessionId`
+  - `secureclaw.tokens.*` (input/output/cache_read/cache_write/total)
+- `secureclaw.webhook.processed`
+  - `secureclaw.channel`, `secureclaw.webhook`, `secureclaw.chatId`
+- `secureclaw.webhook.error`
+  - `secureclaw.channel`, `secureclaw.webhook`, `secureclaw.chatId`,
+    `secureclaw.error`
+- `secureclaw.message.processed`
+  - `secureclaw.channel`, `secureclaw.outcome`, `secureclaw.chatId`,
+    `secureclaw.messageId`, `secureclaw.sessionKey`, `secureclaw.sessionId`,
+    `secureclaw.reason`
+- `secureclaw.session.stuck`
+  - `secureclaw.state`, `secureclaw.ageMs`, `secureclaw.queueDepth`,
+    `secureclaw.sessionKey`, `secureclaw.sessionId`
 
 ### Sampling + flushing
 
@@ -344,7 +344,7 @@ Queues + sessions:
 
 ## Troubleshooting tips
 
-- **Gateway not reachable?** Run `openclaw doctor` first.
+- **Gateway not reachable?** Run `secureclaw doctor` first.
 - **Logs empty?** Check that the Gateway is running and writing to the file path
   in `logging.file`.
 - **Need more detail?** Set `logging.level` to `debug` or `trace` and retry.

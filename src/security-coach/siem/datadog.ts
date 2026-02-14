@@ -54,7 +54,7 @@ function mapSeverityToStatus(severity: string): string {
 /**
  * Build the `ddtags` string from an event.
  *
- * Always includes baseline tags (`env:production`, `service:openclaw`,
+ * Always includes baseline tags (`env:production`, `service:secureclaw`,
  * `security_coach:true`). Adds `severity:<value>` and `category:<value>`
  * when present, then appends any explicit `event.tags`.
  *
@@ -63,7 +63,7 @@ function mapSeverityToStatus(severity: string): string {
 function buildDdTags(event: SiemEvent): string {
   const tags: string[] = [
     "env:production",
-    "service:openclaw",
+    "service:secureclaw",
     "security_coach:true",
   ];
 
@@ -118,11 +118,11 @@ function resolveUrl(destination: SiemDestination): string {
  */
 function formatEvent(event: SiemEvent): Record<string, unknown> {
   const log: Record<string, unknown> = {
-    ddsource: "openclaw-security-coach",
+    ddsource: "secureclaw-security-coach",
     ddtags: buildDdTags(event),
     hostname: event.host ?? hostname(),
     message: `Security Coach: ${event.title ?? event.eventType}`,
-    service: "openclaw-security-coach",
+    service: "secureclaw-security-coach",
     status: mapSeverityToStatus(event.severity),
     event_type: event.eventType,
     severity: event.severity,

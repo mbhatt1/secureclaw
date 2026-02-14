@@ -4,6 +4,10 @@ import { toClientToolDefinitions } from "./pi-tool-definition-adapter.js";
 import { wrapToolWithBeforeToolCallHook } from "./pi-tools.before-tool-call.js";
 
 vi.mock("../plugins/hook-runner-global.js");
+vi.mock("../security-coach/global.js", () => ({
+  isSecurityCoachInitialized: () => true,
+  getGlobalSecurityCoachHooks: () => null,
+}));
 
 const mockGetGlobalHookRunner = vi.mocked(getGlobalHookRunner);
 

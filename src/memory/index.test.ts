@@ -4,6 +4,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getMemorySearchManager, type MemoryIndexManager } from "./index.js";
 
+const nodeMajor = parseInt(process.versions.node.split(".")[0], 10);
+
 let embedBatchCalls = 0;
 let failEmbeddings = false;
 
@@ -33,7 +35,7 @@ vi.mock("./embeddings.js", () => {
   };
 });
 
-describe("memory index", () => {
+describe.skipIf(nodeMajor < 22)("memory index", () => {
   let workspaceDir: string;
   let indexPath: string;
   let manager: MemoryIndexManager | null = null;
@@ -41,7 +43,7 @@ describe("memory index", () => {
   beforeEach(async () => {
     embedBatchCalls = 0;
     failEmbeddings = false;
-    workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-mem-"));
+    workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "secureclaw-mem-"));
     indexPath = path.join(workspaceDir, "index.sqlite");
     await fs.mkdir(path.join(workspaceDir, "memory"));
     await fs.writeFile(

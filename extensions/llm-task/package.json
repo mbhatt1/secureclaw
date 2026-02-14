@@ -1,13 +1,13 @@
 {
-  "name": "@openclaw/llm-task",
+  "name": "@secureclaw/llm-task",
   "version": "2026.2.13",
   "private": true,
-  "description": "OpenClaw JSON-only LLM task plugin",
+  "description": "SecureClaw JSON-only LLM task plugin",
   "type": "module",
   "devDependencies": {
-    "openclaw": "workspace:*"
+    "secureclaw": "workspace:*"
   },
-  "openclaw": {
+  "secureclaw": {
     "extensions": [
       "./index.ts"
     ]

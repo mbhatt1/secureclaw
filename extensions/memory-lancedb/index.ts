@@ -1,5 +1,5 @@
 /**
- * OpenClaw Memory (LanceDB) Plugin
+ * SecureClaw Memory (LanceDB) Plugin
  *
  * Long-term memory with vector search for AI conversations.
  * Uses LanceDB for storage and OpenAI for embeddings.
@@ -7,7 +7,7 @@
  */
 
 import type * as LanceDB from "@lancedb/lancedb";
-import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
+import type { SecureClawPluginApi } from "secureclaw/plugin-sdk";
 import { Type } from "@sinclair/typebox";
 import { randomUUID } from "node:crypto";
 import OpenAI from "openai";
@@ -118,7 +118,7 @@ class MemoryDB {
     const results = await this.table!.vectorSearch(vector).limit(limit).toArray();
 
     // LanceDB uses L2 distance by default; convert to similarity score
-    const mapped = results.map((row) => {
+    const mapped = results.map((row: any) => {
       const distance = row._distance ?? 0;
       // Use inverse for a 0-1 range: sim = 1 / (1 + d)
       const score = 1 / (1 + distance);
@@ -135,7 +135,7 @@ class MemoryDB {
       };
     });
 
-    return mapped.filter((r) => r.score >= minScore);
+    return mapped.filter((r: any) => r.score >= minScore);
   }
 
   async delete(id: string): Promise<boolean> {
@@ -246,7 +246,7 @@ const memoryPlugin = {
   kind: "memory" as const,
   configSchema: memoryConfigSchema,
 
-  register(api: OpenClawPluginApi) {
+  register(api: SecureClawPluginApi) {
     const cfg = memoryConfigSchema.parse(api.pluginConfig);
     const resolvedDbPath = api.resolvePath(cfg.dbPath!);
     const vectorDim = vectorDimsForModel(cfg.embedding.model ?? "text-embedding-3-small");

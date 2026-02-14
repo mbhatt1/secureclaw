@@ -1,13 +1,13 @@
 {
-  "name": "@openclaw/telegram",
+  "name": "@secureclaw/telegram",
   "version": "2026.2.13",
   "private": true,
-  "description": "OpenClaw Telegram channel plugin",
+  "description": "SecureClaw Telegram channel plugin",
   "type": "module",
   "devDependencies": {
-    "openclaw": "workspace:*"
+    "secureclaw": "workspace:*"
   },
-  "openclaw": {
+  "secureclaw": {
     "extensions": [
       "./index.ts"
     ]

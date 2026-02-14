@@ -500,7 +500,7 @@ export async function startNostrBus(options: NostrBusOptions): Promise<NostrBusH
         }
         onEose?.(relays.join(", "));
       },
-      onclose: (reason) => {
+      onclose: (reason: any) => {
         // Handle subscription close
         for (const relay of relays) {
           metrics.emit("relay.message.closed", 1, { relay });

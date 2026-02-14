@@ -14,28 +14,28 @@ Use this page for scheduler and delivery issues (`cron` + `heartbeat`).
 ## Command ladder
 
 ```bash
-openclaw status
-openclaw gateway status
-openclaw logs --follow
-openclaw doctor
-openclaw channels status --probe
+secureclaw status
+secureclaw gateway status
+secureclaw logs --follow
+secureclaw doctor
+secureclaw channels status --probe
 ```
 
 Then run automation checks:
 
 ```bash
-openclaw cron status
-openclaw cron list
-openclaw system heartbeat last
+secureclaw cron status
+secureclaw cron list
+secureclaw system heartbeat last
 ```
 
 ## Cron not firing
 
 ```bash
-openclaw cron status
-openclaw cron list
-openclaw cron runs --id <jobId> --limit 20
-openclaw logs --follow
+secureclaw cron status
+secureclaw cron list
+secureclaw cron runs --id <jobId> --limit 20
+secureclaw logs --follow
 ```
 
 Good output looks like:
@@ -53,10 +53,10 @@ Common signatures:
 ## Cron fired but no delivery
 
 ```bash
-openclaw cron runs --id <jobId> --limit 20
-openclaw cron list
-openclaw channels status --probe
-openclaw logs --follow
+secureclaw cron runs --id <jobId> --limit 20
+secureclaw cron list
+secureclaw channels status --probe
+secureclaw logs --follow
 ```
 
 Good output looks like:
@@ -74,10 +74,10 @@ Common signatures:
 ## Heartbeat suppressed or skipped
 
 ```bash
-openclaw system heartbeat last
-openclaw logs --follow
-openclaw config get agents.defaults.heartbeat
-openclaw channels status --probe
+secureclaw system heartbeat last
+secureclaw logs --follow
+secureclaw config get agents.defaults.heartbeat
+secureclaw channels status --probe
 ```
 
 Good output looks like:
@@ -95,11 +95,11 @@ Common signatures:
 ## Timezone and activeHours gotchas
 
 ```bash
-openclaw config get agents.defaults.heartbeat.activeHours
-openclaw config get agents.defaults.heartbeat.activeHours.timezone
-openclaw config get agents.defaults.userTimezone || echo "agents.defaults.userTimezone not set"
-openclaw cron list
-openclaw logs --follow
+secureclaw config get agents.defaults.heartbeat.activeHours
+secureclaw config get agents.defaults.heartbeat.activeHours.timezone
+secureclaw config get agents.defaults.userTimezone || echo "agents.defaults.userTimezone not set"
+secureclaw cron list
+secureclaw logs --follow
 ```
 
 Quick rules:

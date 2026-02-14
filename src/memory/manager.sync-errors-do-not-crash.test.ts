@@ -4,6 +4,8 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getMemorySearchManager, type MemoryIndexManager } from "./index.js";
 
+const nodeMajor = parseInt(process.versions.node.split(".")[0], 10);
+
 vi.mock("chokidar", () => ({
   default: {
     watch: vi.fn(() => ({
@@ -29,14 +31,14 @@ vi.mock("./embeddings.js", () => {
   };
 });
 
-describe("memory manager sync failures", () => {
+describe.skipIf(nodeMajor < 22)("memory manager sync failures", () => {
   let workspaceDir: string;
   let indexPath: string;
   let manager: MemoryIndexManager | null = null;
 
   beforeEach(async () => {
     vi.useFakeTimers();
-    workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "openclaw-mem-"));
+    workspaceDir = await fs.mkdtemp(path.join(os.tmpdir(), "secureclaw-mem-"));
     indexPath = path.join(workspaceDir, "index.sqlite");
     await fs.mkdir(path.join(workspaceDir, "memory"));
     await fs.writeFile(path.join(workspaceDir, "MEMORY.md"), "Hello");

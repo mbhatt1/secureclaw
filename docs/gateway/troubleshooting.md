@@ -16,29 +16,29 @@ Start at [/help/troubleshooting](/help/troubleshooting) if you want the fast tri
 Run these first, in this order:
 
 ```bash
-openclaw status
-openclaw gateway status
-openclaw logs --follow
-openclaw doctor
-openclaw channels status --probe
+secureclaw status
+secureclaw gateway status
+secureclaw logs --follow
+secureclaw doctor
+secureclaw channels status --probe
 ```
 
 Expected healthy signals:
 
-- `openclaw gateway status` shows `Runtime: running` and `RPC probe: ok`.
-- `openclaw doctor` reports no blocking config/service issues.
-- `openclaw channels status --probe` shows connected/ready channels.
+- `secureclaw gateway status` shows `Runtime: running` and `RPC probe: ok`.
+- `secureclaw doctor` reports no blocking config/service issues.
+- `secureclaw channels status --probe` shows connected/ready channels.
 
 ## No replies
 
 If channels are up but nothing answers, check routing and policy before reconnecting anything.
 
 ```bash
-openclaw status
-openclaw channels status --probe
-openclaw pairing list <channel>
-openclaw config get channels
-openclaw logs --follow
+secureclaw status
+secureclaw channels status --probe
+secureclaw pairing list <channel>
+secureclaw config get channels
+secureclaw logs --follow
 ```
 
 Look for:
@@ -64,11 +64,11 @@ Related:
 When dashboard/control UI will not connect, validate URL, auth mode, and secure context assumptions.
 
 ```bash
-openclaw gateway status
-openclaw status
-openclaw logs --follow
-openclaw doctor
-openclaw gateway status --json
+secureclaw gateway status
+secureclaw status
+secureclaw logs --follow
+secureclaw doctor
+secureclaw gateway status --json
 ```
 
 Look for:
@@ -94,11 +94,11 @@ Related:
 Use this when service is installed but process does not stay up.
 
 ```bash
-openclaw gateway status
-openclaw status
-openclaw logs --follow
-openclaw doctor
-openclaw gateway status --deep
+secureclaw gateway status
+secureclaw status
+secureclaw logs --follow
+secureclaw doctor
+secureclaw gateway status --deep
 ```
 
 Look for:
@@ -124,11 +124,11 @@ Related:
 If channel state is connected but message flow is dead, focus on policy, permissions, and channel specific delivery rules.
 
 ```bash
-openclaw channels status --probe
-openclaw pairing list <channel>
-openclaw status --deep
-openclaw logs --follow
-openclaw config get channels
+secureclaw channels status --probe
+secureclaw pairing list <channel>
+secureclaw status --deep
+secureclaw logs --follow
+secureclaw config get channels
 ```
 
 Look for:
@@ -155,11 +155,11 @@ Related:
 If cron or heartbeat did not run or did not deliver, verify scheduler state first, then delivery target.
 
 ```bash
-openclaw cron status
-openclaw cron list
-openclaw cron runs --id <jobId> --limit 20
-openclaw system heartbeat last
-openclaw logs --follow
+secureclaw cron status
+secureclaw cron list
+secureclaw cron runs --id <jobId> --limit 20
+secureclaw system heartbeat last
+secureclaw logs --follow
 ```
 
 Look for:
@@ -186,11 +186,11 @@ Related:
 If a node is paired but tools fail, isolate foreground, permission, and approval state.
 
 ```bash
-openclaw nodes status
-openclaw nodes describe --node <idOrNameOrIp>
-openclaw approvals get --node <idOrNameOrIp>
-openclaw logs --follow
-openclaw status
+secureclaw nodes status
+secureclaw nodes describe --node <idOrNameOrIp>
+secureclaw approvals get --node <idOrNameOrIp>
+secureclaw logs --follow
+secureclaw status
 ```
 
 Look for:
@@ -217,11 +217,11 @@ Related:
 Use this when browser tool actions fail even though the gateway itself is healthy.
 
 ```bash
-openclaw browser status
-openclaw browser start --browser-profile openclaw
-openclaw browser profiles
-openclaw logs --follow
-openclaw doctor
+secureclaw browser status
+secureclaw browser start --browser-profile secureclaw
+secureclaw browser profiles
+secureclaw logs --follow
+secureclaw doctor
 ```
 
 Look for:
@@ -250,10 +250,10 @@ Most post-upgrade breakage is config drift or stricter defaults now being enforc
 ### 1) Auth and URL override behavior changed
 
 ```bash
-openclaw gateway status
-openclaw config get gateway.mode
-openclaw config get gateway.remote.url
-openclaw config get gateway.auth.mode
+secureclaw gateway status
+secureclaw config get gateway.mode
+secureclaw config get gateway.remote.url
+secureclaw config get gateway.auth.mode
 ```
 
 What to check:
@@ -269,10 +269,10 @@ Common signatures:
 ### 2) Bind and auth guardrails are stricter
 
 ```bash
-openclaw config get gateway.bind
-openclaw config get gateway.auth.token
-openclaw gateway status
-openclaw logs --follow
+secureclaw config get gateway.bind
+secureclaw config get gateway.auth.token
+secureclaw gateway status
+secureclaw logs --follow
 ```
 
 What to check:
@@ -288,10 +288,10 @@ Common signatures:
 ### 3) Pairing and device identity state changed
 
 ```bash
-openclaw devices list
-openclaw pairing list <channel>
-openclaw logs --follow
-openclaw doctor
+secureclaw devices list
+secureclaw pairing list <channel>
+secureclaw logs --follow
+secureclaw doctor
 ```
 
 What to check:
@@ -307,8 +307,8 @@ Common signatures:
 If the service config and runtime still disagree after checks, reinstall service metadata from the same profile/state directory:
 
 ```bash
-openclaw gateway install --force
-openclaw gateway restart
+secureclaw gateway install --force
+secureclaw gateway restart
 ```
 
 Related:

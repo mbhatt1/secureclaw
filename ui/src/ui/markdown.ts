@@ -71,7 +71,7 @@ function installHooks() {
   }
   hooksInstalled = true;
 
-  DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+  DOMPurify.addHook("afterSanitizeAttributes", (node: any) => {
     if (!(node instanceof HTMLAnchorElement)) {
       return;
     }
