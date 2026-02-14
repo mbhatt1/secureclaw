@@ -61,8 +61,13 @@ async function ensureSessionHeader(params: {
   sessionFile: string;
   sessionId: string;
 }): Promise<void> {
-  if (fs.existsSync(params.sessionFile)) {
+  try {
+    await fs.promises.access(params.sessionFile, fs.constants.F_OK);
     return;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw err;
+    }
   }
   await fs.promises.mkdir(path.dirname(params.sessionFile), { recursive: true });
   const header = {

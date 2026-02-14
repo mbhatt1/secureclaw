@@ -66,15 +66,15 @@ function resolveZaiApiKey(): string | undefined {
 
   try {
     const authPath = path.join(os.homedir(), ".pi", "agent", "auth.json");
-    if (!fs.existsSync(authPath)) {
-      return undefined;
-    }
     const data = JSON.parse(fs.readFileSync(authPath, "utf-8")) as Record<
       string,
       { access?: string }
     >;
     return data["z-ai"]?.access || data.zai?.access;
-  } catch {
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return undefined;
+    }
     return undefined;
   }
 }

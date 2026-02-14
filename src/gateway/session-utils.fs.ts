@@ -19,7 +19,19 @@ export function readSessionMessages(
 ): unknown[] {
   const candidates = resolveSessionTranscriptCandidates(sessionId, storePath, sessionFile);
 
-  const filePath = candidates.find((p) => fs.existsSync(p));
+  let filePath: string | undefined;
+  for (const p of candidates) {
+    try {
+      fs.accessSync(p, fs.constants.F_OK);
+      filePath = p;
+      break;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+        continue;
+      }
+      throw err;
+    }
+  }
   if (!filePath) {
     return [];
   }
@@ -172,7 +184,19 @@ export function readFirstUserMessageFromTranscript(
   opts?: { includeInterSession?: boolean },
 ): string | null {
   const candidates = resolveSessionTranscriptCandidates(sessionId, storePath, sessionFile, agentId);
-  const filePath = candidates.find((p) => fs.existsSync(p));
+  let filePath: string | undefined;
+  for (const p of candidates) {
+    try {
+      fs.accessSync(p, fs.constants.F_OK);
+      filePath = p;
+      break;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+        continue;
+      }
+      throw err;
+    }
+  }
   if (!filePath) {
     return null;
   }
@@ -228,7 +252,19 @@ export function readLastMessagePreviewFromTranscript(
   agentId?: string,
 ): string | null {
   const candidates = resolveSessionTranscriptCandidates(sessionId, storePath, sessionFile, agentId);
-  const filePath = candidates.find((p) => fs.existsSync(p));
+  let filePath: string | undefined;
+  for (const p of candidates) {
+    try {
+      fs.accessSync(p, fs.constants.F_OK);
+      filePath = p;
+      break;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+        continue;
+      }
+      throw err;
+    }
+  }
   if (!filePath) {
     return null;
   }
@@ -465,7 +501,19 @@ export function readSessionPreviewItemsFromTranscript(
   maxChars: number,
 ): SessionPreviewItem[] {
   const candidates = resolveSessionTranscriptCandidates(sessionId, storePath, sessionFile, agentId);
-  const filePath = candidates.find((p) => fs.existsSync(p));
+  let filePath: string | undefined;
+  for (const p of candidates) {
+    try {
+      fs.accessSync(p, fs.constants.F_OK);
+      filePath = p;
+      break;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+        continue;
+      }
+      throw err;
+    }
+  }
   if (!filePath) {
     return [];
   }

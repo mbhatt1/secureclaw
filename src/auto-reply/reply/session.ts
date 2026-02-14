@@ -62,8 +62,16 @@ function forkSessionFromParent(params: {
     params.parentEntry,
     { sessionsDir: params.sessionsDir },
   );
-  if (!parentSessionFile || !fs.existsSync(parentSessionFile)) {
+  if (!parentSessionFile) {
     return null;
+  }
+  try {
+    fs.accessSync(parentSessionFile, fs.constants.F_OK);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
+    throw err;
   }
   try {
     const manager = SessionManager.open(parentSessionFile);

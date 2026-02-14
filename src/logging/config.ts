@@ -8,9 +8,6 @@ type LoggingConfig = SecureClawConfig["logging"];
 export function readLoggingConfig(): LoggingConfig | undefined {
   const configPath = resolveConfigPath();
   try {
-    if (!fs.existsSync(configPath)) {
-      return undefined;
-    }
     const raw = fs.readFileSync(configPath, "utf-8");
     const parsed = json5.parse(raw);
     const logging = parsed?.logging;
@@ -18,7 +15,10 @@ export function readLoggingConfig(): LoggingConfig | undefined {
       return undefined;
     }
     return logging as LoggingConfig;
-  } catch {
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return undefined;
+    }
     return undefined;
   }
 }

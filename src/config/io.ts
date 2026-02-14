@@ -267,8 +267,19 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
   const candidatePaths = deps.configPath
     ? [requestedConfigPath]
     : resolveDefaultConfigCandidates(deps.env, deps.homedir);
-  const configPath =
-    candidatePaths.find((candidate) => deps.fs.existsSync(candidate)) ?? requestedConfigPath;
+  let configPath = requestedConfigPath;
+  for (const candidate of candidatePaths) {
+    try {
+      deps.fs.accessSync(candidate, deps.fs.constants.F_OK);
+      configPath = candidate;
+      break;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+        continue;
+      }
+      throw err;
+    }
+  }
 
   function loadConfig(): SecureClawConfig {
     try {
@@ -290,20 +301,25 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
         }
       }
 
-      if (!deps.fs.existsSync(configPath)) {
-        if (shouldEnableShellEnvFallback(deps.env) && !shouldDeferShellEnvFallback(deps.env)) {
-          loadShellEnvFallback({
-            enabled: true,
-            env: deps.env,
-            expectedKeys: SHELL_ENV_EXPECTED_KEYS,
-            logger: deps.logger,
-            timeoutMs: resolveShellEnvFallbackTimeoutMs(deps.env),
-          });
+      let raw: string;
+      try {
+        raw = deps.fs.readFileSync(configPath, "utf-8");
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+          if (shouldEnableShellEnvFallback(deps.env) && !shouldDeferShellEnvFallback(deps.env)) {
+            loadShellEnvFallback({
+              enabled: true,
+              env: deps.env,
+              expectedKeys: SHELL_ENV_EXPECTED_KEYS,
+              logger: deps.logger,
+              timeoutMs: resolveShellEnvFallbackTimeoutMs(deps.env),
+            });
+          }
+          // Return profile config if we have one, otherwise empty
+          return baseConfig as SecureClawConfig;
         }
-        // Return profile config if we have one, otherwise empty
-        return baseConfig as SecureClawConfig;
+        throw err;
       }
-      const raw = deps.fs.readFileSync(configPath, "utf-8");
       const parsed = deps.json5.parse(raw);
 
       // Merge profile with user config (user config takes precedence)
@@ -405,7 +421,15 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
 
   async function readConfigFileSnapshot(): Promise<ConfigFileSnapshot> {
     maybeLoadDotEnvForConfig(deps.env);
-    const exists = deps.fs.existsSync(configPath);
+    let exists = false;
+    try {
+      deps.fs.accessSync(configPath, deps.fs.constants.F_OK);
+      exists = true;
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw err;
+      }
+    }
     if (!exists) {
       const hash = hashConfigRaw(null);
       const config = applyTalkApiKey(
@@ -609,11 +633,16 @@ export function createConfigIO(overrides: ConfigIoDeps = {}) {
       mode: 0o600,
     });
 
-    if (deps.fs.existsSync(configPath)) {
+    try {
+      await deps.fs.promises.access(configPath, deps.fs.constants.F_OK);
       await rotateConfigBackups(configPath, deps.fs.promises);
       await deps.fs.promises.copyFile(configPath, `${configPath}.bak`).catch(() => {
         // best-effort
       });
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+        throw err;
+      }
     }
 
     try {

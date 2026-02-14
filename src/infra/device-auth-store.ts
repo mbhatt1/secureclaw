@@ -41,9 +41,6 @@ function normalizeScopes(scopes: string[] | undefined): string[] {
 
 function readStore(filePath: string): DeviceAuthStore | null {
   try {
-    if (!fs.existsSync(filePath)) {
-      return null;
-    }
     const raw = fs.readFileSync(filePath, "utf8");
     const parsed = JSON.parse(raw) as DeviceAuthStore;
     if (parsed?.version !== 1 || typeof parsed.deviceId !== "string") {
@@ -53,7 +50,10 @@ function readStore(filePath: string): DeviceAuthStore | null {
       return null;
     }
     return parsed;
-  } catch {
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
     return null;
   }
 }

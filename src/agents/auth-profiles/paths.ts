@@ -22,8 +22,13 @@ export function resolveAuthStorePathForDisplay(agentDir?: string): string {
 }
 
 export function ensureAuthStoreFile(pathname: string) {
-  if (fs.existsSync(pathname)) {
+  try {
+    fs.accessSync(pathname, fs.constants.F_OK);
     return;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+      throw err;
+    }
   }
   const payload: AuthProfileStore = {
     version: AUTH_STORE_VERSION,

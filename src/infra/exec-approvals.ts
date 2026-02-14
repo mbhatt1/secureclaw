@@ -220,17 +220,22 @@ function generateToken(): string {
 
 export function readExecApprovalsSnapshot(): ExecApprovalsSnapshot {
   const filePath = resolveExecApprovalsPath();
-  if (!fs.existsSync(filePath)) {
-    const file = normalizeExecApprovals({ version: 1, agents: {} });
-    return {
-      path: filePath,
-      exists: false,
-      raw: null,
-      file,
-      hash: hashExecApprovalsRaw(null),
-    };
+  let raw: string;
+  try {
+    raw = fs.readFileSync(filePath, "utf8");
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      const file = normalizeExecApprovals({ version: 1, agents: {} });
+      return {
+        path: filePath,
+        exists: false,
+        raw: null,
+        file,
+        hash: hashExecApprovalsRaw(null),
+      };
+    }
+    throw err;
   }
-  const raw = fs.readFileSync(filePath, "utf8");
   let parsed: ExecApprovalsFile | null = null;
   try {
     parsed = JSON.parse(raw) as ExecApprovalsFile;
@@ -253,16 +258,16 @@ export function readExecApprovalsSnapshot(): ExecApprovalsSnapshot {
 export function loadExecApprovals(): ExecApprovalsFile {
   const filePath = resolveExecApprovalsPath();
   try {
-    if (!fs.existsSync(filePath)) {
-      return normalizeExecApprovals({ version: 1, agents: {} });
-    }
     const raw = fs.readFileSync(filePath, "utf8");
     const parsed = JSON.parse(raw) as ExecApprovalsFile;
     if (parsed?.version !== 1) {
       return normalizeExecApprovals({ version: 1, agents: {} });
     }
     return normalizeExecApprovals(parsed);
-  } catch {
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return normalizeExecApprovals({ version: 1, agents: {} });
+    }
     return normalizeExecApprovals({ version: 1, agents: {} });
   }
 }
@@ -1123,8 +1128,12 @@ function isPathLikeToken(value: string): boolean {
 
 function defaultFileExists(filePath: string): boolean {
   try {
-    return fs.existsSync(filePath);
-  } catch {
+    fs.accessSync(filePath, fs.constants.F_OK);
+    return true;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return false;
+    }
     return false;
   }
 }

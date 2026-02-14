@@ -428,10 +428,6 @@ export function writeClaudeCliFileCredentials(
 ): boolean {
   const credPath = resolveClaudeCliCredentialsPath(options?.homeDir);
 
-  if (!fs.existsSync(credPath)) {
-    return false;
-  }
-
   try {
     const raw = loadJsonFile(credPath);
     if (!raw || typeof raw !== "object") {
@@ -457,6 +453,9 @@ export function writeClaudeCliFileCredentials(
     });
     return true;
   } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+      return false;
+    }
     log.warn("failed to write credentials to claude cli file", {
       error: error instanceof Error ? error.message : String(error),
     });

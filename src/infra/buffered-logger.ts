@@ -47,8 +47,14 @@ export class BufferedFileLogger {
 
     // Ensure directory exists
     const dir = path.dirname(this.config.filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    try {
+      fs.accessSync(dir, fs.constants.F_OK);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+        fs.mkdirSync(dir, { recursive: true });
+      } else {
+        throw err;
+      }
     }
 
     // Set up graceful shutdown

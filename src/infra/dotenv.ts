@@ -12,8 +12,13 @@ export function loadDotEnv(opts?: { quiet?: boolean }) {
   // Then load global fallback: ~/.secureclaw/.env (or SECURECLAW_STATE_DIR/.env),
   // without overriding any env vars already present.
   const globalEnvPath = path.join(resolveConfigDir(process.env), ".env");
-  if (!fs.existsSync(globalEnvPath)) {
-    return;
+  try {
+    fs.accessSync(globalEnvPath, fs.constants.F_OK);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return;
+    }
+    throw err;
   }
 
   dotenv.config({ quiet, path: globalEnvPath, override: false });

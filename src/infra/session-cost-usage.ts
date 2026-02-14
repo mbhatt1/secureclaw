@@ -567,8 +567,16 @@ export async function loadSessionCostSummary(params: {
   const sessionFile =
     params.sessionFile ??
     (params.sessionId ? resolveSessionFilePath(params.sessionId, params.sessionEntry) : undefined);
-  if (!sessionFile || !fs.existsSync(sessionFile)) {
+  if (!sessionFile) {
     return null;
+  }
+  try {
+    fs.accessSync(sessionFile, fs.constants.F_OK);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
+    throw err;
   }
 
   const totals = emptyTotals();
@@ -856,8 +864,16 @@ export async function loadSessionUsageTimeSeries(params: {
   const sessionFile =
     params.sessionFile ??
     (params.sessionId ? resolveSessionFilePath(params.sessionId, params.sessionEntry) : undefined);
-  if (!sessionFile || !fs.existsSync(sessionFile)) {
+  if (!sessionFile) {
     return null;
+  }
+  try {
+    fs.accessSync(sessionFile, fs.constants.F_OK);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
+    throw err;
   }
 
   const points: SessionUsageTimePoint[] = [];
@@ -936,8 +952,16 @@ export async function loadSessionLogs(params: {
   const sessionFile =
     params.sessionFile ??
     (params.sessionId ? resolveSessionFilePath(params.sessionId, params.sessionEntry) : undefined);
-  if (!sessionFile || !fs.existsSync(sessionFile)) {
+  if (!sessionFile) {
     return null;
+  }
+  try {
+    fs.accessSync(sessionFile, fs.constants.F_OK);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return null;
+    }
+    throw err;
   }
 
   const logs: SessionLogEntry[] = [];

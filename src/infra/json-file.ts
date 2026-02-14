@@ -3,20 +3,26 @@ import path from "node:path";
 
 export function loadJsonFile(pathname: string): unknown {
   try {
-    if (!fs.existsSync(pathname)) {
-      return undefined;
-    }
     const raw = fs.readFileSync(pathname, "utf8");
     return JSON.parse(raw) as unknown;
-  } catch {
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      return undefined;
+    }
     return undefined;
   }
 }
 
 export function saveJsonFile(pathname: string, data: unknown) {
   const dir = path.dirname(pathname);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+  try {
+    fs.accessSync(dir, fs.constants.F_OK);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+      fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+    } else {
+      throw err;
+    }
   }
   fs.writeFileSync(pathname, `${JSON.stringify(data, null, 2)}\n`, "utf8");
   fs.chmodSync(pathname, 0o600);
