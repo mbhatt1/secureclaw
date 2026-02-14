@@ -12,7 +12,7 @@ import type { SecureClawConfig } from "../src/config/config.js";
 import type { OutboundSendDeps } from "../src/infra/outbound/deliver.js";
 import { installProcessWarningFilter } from "../src/infra/warning-filter.js";
 import { setActivePluginRegistry } from "../src/plugins/runtime.js";
-import { createTestRegistry } from "../src/test-utils/channel-plugins.js";
+import { createTestRegistry } from "../src/test-helpers/channel-plugins.js";
 import { withIsolatedTestHome } from "./test-env.js";
 
 installProcessWarningFilter();

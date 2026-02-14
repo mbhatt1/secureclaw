@@ -26,8 +26,8 @@ function getTextContent(result?: { content?: Array<{ type: string; text?: string
 
 describe("workspace path resolution", () => {
   it("reads relative paths against workspaceDir even after cwd changes", async () => {
-    await withTempDir(async (workspaceDir) =>, "secureclaw-ws-") {
-      await withTempDir(async (otherDir) =>, "secureclaw-cwd-") {
+    await withTempDir(async (workspaceDir) => {
+      await withTempDir(async (otherDir) => {
         const testFile = "read.txt";
         const contents = "workspace read ok";
         await fs.writeFile(path.join(workspaceDir, testFile), contents, "utf8");
@@ -43,13 +43,13 @@ describe("workspace path resolution", () => {
         } finally {
           cwdSpy.mockRestore();
         }
-      });
-    });
+      }, "secureclaw-cwd-");
+    }, "secureclaw-ws-");
   });
 
   it("writes relative paths against workspaceDir even after cwd changes", async () => {
-    await withTempDir(async (workspaceDir) =>, "secureclaw-ws-") {
-      await withTempDir(async (otherDir) =>, "secureclaw-cwd-") {
+    await withTempDir(async (workspaceDir) => {
+      await withTempDir(async (otherDir) => {
         const testFile = "write.txt";
         const contents = "workspace write ok";
 
@@ -69,13 +69,13 @@ describe("workspace path resolution", () => {
         } finally {
           cwdSpy.mockRestore();
         }
-      });
-    });
+      }, "secureclaw-cwd-");
+    }, "secureclaw-ws-");
   });
 
   it("edits relative paths against workspaceDir even after cwd changes", async () => {
-    await withTempDir(async (workspaceDir) =>, "secureclaw-ws-") {
-      await withTempDir(async (otherDir) =>, "secureclaw-cwd-") {
+    await withTempDir(async (workspaceDir) => {
+      await withTempDir(async (otherDir) => {
         const testFile = "edit.txt";
         await fs.writeFile(path.join(workspaceDir, testFile), "hello world", "utf8");
 
@@ -96,12 +96,12 @@ describe("workspace path resolution", () => {
         } finally {
           cwdSpy.mockRestore();
         }
-      });
-    });
+      }, "secureclaw-cwd-");
+    }, "secureclaw-ws-");
   });
 
   it("defaults exec cwd to workspaceDir when workdir is omitted", async () => {
-    await withTempDir(async (workspaceDir) =>, "secureclaw-ws-") {
+    await withTempDir(async (workspaceDir) => {
       const tools = createSecureClawCodingTools({ workspaceDir, exec: { host: "gateway" } });
       const execTool = tools.find((tool) => tool.name === "exec");
       expect(execTool).toBeDefined();
@@ -119,12 +119,12 @@ describe("workspace path resolution", () => {
         fs.realpath(workspaceDir),
       ]);
       expect(resolvedOutput).toBe(resolvedWorkspace);
-    });
+    }, "secureclaw-ws-");
   });
 
   it("lets exec workdir override the workspace default", async () => {
-    await withTempDir(async (workspaceDir) =>, "secureclaw-ws-") {
-      await withTempDir(async (overrideDir) =>, "secureclaw-override-") {
+    await withTempDir(async (workspaceDir) => {
+      await withTempDir(async (overrideDir) => {
         const tools = createSecureClawCodingTools({ workspaceDir, exec: { host: "gateway" } });
         const execTool = tools.find((tool) => tool.name === "exec");
         expect(execTool).toBeDefined();
@@ -143,15 +143,15 @@ describe("workspace path resolution", () => {
           fs.realpath(overrideDir),
         ]);
         expect(resolvedOutput).toBe(resolvedOverride);
-      });
-    });
+      }, "secureclaw-override-");
+    }, "secureclaw-ws-");
   });
 });
 
 describe("sandboxed workspace paths", () => {
   it("uses sandbox workspace for relative read/write/edit", async () => {
-    await withTempDir(async (sandboxDir) =>, "secureclaw-sandbox-") {
-      await withTempDir(async (workspaceDir) =>, "secureclaw-workspace-") {
+    await withTempDir(async (sandboxDir) => {
+      await withTempDir(async (workspaceDir) => {
         const sandbox = {
           enabled: true,
           sessionKey: "sandbox:test",
@@ -205,7 +205,7 @@ describe("sandboxed workspace paths", () => {
         });
         const edited = await fs.readFile(path.join(sandboxDir, "new.txt"), "utf8");
         expect(edited).toBe("sandbox edit");
-      });
-    });
+      }, "secureclaw-workspace-");
+    }, "secureclaw-sandbox-");
   });
 });
