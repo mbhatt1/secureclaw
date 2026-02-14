@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import net from "node:net";
+import { parsePortSafe } from "../utils/safe-parse.js";
 import { isErrno, ValidationError, OperationError, TimeoutError, NetworkError } from "./errors.js";
 import { ensurePortAvailable } from "./ports.js";
 
@@ -37,8 +38,13 @@ export function parseSshTarget(raw: string): SshParsedTarget | null {
   if (colonIdx > 0 && colonIdx < hostPart.length - 1) {
     const host = hostPart.slice(0, colonIdx).trim();
     const portRaw = hostPart.slice(colonIdx + 1).trim();
-    const port = Number.parseInt(portRaw, 10);
-    if (!host || !Number.isFinite(port) || port <= 0) {
+    let port: number;
+    try {
+      port = parsePortSafe(portRaw);
+    } catch {
+      return null;
+    }
+    if (!host) {
       return null;
     }
     // Security: Reject hostnames starting with '-' to prevent argument injection

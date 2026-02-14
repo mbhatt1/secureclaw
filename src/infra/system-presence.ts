@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import os from "node:os";
+import { tryParseInt } from "../utils/safe-parse.js";
 
 export type SystemPresence = {
   host?: string;
@@ -158,13 +159,13 @@ function parsePresence(text: string): SystemPresence {
     return { text: trimmed, ts: Date.now() };
   }
   const [, host, ip, version, lastInputStr, mode, reasonRaw] = match;
-  const lastInputSeconds = Number.parseInt(lastInputStr, 10);
+  const lastInputSeconds = tryParseInt(lastInputStr, 10);
   const reason = reasonRaw.trim();
   return {
     host: host.trim(),
     ip: ip.trim(),
     version: version.trim(),
-    lastInputSeconds: Number.isFinite(lastInputSeconds) ? lastInputSeconds : undefined,
+    lastInputSeconds,
     mode: mode.trim(),
     reason,
     text: trimmed,

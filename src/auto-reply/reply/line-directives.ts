@@ -7,6 +7,7 @@ import {
   createDeviceControlCard,
   createAppleTvRemoteCard,
 } from "../../line/flex-templates.js";
+import { parseLatitudeSafe, parseLongitudeSafe } from "../../utils/safe-parse.js";
 
 /**
  * Parse LINE-specific directives from text and extract them into ReplyPayload fields.
@@ -68,15 +69,17 @@ export function parseLineDirectives(payload: ReplyPayload): ReplyPayload {
     const parts = locationMatch[1].split("|").map((s) => s.trim());
     if (parts.length >= 4) {
       const [title, address, latStr, lonStr] = parts;
-      const latitude = parseFloat(latStr);
-      const longitude = parseFloat(lonStr);
-      if (!isNaN(latitude) && !isNaN(longitude)) {
+      try {
+        const latitude = parseLatitudeSafe(latStr);
+        const longitude = parseLongitudeSafe(lonStr);
         lineData.location = {
           title: title || "Location",
           address: address || "",
           latitude,
           longitude,
         };
+      } catch {
+        // Invalid coordinates, skip location
       }
     }
     text = text.replace(locationMatch[0], "").trim();

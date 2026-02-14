@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import type { SshParsedTarget } from "./ssh-tunnel.js";
+import { parsePortSafe } from "../utils/safe-parse.js";
 
 export type SshResolvedConfig = {
   user?: string;
@@ -12,11 +13,11 @@ function parsePort(value: string | undefined): number | undefined {
   if (!value) {
     return undefined;
   }
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
+  try {
+    return parsePortSafe(value);
+  } catch {
     return undefined;
   }
-  return parsed;
 }
 
 export function parseSshConfigOutput(output: string): SshResolvedConfig {

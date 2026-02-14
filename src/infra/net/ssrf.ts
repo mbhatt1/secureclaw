@@ -1,6 +1,7 @@
 import { lookup as dnsLookupCb, type LookupAddress } from "node:dns";
 import { lookup as dnsLookup } from "node:dns/promises";
 import { Agent, type Dispatcher } from "undici";
+import { parseIntSafe, tryParseInt } from "../../utils/safe-parse.js";
 
 type LookupCallback = (
   err: NodeJS.ErrnoException | null,
@@ -77,9 +78,13 @@ function parseIpv4(address: string): number[] | null {
   if (parts.length !== 4) {
     return null;
   }
-  const numbers = parts.map((part) => Number.parseInt(part, 10));
-  if (numbers.some((value) => Number.isNaN(value) || value < 0 || value > 255)) {
-    return null;
+  const numbers: number[] = [];
+  for (const part of parts) {
+    try {
+      numbers.push(parseIntSafe(part, 10, 0, 255));
+    } catch {
+      return null;
+    }
   }
   return numbers;
 }
@@ -90,8 +95,10 @@ function parseIpv4FromMappedIpv6(mapped: string): number[] | null {
   }
   const parts = mapped.split(":").filter(Boolean);
   if (parts.length === 1) {
-    const value = Number.parseInt(parts[0], 16);
-    if (Number.isNaN(value) || value < 0 || value > 0xffff_ffff) {
+    let value: number;
+    try {
+      value = parseIntSafe(parts[0], 16, 0, 0xffff_ffff);
+    } catch {
       return null;
     }
     return [(value >>> 24) & 0xff, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff];
@@ -99,16 +106,12 @@ function parseIpv4FromMappedIpv6(mapped: string): number[] | null {
   if (parts.length !== 2) {
     return null;
   }
-  const high = Number.parseInt(parts[0], 16);
-  const low = Number.parseInt(parts[1], 16);
-  if (
-    Number.isNaN(high) ||
-    Number.isNaN(low) ||
-    high < 0 ||
-    low < 0 ||
-    high > 0xffff ||
-    low > 0xffff
-  ) {
+  let high: number;
+  let low: number;
+  try {
+    high = parseIntSafe(parts[0], 16, 0, 0xffff);
+    low = parseIntSafe(parts[1], 16, 0, 0xffff);
+  } catch {
     return null;
   }
   const value = (high << 16) + low;

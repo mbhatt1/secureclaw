@@ -1,4 +1,5 @@
 import { runCommandWithTimeout } from "../process/exec.js";
+import { parseIntSafe, parsePortSafe, tryParseInt } from "../utils/safe-parse.js";
 import { resolveWideAreaDiscoveryDomain } from "./widearea-dns.js";
 
 export type GatewayBonjourBeacon = {
@@ -48,8 +49,10 @@ function decodeDnsSdEscapes(value: string): string {
     if (ch === "\\" && i + 3 < value.length) {
       const escaped = value.slice(i + 1, i + 4);
       if (/^[0-9]{3}$/.test(escaped)) {
-        const byte = Number.parseInt(escaped, 10);
-        if (!Number.isFinite(byte) || byte < 0 || byte > 255) {
+        let byte: number;
+        try {
+          byte = parseIntSafe(escaped, 10, 0, 255);
+        } catch {
           pending += ch;
           continue;
         }
@@ -75,9 +78,13 @@ function isTailnetIPv4(address: string): boolean {
   if (parts.length !== 4) {
     return false;
   }
-  const octets = parts.map((p) => Number.parseInt(p, 10));
-  if (octets.some((n) => !Number.isFinite(n) || n < 0 || n > 255)) {
-    return false;
+  const octets: number[] = [];
+  for (const p of parts) {
+    try {
+      octets.push(parseIntSafe(p, 10, 0, 255));
+    } catch {
+      return false;
+    }
   }
   // Tailscale IPv4 range: 100.64.0.0/10
   const [a, b] = octets;
@@ -122,11 +129,13 @@ function parseDigSrv(stdout: string): { host: string; port: number } | null {
   if (parts.length < 4) {
     return null;
   }
-  const port = Number.parseInt(parts[2] ?? "", 10);
-  const hostRaw = parts[3] ?? "";
-  if (!Number.isFinite(port) || port <= 0) {
+  let port: number;
+  try {
+    port = parsePortSafe(parts[2] ?? "");
+  } catch {
     return null;
   }
+  const hostRaw = parts[3] ?? "";
   const host = hostRaw.replace(/\.$/, "");
   if (!host) {
     return null;
@@ -173,8 +182,7 @@ function parseIntOrNull(value: string | undefined): number | undefined {
   if (!value) {
     return undefined;
   }
-  const parsed = Number.parseInt(value, 10);
-  return Number.isFinite(parsed) ? parsed : undefined;
+  return tryParseInt(value, 10);
 }
 
 function parseTxtTokens(tokens: string[]): Record<string, string> {

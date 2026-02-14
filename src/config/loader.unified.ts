@@ -17,6 +17,7 @@ import { config as dotenvConfig } from "dotenv";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { UnifiedConfig } from "./schema.unified.js";
+import { tryParseInt } from "../utils/safe-parse.js";
 import { resolveStateDir } from "./paths.js";
 import { UnifiedConfigSchema, validateUnifiedConfig } from "./schema.unified.js";
 
@@ -60,13 +61,12 @@ function parseEnvVars(env: NodeJS.ProcessEnv): Partial<UnifiedConfig> {
     (config[section] as any)[key] = value;
   };
 
-  // Helper to parse int
+  // Helper to parse int safely with overflow protection
   const parseInt = (value: string | undefined): number | undefined => {
     if (!value) {
       return undefined;
     }
-    const num = Number(value);
-    return Number.isFinite(num) ? num : undefined;
+    return tryParseInt(value, 10);
   };
 
   // Helper to parse boolean

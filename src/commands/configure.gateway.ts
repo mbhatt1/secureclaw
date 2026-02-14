@@ -3,6 +3,7 @@ import type { RuntimeEnv } from "../runtime.js";
 import { resolveGatewayPort } from "../config/config.js";
 import { findTailscaleBinary } from "../infra/tailscale.js";
 import { note } from "../terminal/note.js";
+import { parsePortSafe, parseIntSafe } from "../utils/safe-parse.js";
 import { buildGatewayAuthConfig } from "./configure.gateway-auth.js";
 import { confirm, select, text } from "./configure.shared.js";
 import { guardCancel, normalizeGatewayTokenInput, randomToken } from "./onboard-helpers.js";
@@ -21,11 +22,18 @@ export async function promptGatewayConfig(
     await text({
       message: "Gateway port",
       initialValue: String(resolveGatewayPort(cfg)),
-      validate: (value) => (Number.isFinite(Number(value)) ? undefined : "Invalid port"),
+      validate: (value) => {
+        try {
+          parsePortSafe(String(value));
+          return undefined;
+        } catch {
+          return "Invalid port (must be 1-65535)";
+        }
+      },
     }),
     runtime,
   );
-  const port = Number.parseInt(String(portRaw), 10);
+  const port = parsePortSafe(String(portRaw));
 
   let bind = guardCancel(
     await select({
@@ -78,8 +86,12 @@ export async function promptGatewayConfig(
           }
           if (
             parts.every((part) => {
-              const n = parseInt(part, 10);
-              return !Number.isNaN(n) && n >= 0 && n <= 255 && part === String(n);
+              try {
+                const n = parseIntSafe(part, 10, 0, 255);
+                return part === String(n);
+              } catch {
+                return false;
+              }
             })
           ) {
             return undefined;

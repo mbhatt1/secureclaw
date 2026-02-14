@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import process from "node:process";
 import type { GatewayLockHandle } from "../infra/gateway-lock.js";
+import { parsePortSafe } from "../utils/safe-parse.js";
 
 declare const __SECURECLAW_VERSION__: string | undefined;
 
@@ -79,8 +80,10 @@ async function main() {
     process.env.CLAWDBOT_GATEWAY_PORT ??
     (typeof cfg.gateway?.port === "number" ? String(cfg.gateway.port) : "") ??
     "18789";
-  const port = Number.parseInt(portRaw, 10);
-  if (Number.isNaN(port) || port <= 0) {
+  let port: number;
+  try {
+    port = parsePortSafe(portRaw);
+  } catch {
     defaultRuntime.error(`Invalid --port (${portRaw})`);
     process.exit(1);
   }

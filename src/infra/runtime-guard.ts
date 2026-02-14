@@ -1,5 +1,6 @@
 import process from "node:process";
 import { defaultRuntime, type RuntimeEnv } from "../runtime.js";
+import { parseIntSafe } from "../utils/safe-parse.js";
 
 export type RuntimeKind = "node" | "unknown";
 
@@ -29,11 +30,15 @@ export function parseSemver(version: string | null): Semver | null {
     return null;
   }
   const [, major, minor, patch] = match;
-  return {
-    major: Number.parseInt(major, 10),
-    minor: Number.parseInt(minor, 10),
-    patch: Number.parseInt(patch, 10),
-  };
+  try {
+    return {
+      major: parseIntSafe(major, 10, 0),
+      minor: parseIntSafe(minor, 10, 0),
+      patch: parseIntSafe(patch, 10, 0),
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function isAtLeast(version: Semver | null, minimum: Semver): boolean {

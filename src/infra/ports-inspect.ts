@@ -1,6 +1,7 @@
 import net from "node:net";
 import type { PortListener, PortUsage, PortUsageStatus } from "./ports-types.js";
 import { runCommandWithTimeout } from "../process/exec.js";
+import { tryParseInt } from "../utils/safe-parse.js";
 import { isErrno } from "./errors.js";
 import { buildPortHints } from "./ports-format.js";
 import { resolveLsofCommand } from "./ports-lsof.js";
@@ -39,8 +40,8 @@ function parseLsofFieldOutput(output: string): PortListener[] {
       if (current.pid || current.command) {
         listeners.push(current);
       }
-      const pid = Number.parseInt(line.slice(1), 10);
-      current = Number.isFinite(pid) ? { pid } : {};
+      const pid = tryParseInt(line.slice(1), 10);
+      current = pid !== undefined ? { pid } : {};
     } else if (line.startsWith("c")) {
       current.command = line.slice(1);
     } else if (line.startsWith("n")) {
@@ -135,10 +136,10 @@ function parseNetstatListeners(output: string, port: number): PortListener[] {
       continue;
     }
     const pidRaw = parts.at(-1);
-    const pid = pidRaw ? Number.parseInt(pidRaw, 10) : NaN;
+    const pid = pidRaw ? tryParseInt(pidRaw, 10) : undefined;
     const localAddr = parts[1];
     const listener: PortListener = {};
-    if (Number.isFinite(pid)) {
+    if (pid !== undefined) {
       listener.pid = pid;
     }
     if (localAddr?.includes(portToken)) {

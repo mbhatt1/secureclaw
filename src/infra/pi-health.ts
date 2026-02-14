@@ -6,6 +6,7 @@
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { isRaspberryPi } from "../config/profiles.js";
+import { parseIntSafe, tryParseInt } from "../utils/safe-parse.js";
 
 // Re-export from profiles for convenience
 export { isRaspberryPi };
@@ -61,7 +62,11 @@ const DEFAULT_THRESHOLDS: Required<PiHealthThresholds> = {
 function getCpuTemperature(): number | undefined {
   try {
     const temp = readFileSync("/sys/class/thermal/thermal_zone0/temp", "utf-8").trim();
-    return parseInt(temp) / 1000; // Convert millidegrees to degrees
+    const millidegrees = tryParseInt(temp, 10);
+    if (millidegrees === undefined) {
+      return undefined;
+    }
+    return millidegrees / 1000; // Convert millidegrees to degrees
   } catch {
     return undefined;
   }
@@ -76,7 +81,12 @@ function getThrottlingStatus(): { throttled: boolean; underVoltage: boolean } {
     const match = result.match(/throttled=(0x[0-9a-fA-F]+)/);
 
     if (match) {
-      const value = parseInt(match[1], 16);
+      let value: number;
+      try {
+        value = parseIntSafe(match[1], 16, 0);
+      } catch {
+        return { throttled: false, underVoltage: false };
+      }
 
       return {
         // Bit 0: Under-voltage detected
@@ -103,8 +113,10 @@ function getMemoryInfo(): {
 } {
   try {
     const meminfo = readFileSync("/proc/meminfo", "utf-8");
-    const total = parseInt(meminfo.match(/MemTotal:\s+(\d+)/)?.[1] || "0") / 1024;
-    const available = parseInt(meminfo.match(/MemAvailable:\s+(\d+)/)?.[1] || "0") / 1024;
+    const totalKb = tryParseInt(meminfo.match(/MemTotal:\s+(\d+)/)?.[1] || "0", 10) ?? 0;
+    const availableKb = tryParseInt(meminfo.match(/MemAvailable:\s+(\d+)/)?.[1] || "0", 10) ?? 0;
+    const total = totalKb / 1024;
+    const available = availableKb / 1024;
     const used = total - available;
     const percentUsed = total > 0 ? (used / total) * 100 : 0;
 
@@ -147,9 +159,9 @@ function getDiskInfo(): {
     const parts = df.split(/\s+/);
 
     if (parts.length >= 5) {
-      const total = parseInt(parts[1].replace("M", ""));
-      const used = parseInt(parts[2].replace("M", ""));
-      const available = parseInt(parts[3].replace("M", ""));
+      const total = tryParseInt(parts[1].replace("M", ""), 10) ?? 0;
+      const used = tryParseInt(parts[2].replace("M", ""), 10) ?? 0;
+      const available = tryParseInt(parts[3].replace("M", ""), 10) ?? 0;
       const percentUsed = total > 0 ? (used / total) * 100 : 0;
 
       return { total, available, used, percentUsed };

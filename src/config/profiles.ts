@@ -8,6 +8,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { SecureClawConfig } from "./types.js";
 import { ConfigError } from "../infra/errors.js";
+import { tryParseInt } from "../utils/safe-parse.js";
 import { parseConfigJson5 } from "./io.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -157,14 +158,16 @@ export function autoDetectProfile(): string | undefined {
         const totalMem = meminfo.match(/MemTotal:\s+(\d+)/);
 
         if (totalMem) {
-          const memMB = parseInt(totalMem[1]) / 1024;
-
-          if (memMB < 3000) {
-            return "raspberry-pi-4-2gb";
-          } else if (memMB < 6000) {
-            return "raspberry-pi-4-4gb";
-          } else {
-            return "raspberry-pi-4-8gb";
+          const memKB = tryParseInt(totalMem[1], 10);
+          if (memKB !== undefined) {
+            const memMB = memKB / 1024;
+            if (memMB < 3000) {
+              return "raspberry-pi-4-2gb";
+            } else if (memMB < 6000) {
+              return "raspberry-pi-4-4gb";
+            } else {
+              return "raspberry-pi-4-8gb";
+            }
           }
         }
       }
@@ -187,10 +190,14 @@ export function getSystemMemory(): { total: number; available: number } | undefi
       const available = meminfo.match(/MemAvailable:\s+(\d+)/)?.[1];
 
       if (total && available) {
-        return {
-          total: parseInt(total) / 1024, // Convert to MB
-          available: parseInt(available) / 1024,
-        };
+        const totalKB = tryParseInt(total, 10);
+        const availableKB = tryParseInt(available, 10);
+        if (totalKB !== undefined && availableKB !== undefined) {
+          return {
+            total: totalKB / 1024, // Convert to MB
+            available: availableKB / 1024,
+          };
+        }
       }
     }
   } catch {

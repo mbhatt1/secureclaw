@@ -1,3 +1,5 @@
+import { parsePositiveIntSafe } from "../utils/safe-parse.js";
+
 const HELP_FLAGS = new Set(["-h", "--help"]);
 const VERSION_FLAGS = new Set(["-v", "-V", "--version"]);
 const FLAG_TERMINATOR = "--";
@@ -20,11 +22,11 @@ function isValueToken(arg: string | undefined): boolean {
 }
 
 function parsePositiveInt(value: string): number | undefined {
-  const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed) || parsed <= 0) {
+  try {
+    return parsePositiveIntSafe(value);
+  } catch {
     return undefined;
   }
-  return parsed;
 }
 
 export function hasFlag(argv: string[], name: string): boolean {

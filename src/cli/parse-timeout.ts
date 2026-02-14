@@ -1,18 +1,21 @@
+import { tryParseInt } from "../utils/safe-parse.js";
+
 export function parseTimeoutMs(raw: unknown): number | undefined {
   if (raw === undefined || raw === null) {
     return undefined;
   }
-  let value = Number.NaN;
+  let value: number | undefined;
   if (typeof raw === "number") {
-    value = raw;
+    value = Number.isFinite(raw) ? raw : undefined;
   } else if (typeof raw === "bigint") {
-    value = Number(raw);
+    const num = Number(raw);
+    value = Number.isFinite(num) ? num : undefined;
   } else if (typeof raw === "string") {
     const trimmed = raw.trim();
     if (!trimmed) {
       return undefined;
     }
-    value = Number.parseInt(trimmed, 10);
+    value = tryParseInt(trimmed, 10);
   }
-  return Number.isFinite(value) ? value : undefined;
+  return value;
 }
