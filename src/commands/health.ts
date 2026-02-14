@@ -7,6 +7,7 @@ import { getChannelPlugin, listChannelPlugins } from "../channels/plugins/index.
 import { withProgress } from "../cli/progress.js";
 import { loadConfig } from "../config/config.js";
 import { loadSessionStore, resolveStorePath } from "../config/sessions.js";
+import { getDebouncedSessionStoreStats } from "../config/sessions.js";
 import { buildGatewayConnectionDetails, callGateway } from "../gateway/call.js";
 import { info } from "../globals.js";
 import { isTruthyEnvValue } from "../infra/env.js";
@@ -15,6 +16,8 @@ import {
   type HeartbeatSummary,
   resolveHeartbeatSummaryForAgent,
 } from "../infra/heartbeat-runner.js";
+import { getIOMetrics } from "../infra/io-metrics.js";
+import { getBufferedLoggerStats } from "../logging.js";
 import { buildChannelAccountBindings, resolvePreferredAccountId } from "../routing/bindings.js";
 import { normalizeAgentId } from "../routing/session-key.js";
 import { theme } from "../terminal/theme.js";
@@ -67,6 +70,35 @@ export type HealthSummary = {
       updatedAt: number | null;
       age: number | null;
     }>;
+  };
+  /** I/O metrics for disk and network usage monitoring */
+  ioMetrics?: {
+    disk: {
+      writesPerMin: number;
+      readsPerMin: number;
+      writeMBPerMin: number;
+    };
+    network: {
+      totalMB: number;
+      mbps: number;
+    };
+    database: {
+      queriesPerSec: number;
+      transactionsPerSec: number;
+    };
+    cache: {
+      hitRate: number;
+    };
+    logging?: {
+      totalWrites: number;
+      totalBytesWritten: number;
+      bufferSize: number;
+    };
+    sessionStore?: {
+      totalCoalesced: number;
+      totalWrites: number;
+      reductionPercent: number;
+    };
   };
 };
 
@@ -539,6 +571,12 @@ export async function getHealthSnapshot(params?: {
     }
   }
 
+  // Collect I/O metrics
+  const ioMetrics = getIOMetrics();
+  const ioSnapshot = ioMetrics.getSnapshot();
+  const loggingStats = getBufferedLoggerStats();
+  const sessionStoreStats = getDebouncedSessionStoreStats();
+
   const summary: HealthSummary = {
     ok: true,
     ts: Date.now(),
@@ -553,6 +591,38 @@ export async function getHealthSnapshot(params?: {
       path: sessions.path,
       count: sessions.count,
       recent: sessions.recent,
+    },
+    ioMetrics: {
+      disk: {
+        writesPerMin: ioSnapshot.disk.writesPerMin,
+        readsPerMin: ioSnapshot.disk.readsPerMin,
+        writeMBPerMin: ioSnapshot.disk.writeMBPerMin,
+      },
+      network: {
+        totalMB: ioSnapshot.network.totalMB,
+        mbps: ioSnapshot.network.mbps,
+      },
+      database: {
+        queriesPerSec: ioSnapshot.database.queriesPerSec,
+        transactionsPerSec: ioSnapshot.database.transactionsPerSec,
+      },
+      cache: {
+        hitRate: ioSnapshot.cache.hitRate,
+      },
+      logging: loggingStats
+        ? {
+            totalWrites: loggingStats.totalWrites,
+            totalBytesWritten: loggingStats.totalBytesWritten,
+            bufferSize: loggingStats.bufferSize,
+          }
+        : undefined,
+      sessionStore: sessionStoreStats
+        ? {
+            totalCoalesced: sessionStoreStats.totalCoalesced,
+            totalWrites: sessionStoreStats.totalWrites,
+            reductionPercent: sessionStoreStats.reductionPercent,
+          }
+        : undefined,
     },
   };
 

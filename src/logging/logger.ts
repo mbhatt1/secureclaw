@@ -4,6 +4,7 @@ import path from "node:path";
 import { Logger as TsLogger } from "tslog";
 import type { SecureClawConfig } from "../config/types.js";
 import type { ConsoleStyle } from "./console.js";
+import { createBufferedLogger, type BufferedFileLogger } from "../infra/buffered-logger.js";
 import { resolvePreferredSecureClawTmpDir } from "../infra/tmp-secureclaw-dir.js";
 import { readLoggingConfig } from "./config.js";
 import { type LogLevel, levelToMinLevel, normalizeLogLevel } from "./levels.js";
@@ -36,6 +37,7 @@ export type LogTransportRecord = Record<string, unknown>;
 export type LogTransport = (logObj: LogTransportRecord) => void;
 
 const externalTransports = new Set<LogTransport>();
+let bufferedLogger: BufferedFileLogger | null = null;
 
 function attachExternalTransport(logger: TsLogger<LogObj>, transport: LogTransport): void {
   logger.attachTransport((logObj: LogObj) => {
@@ -98,11 +100,21 @@ function buildLogger(settings: ResolvedSettings): TsLogger<LogObj> {
     type: "hidden", // no ansi formatting
   });
 
+  // Initialize buffered logger for optimized disk writes
+  if (bufferedLogger) {
+    void bufferedLogger.close();
+  }
+  bufferedLogger = createBufferedLogger({
+    filePath: settings.file,
+    maxBufferSize: 100,
+    flushIntervalMs: 5000,
+  });
+
   logger.attachTransport((logObj: LogObj) => {
     try {
       const time = logObj.date?.toISOString?.() ?? new Date().toISOString();
       const line = JSON.stringify({ ...logObj, time });
-      fs.appendFileSync(settings.file, `${line}\n`, { encoding: "utf8" });
+      bufferedLogger?.append(line);
     } catch {
       // never block on logging failures
     }
@@ -185,6 +197,10 @@ export function setLoggerOverride(settings: LoggerSettings | null) {
 }
 
 export function resetLogger() {
+  if (bufferedLogger) {
+    void bufferedLogger.close();
+    bufferedLogger = null;
+  }
   loggingState.cachedLogger = null;
   loggingState.cachedSettings = null;
   loggingState.cachedConsoleSettings = null;
@@ -200,6 +216,27 @@ export function registerLogTransport(transport: LogTransport): () => void {
   return () => {
     externalTransports.delete(transport);
   };
+}
+
+/**
+ * Get buffered logger statistics
+ */
+export function getBufferedLoggerStats(): {
+  totalWrites: number;
+  totalBytesWritten: number;
+  bufferSize: number;
+  lastFlushAt: number;
+} | null {
+  return bufferedLogger?.getStats() ?? null;
+}
+
+/**
+ * Flush buffered logs to disk (useful before shutdown)
+ */
+export async function flushBufferedLogs(): Promise<void> {
+  if (bufferedLogger) {
+    await bufferedLogger.flush();
+  }
 }
 
 function formatLocalDate(date: Date): string {

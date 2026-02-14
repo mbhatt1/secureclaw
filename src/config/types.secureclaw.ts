@@ -97,6 +97,38 @@ export type SecureClawConfig = {
   talk?: TalkConfig;
   gateway?: GatewayConfig;
   memory?: MemoryConfig;
+  database?: DatabaseConfig;
+};
+
+/**
+ * Database configuration for optimized storage backends
+ */
+export type DatabaseConfig = {
+  /** Database type: "sqlite" for lightweight deployments, "postgres" for production */
+  type?: "sqlite" | "postgres";
+  /** SQLite-specific configuration */
+  sqlite?: {
+    /** Path to SQLite database file */
+    path?: string;
+    /** Enable WAL mode (default: true) */
+    walMode?: boolean;
+    /** Synchronous level: OFF, NORMAL, FULL (default: NORMAL) */
+    synchronous?: "OFF" | "NORMAL" | "FULL";
+    /** Cache size in KB (default: 10000 = 10MB) */
+    cacheSizeKB?: number;
+  };
+  /** PostgreSQL-specific configuration */
+  postgres?: {
+    /** Connection string or connection object */
+    connectionString?: string;
+    host?: string;
+    port?: number;
+    database?: string;
+    user?: string;
+    password?: string;
+    /** Connection pool size (default: 10) */
+    poolSize?: number;
+  };
 };
 
 export type ConfigValidationIssue = {

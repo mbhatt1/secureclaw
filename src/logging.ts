@@ -15,6 +15,8 @@ import { ALLOWED_LOG_LEVELS, levelToMinLevel, normalizeLogLevel } from "./loggin
 import {
   DEFAULT_LOG_DIR,
   DEFAULT_LOG_FILE,
+  flushBufferedLogs,
+  getBufferedLoggerStats,
   getChildLogger,
   getLogger,
   getResolvedLoggerSettings,
@@ -43,6 +45,8 @@ export {
   normalizeLogLevel,
   DEFAULT_LOG_DIR,
   DEFAULT_LOG_FILE,
+  flushBufferedLogs,
+  getBufferedLoggerStats,
   getChildLogger,
   getLogger,
   getResolvedLoggerSettings,
