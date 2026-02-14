@@ -42,6 +42,19 @@ import { scheduleGatewayUpdateCheck } from "../infra/update-startup.js";
 import { startDiagnosticHeartbeat, stopDiagnosticHeartbeat } from "../logging/diagnostic.js";
 import { createSubsystemLogger, runtimeForLogger } from "../logging/subsystem.js";
 import { getGlobalHookRunner } from "../plugins/hook-runner-global.js";
+import { SecurityCoachAuditLog } from "../security-coach/audit.js";
+import { SecurityCoachEngine } from "../security-coach/engine.js";
+import { setGlobalSecurityCoachHooks } from "../security-coach/global.js";
+import { AlertHistoryStore } from "../security-coach/history.js";
+import { createSecurityCoachHooks } from "../security-coach/hooks.js";
+import { broadcastHygieneFindings, runHygieneCheck } from "../security-coach/hygiene.js";
+import { CoachMetrics } from "../security-coach/metrics.js";
+import { SecurityCoachRuleStore } from "../security-coach/rules.js";
+import { createDatadogAdapter } from "../security-coach/siem/datadog.js";
+import { SiemDispatcher } from "../security-coach/siem/dispatcher.js";
+import { createSentinelAdapter } from "../security-coach/siem/sentinel.js";
+import { createSplunkAdapter } from "../security-coach/siem/splunk.js";
+import { AlertThrottle } from "../security-coach/throttle.js";
 import { runOnboardingWizard } from "../wizard/onboarding.js";
 import { startGatewayConfigReloader } from "./config-reload.js";
 import { ExecApprovalManager } from "./exec-approval-manager.js";
@@ -56,24 +69,11 @@ import { startGatewayMaintenanceTimers } from "./server-maintenance.js";
 import { GATEWAY_EVENTS, listGatewayMethods } from "./server-methods-list.js";
 import { coreGatewayHandlers } from "./server-methods.js";
 import { createExecApprovalHandlers } from "./server-methods/exec-approval.js";
+import { safeParseJson } from "./server-methods/nodes.helpers.js";
 import {
   createSecurityCoachHandlers,
   gatherHygieneScanInput,
 } from "./server-methods/security-coach.js";
-import { SecurityCoachEngine } from "../security-coach/engine.js";
-import { broadcastHygieneFindings, runHygieneCheck } from "../security-coach/hygiene.js";
-import { SecurityCoachRuleStore } from "../security-coach/rules.js";
-import { createSecurityCoachHooks } from "../security-coach/hooks.js";
-import { setGlobalSecurityCoachHooks } from "../security-coach/global.js";
-import { SecurityCoachAuditLog } from "../security-coach/audit.js";
-import { AlertThrottle } from "../security-coach/throttle.js";
-import { CoachMetrics } from "../security-coach/metrics.js";
-import { AlertHistoryStore } from "../security-coach/history.js";
-import { SiemDispatcher } from "../security-coach/siem/dispatcher.js";
-import { createSplunkAdapter } from "../security-coach/siem/splunk.js";
-import { createDatadogAdapter } from "../security-coach/siem/datadog.js";
-import { createSentinelAdapter } from "../security-coach/siem/sentinel.js";
-import { safeParseJson } from "./server-methods/nodes.helpers.js";
 import { hasConnectedMobileNode } from "./server-mobile-nodes.js";
 import { loadGatewayModelCatalog } from "./server-model-catalog.js";
 import { createNodeSubscriptionManager } from "./server-node-subscriptions.js";
@@ -328,6 +328,47 @@ export async function startGatewayServer(
   if (cfgAtStart.gateway?.tls?.enabled && !gatewayTls.enabled) {
     throw new Error(gatewayTls.error ?? "gateway tls: failed to enable");
   }
+
+  // SECURITY COACH: Phase 1 - Initialize engine and enterprise modules BEFORE server starts
+  // This ensures Security Coach components are ready before any connections are accepted
+  const securityCoachRuleStore = new SecurityCoachRuleStore(undefined, (msg) => {
+    log.warn?.(msg);
+  });
+  try {
+    await securityCoachRuleStore.load();
+  } catch (err) {
+    log.error?.(
+      `SECURITY WARNING: failed to load security coach rules — all saved allow/deny rules are lost: ${String(err)}`,
+    );
+  }
+  const securityCoachEngine = new SecurityCoachEngine(undefined, securityCoachRuleStore);
+
+  // Auto-configure LLM judge if enabled
+  const { autoConfigureLLMJudge } = await import("../security-coach/llm-auto-setup.js");
+  await autoConfigureLLMJudge(securityCoachEngine, log);
+
+  const securityCoachAuditLog = new SecurityCoachAuditLog();
+  const securityCoachThrottle = new AlertThrottle();
+  const securityCoachMetrics = new CoachMetrics();
+  const securityCoachHistory = new AlertHistoryStore();
+  const securityCoachSiem = new SiemDispatcher({
+    enabled: false,
+    destinations: [],
+    includeDetails: true,
+    includeContext: true,
+  });
+  securityCoachSiem.registerAdapterFactory("splunk", (dest) => createSplunkAdapter(dest));
+  securityCoachSiem.registerAdapterFactory("datadog", (dest) => createDatadogAdapter(dest));
+  securityCoachSiem.registerAdapterFactory("sentinel", (dest) => createSentinelAdapter(dest));
+
+  const enterpriseOpts = {
+    auditLog: securityCoachAuditLog,
+    throttle: securityCoachThrottle,
+    metrics: securityCoachMetrics,
+    history: securityCoachHistory,
+    siem: securityCoachSiem,
+  };
+
   const {
     canvasHost,
     httpServer,
@@ -369,6 +410,17 @@ export async function startGatewayServer(
     logHooks,
     logPlugins,
   });
+
+  // SECURITY COACH: Phase 2 - Create hooks and register globally IMMEDIATELY after runtime state
+  // This ensures Security Coach is initialized before any WebSocket handlers process connections
+  const securityCoachHooks = createSecurityCoachHooks(
+    securityCoachEngine,
+    broadcast,
+    enterpriseOpts,
+  );
+  setGlobalSecurityCoachHooks(securityCoachHooks);
+  log.info?.("Security Coach initialized and ready");
+
   let bonjourStop: (() => Promise<void>) | null = null;
   const nodeRegistry = new NodeRegistry();
   const nodePresenceTimers = new Map<string, ReturnType<typeof setInterval>>();
@@ -485,52 +537,12 @@ export async function startGatewayServer(
     forwarder: execApprovalForwarder,
   });
 
-  const securityCoachRuleStore = new SecurityCoachRuleStore(undefined, (msg) => {
-    log.warn?.(msg);
-  });
-  try {
-    await securityCoachRuleStore.load();
-  } catch (err) {
-    log.error?.(`SECURITY WARNING: failed to load security coach rules — all saved allow/deny rules are lost: ${String(err)}`);
-  }
-  const securityCoachEngine = new SecurityCoachEngine(undefined, securityCoachRuleStore);
-
-  // Enterprise modules.
-  const securityCoachAuditLog = new SecurityCoachAuditLog();
-  const securityCoachThrottle = new AlertThrottle();
-  const securityCoachMetrics = new CoachMetrics();
-  const securityCoachHistory = new AlertHistoryStore();
-  const securityCoachSiem = new SiemDispatcher({
-    enabled: false,
-    destinations: [],
-    includeDetails: true,
-    includeContext: true,
-  });
-  // Register SIEM adapter factories so adapters are created with the real
-  // destination URL/token when batches are flushed (not at registration time).
-  securityCoachSiem.registerAdapterFactory("splunk", (dest) => createSplunkAdapter(dest));
-  securityCoachSiem.registerAdapterFactory("datadog", (dest) => createDatadogAdapter(dest));
-  securityCoachSiem.registerAdapterFactory("sentinel", (dest) => createSentinelAdapter(dest));
-
-  const enterpriseOpts = {
-    auditLog: securityCoachAuditLog,
-    throttle: securityCoachThrottle,
-    metrics: securityCoachMetrics,
-    history: securityCoachHistory,
-    siem: securityCoachSiem,
-  };
-
+  // Security Coach handlers for RPC calls (engine/store/opts were initialized earlier)
   const securityCoachHandlers = createSecurityCoachHandlers(
     securityCoachEngine,
     securityCoachRuleStore,
     enterpriseOpts,
   );
-  const securityCoachHooks = createSecurityCoachHooks(
-    securityCoachEngine,
-    broadcast,
-    enterpriseOpts,
-  );
-  setGlobalSecurityCoachHooks(securityCoachHooks);
 
   // Periodic hygiene scan — runs every 6 hours after a 5-minute initial delay.
   const HYGIENE_INITIAL_DELAY_MS = 5 * 60 * 1000;
@@ -749,10 +761,16 @@ export async function startGatewayServer(
       }
       // Flush SIEM dispatcher, clean up throttle state, and rotate logs on shutdown.
       securityCoachEngine.shutdown();
-      void securityCoachSiem.shutdown().catch(() => { /* best-effort */ });
+      void securityCoachSiem.shutdown().catch(() => {
+        /* best-effort */
+      });
       securityCoachThrottle.cleanup();
-      void securityCoachAuditLog.rotateIfNeeded().catch(() => { /* best-effort */ });
-      void securityCoachHistory.rotateIfNeeded().catch(() => { /* best-effort */ });
+      void securityCoachAuditLog.rotateIfNeeded().catch(() => {
+        /* best-effort */
+      });
+      void securityCoachHistory.rotateIfNeeded().catch(() => {
+        /* best-effort */
+      });
       skillsChangeUnsub();
       await close(opts);
     },

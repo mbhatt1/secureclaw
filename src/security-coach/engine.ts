@@ -2,17 +2,15 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
-
-import { resolveStateDir } from "../config/paths.js";
-import { assertNotSymlink } from "./utils.js";
-import type {
-  ThreatMatch,
-  ThreatMatchInput,
-  ThreatSeverity,
-} from "./patterns.js";
-import { matchThreats } from "./patterns.js";
+import type { LLMJudgeConfig, LLMJudgeResult } from "./llm-judge-schemas.js";
+import type { ThreatMatch, ThreatMatchInput, ThreatSeverity } from "./patterns.js";
 import type { SecurityCoachRuleStore, RuleDecision } from "./rules.js";
+import { resolveStateDir } from "../config/paths.js";
+import { DEFAULT_LLM_JUDGE_CONFIG } from "./llm-judge-schemas.js";
+import { LLMJudge } from "./llm-judge.js";
+import { matchThreats } from "./patterns.js";
 import { generateCoachMessage } from "./persona.js";
+import { assertNotSymlink } from "./utils.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,11 +33,7 @@ export type CoachAlert = {
   requiresDecision: boolean;
 };
 
-export type CoachDecision =
-  | "allow-once"
-  | "allow-always"
-  | "deny"
-  | "learn-more";
+export type CoachDecision = "allow-once" | "allow-always" | "deny" | "learn-more";
 
 export type CoachConfig = {
   /** Whether the security coach is enabled */
@@ -52,6 +46,8 @@ export type CoachConfig = {
   decisionTimeoutMs: number;
   /** Whether to show educational info even for allowed operations */
   educationalMode: boolean;
+  /** LLM judge configuration (optional) */
+  llmJudge?: Partial<LLMJudgeConfig>;
 };
 
 export const DEFAULT_COACH_CONFIG: CoachConfig = {
@@ -60,6 +56,7 @@ export const DEFAULT_COACH_CONFIG: CoachConfig = {
   blockOnCritical: true,
   decisionTimeoutMs: 60_000,
   educationalMode: true,
+  llmJudge: undefined, // Disabled by default
 };
 
 // ---------------------------------------------------------------------------
@@ -97,23 +94,28 @@ export class SecurityCoachEngine {
   private rules: SecurityCoachRuleStore;
   private pendingAlerts: Map<string, PendingEntry> = new Map();
   private pendingPerSession: Map<string, number> = new Map();
+  private llmJudge: LLMJudge | null = null;
 
-  constructor(
-    config?: Partial<CoachConfig>,
-    rules?: SecurityCoachRuleStore,
-    stateDir?: string,
-  ) {
+  constructor(config?: Partial<CoachConfig>, rules?: SecurityCoachRuleStore, stateDir?: string) {
     this.config = { ...DEFAULT_COACH_CONFIG, ...config };
     this.configPath = path.join(stateDir ?? resolveStateDir(), "security-coach-config.json");
     // The rule store is expected to be provided; fall back to a minimal
     // no-op implementation so callers can omit it in tests / simple setups.
     // Safety: the engine only calls `this.rules.lookup()` — the no-op stub
     // satisfies that contract.  The `as unknown as` cast is intentional.
-    this.rules = rules ?? ({
-      lookup(): RuleDecision | null {
-        return null;
-      },
-    } as unknown as SecurityCoachRuleStore);
+    this.rules =
+      rules ??
+      ({
+        lookup(): RuleDecision | null {
+          return null;
+        },
+      } as unknown as SecurityCoachRuleStore);
+
+    // Initialize LLM judge if configured
+    if (this.config.llmJudge) {
+      this.llmJudge = new LLMJudge(this.config.llmJudge);
+    }
+
     this.loadConfig();
   }
 
@@ -124,13 +126,11 @@ export class SecurityCoachEngine {
   /**
    * Evaluate an activity and determine if coaching is needed.
    *
-   * 1. Run `matchThreats(input)` to find matching patterns.
-   * 2. Filter by `config.minSeverity`.
-   * 3. Check the rule store for existing allow/deny rules.
-   * 4. If a rule allows  -> `{ allowed: true,  alert: null, autoDecision }`.
-   * 5. If a rule denies  -> `{ allowed: false, alert: null, autoDecision }`.
-   * 6. If no rule + threats -> build alert, `{ allowed: false, alert, autoDecision: null }`.
-   * 7. If no threats       -> `{ allowed: true,  alert: null, autoDecision: null }`.
+   * HYBRID APPROACH:
+   * 1. Run pattern matching (fast path)
+   * 2. Check saved rules
+   * 3. Use LLM judge for ambiguous cases (optional)
+   * 4. Build alert if threat detected
    */
   async evaluate(input: ThreatMatchInput): Promise<{
     allowed: boolean;
@@ -138,49 +138,155 @@ export class SecurityCoachEngine {
     autoDecision: RuleDecision | null;
     /** Pattern ID that triggered the auto-decision (for audit logging). */
     autoPatternId: string | null;
+    /** LLM judge result (if used) */
+    llmResult?: LLMJudgeResult;
+    /** Evaluation source: "pattern", "llm", "hybrid", "rule" */
+    source?: string;
   }> {
     if (!this.config.enabled) {
-      return { allowed: true, alert: null, autoDecision: null, autoPatternId: null };
+      return {
+        allowed: true,
+        alert: null,
+        autoDecision: null,
+        autoPatternId: null,
+        source: "disabled",
+      };
     }
 
-    // 1. Match threats
+    // LAYER 1: Pattern matching (fast, deterministic)
     const allThreats = matchThreats(input);
-
-    // 2. Filter by minimum severity
     const minRank = SEVERITY_RANK[this.config.minSeverity];
-    const threats = allThreats.filter(
-      (t) => SEVERITY_RANK[t.pattern.severity] >= minRank,
-    );
+    const threats = allThreats.filter((t) => SEVERITY_RANK[t.pattern.severity] >= minRank);
 
-    // 7. No relevant threats — allow silently.
-    if (threats.length === 0) {
-      return { allowed: true, alert: null, autoDecision: null, autoPatternId: null };
+    // Check for critical threats - block immediately without LLM
+    const criticalThreats = threats.filter((t) => t.pattern.severity === "critical");
+    if (criticalThreats.length > 0) {
+      // Critical threat - block immediately
+      const topThreat = criticalThreats[0];
+      const autoDecision = this.rules.lookup(topThreat.pattern.id, topThreat.pattern.title);
+
+      if (autoDecision === "allow") {
+        return {
+          allowed: true,
+          alert: null,
+          autoDecision,
+          autoPatternId: topThreat.pattern.id,
+          source: "rule",
+        };
+      }
+
+      if (autoDecision === "deny") {
+        return {
+          allowed: false,
+          alert: null,
+          autoDecision,
+          autoPatternId: topThreat.pattern.id,
+          source: "rule",
+        };
+      }
+
+      const alert = this.buildAlert(criticalThreats);
+      return { allowed: false, alert, autoDecision: null, autoPatternId: null, source: "pattern" };
     }
 
-    // 3. Check for an existing rule. We use the highest-severity threat as
-    //    the representative when querying the rule store.
-    const topThreat = threats.reduce((a, b) =>
-      SEVERITY_RANK[b.pattern.severity] > SEVERITY_RANK[a.pattern.severity] ? b : a,
-    );
+    // Non-critical pattern matches - may use LLM for confirmation
+    if (threats.length > 0) {
+      const topThreat = threats.reduce((a, b) =>
+        SEVERITY_RANK[b.pattern.severity] > SEVERITY_RANK[a.pattern.severity] ? b : a,
+      );
 
-    const autoDecision: RuleDecision | null = this.rules.lookup(
-      topThreat.pattern.id,
-      topThreat.pattern.title,
-    );
+      const autoDecision = this.rules.lookup(topThreat.pattern.id, topThreat.pattern.title);
 
-    // 4. Rule says allow
-    if (autoDecision === "allow") {
-      return { allowed: true, alert: null, autoDecision, autoPatternId: topThreat.pattern.id };
+      if (autoDecision === "allow") {
+        return {
+          allowed: true,
+          alert: null,
+          autoDecision,
+          autoPatternId: topThreat.pattern.id,
+          source: "rule",
+        };
+      }
+
+      if (autoDecision === "deny") {
+        return {
+          allowed: false,
+          alert: null,
+          autoDecision,
+          autoPatternId: topThreat.pattern.id,
+          source: "rule",
+        };
+      }
+
+      // LAYER 2: LLM confirmation of pattern match (reduce false positives)
+      if (this.llmJudge) {
+        try {
+          const llmResult = await this.llmJudge.confirmPatternMatch(input, threats);
+
+          if (llmResult) {
+            // LLM says it's NOT a threat (false positive)
+            if (!llmResult.isThreat && llmResult.confidence >= 75) {
+              return {
+                allowed: true,
+                alert: null,
+                autoDecision: null,
+                autoPatternId: null,
+                llmResult,
+                source: "hybrid-llm-override",
+              };
+            }
+
+            // LLM confirms threat - build alert with LLM reasoning
+            const alert = this.buildAlertFromLLM(llmResult, input);
+            return {
+              allowed: false,
+              alert,
+              autoDecision: null,
+              autoPatternId: null,
+              llmResult,
+              source: "hybrid",
+            };
+          }
+        } catch (err) {
+          // LLM failed - fall back to pattern match
+          // Continue to build alert from patterns
+        }
+      }
+
+      // No LLM or LLM failed - use pattern match
+      const alert = this.buildAlert(threats);
+      return { allowed: false, alert, autoDecision: null, autoPatternId: null, source: "pattern" };
     }
 
-    // 5. Rule says deny
-    if (autoDecision === "deny") {
-      return { allowed: false, alert: null, autoDecision, autoPatternId: topThreat.pattern.id };
+    // LAYER 3: No pattern match - use LLM for novel threat detection
+    if (this.llmJudge && this.llmJudge.shouldUseLLM(input)) {
+      try {
+        const llmResult = await this.llmJudge.evaluate(input);
+
+        if (llmResult && llmResult.isThreat && llmResult.confidence >= 75) {
+          const alert = this.buildAlertFromLLM(llmResult, input);
+          return {
+            allowed: false,
+            alert,
+            autoDecision: null,
+            autoPatternId: null,
+            llmResult,
+            source: "llm",
+          };
+        }
+      } catch (err) {
+        // LLM failed - allow (no threats detected by patterns)
+        return {
+          allowed: true,
+          alert: null,
+          autoDecision: null,
+          autoPatternId: null,
+          source: "clean",
+        };
+      }
     }
 
-    // 6. No rule — build an alert so the UI can prompt the user.
-    const alert = this.buildAlert(threats);
-    return { allowed: false, alert, autoDecision: null, autoPatternId: null };
+    // No threats detected
+    return { allowed: true, alert: null, autoDecision: null, autoPatternId: null, source: "clean" };
   }
 
   /**
@@ -232,10 +338,14 @@ export class SecurityCoachEngine {
         // Decrement per-session counter on timeout
         if (entry?.sessionKey) {
           const count = this.pendingPerSession.get(entry.sessionKey) ?? 0;
-          if (count > 0) this.pendingPerSession.set(entry.sessionKey, count - 1);
+          if (count > 0) {
+            this.pendingPerSession.set(entry.sessionKey, count - 1);
+          }
         } else {
           const count = this.pendingPerSession.get("__global__") ?? 0;
-          if (count > 0) this.pendingPerSession.set("__global__", count - 1);
+          if (count > 0) {
+            this.pendingPerSession.set("__global__", count - 1);
+          }
         }
         resolve(null);
       }, timeoutMs);
@@ -255,11 +365,7 @@ export class SecurityCoachEngine {
    * Returns `true` if the alert was pending and has been resolved, `false`
    * if no such pending alert exists.
    */
-  resolve(
-    alertId: string,
-    decision: CoachDecision,
-    opts?: { sessionKey?: string },
-  ): boolean {
+  resolve(alertId: string, decision: CoachDecision, opts?: { sessionKey?: string }): boolean {
     const entry = this.pendingAlerts.get(alertId);
     if (!entry) {
       return false;
@@ -282,10 +388,14 @@ export class SecurityCoachEngine {
     // Decrement per-session counter
     if (entry.sessionKey) {
       const count = this.pendingPerSession.get(entry.sessionKey) ?? 0;
-      if (count > 0) this.pendingPerSession.set(entry.sessionKey, count - 1);
+      if (count > 0) {
+        this.pendingPerSession.set(entry.sessionKey, count - 1);
+      }
     } else {
       const count = this.pendingPerSession.get("__global__") ?? 0;
-      if (count > 0) this.pendingPerSession.set("__global__", count - 1);
+      if (count > 0) {
+        this.pendingPerSession.set("__global__", count - 1);
+      }
     }
 
     entry.resolve(decision);
@@ -323,26 +433,36 @@ export class SecurityCoachEngine {
       const raw = fs.readFileSync(this.configPath, "utf-8");
       const saved = JSON.parse(raw) as Partial<CoachConfig>;
       // Only merge known fields
-      if (typeof saved.enabled === "boolean") this.config.enabled = saved.enabled;
+      if (typeof saved.enabled === "boolean") {
+        this.config.enabled = saved.enabled;
+      }
       if (typeof saved.minSeverity === "string") {
         const validSeverities: string[] = ["critical", "high", "medium", "low", "info"];
         if (validSeverities.includes(saved.minSeverity)) {
-          this.config.minSeverity = saved.minSeverity as ThreatSeverity;
+          this.config.minSeverity = saved.minSeverity;
         }
       }
-      if (typeof saved.blockOnCritical === "boolean") this.config.blockOnCritical = saved.blockOnCritical;
+      if (typeof saved.blockOnCritical === "boolean") {
+        this.config.blockOnCritical = saved.blockOnCritical;
+      }
       if (typeof saved.decisionTimeoutMs === "number") {
         if (saved.decisionTimeoutMs >= 5000 && saved.decisionTimeoutMs <= 300000) {
           this.config.decisionTimeoutMs = saved.decisionTimeoutMs;
         } else {
-          console.warn(`[security-coach] WARNING: ignoring invalid decisionTimeoutMs from config: ${saved.decisionTimeoutMs}`);
+          console.warn(
+            `[security-coach] WARNING: ignoring invalid decisionTimeoutMs from config: ${saved.decisionTimeoutMs}`,
+          );
         }
       }
-      if (typeof saved.educationalMode === "boolean") this.config.educationalMode = saved.educationalMode;
+      if (typeof saved.educationalMode === "boolean") {
+        this.config.educationalMode = saved.educationalMode;
+      }
 
       // Warn about security-critical config overrides from disk
       if (saved.enabled === false) {
-        console.warn("[security-coach] WARNING: loaded config has security coach DISABLED — verify this is intentional");
+        console.warn(
+          "[security-coach] WARNING: loaded config has security coach DISABLED — verify this is intentional",
+        );
       }
       if (saved.blockOnCritical === false) {
         console.warn("[security-coach] WARNING: loaded config has blockOnCritical DISABLED");
@@ -363,7 +483,11 @@ export class SecurityCoachEngine {
       assertNotSymlink(this.configPath);
       await fsp.rename(tmp, this.configPath);
     } catch (err) {
-      try { await fsp.unlink(tmp); } catch { /* ignore */ }
+      try {
+        await fsp.unlink(tmp);
+      } catch {
+        /* ignore */
+      }
       throw err;
     }
   }
@@ -371,7 +495,9 @@ export class SecurityCoachEngine {
   /** Update configuration at runtime. */
   updateConfig(partial: Partial<CoachConfig>): void {
     this.config = { ...this.config, ...partial };
-    void this.saveConfig().catch(() => { /* best-effort */ });
+    void this.saveConfig().catch(() => {
+      /* best-effort */
+    });
   }
 
   // -----------------------------------------------------------------------
@@ -401,9 +527,7 @@ export class SecurityCoachEngine {
     // Use the highest severity across all matches to drive alert level.
     const topSeverity = threats.reduce<ThreatSeverity>(
       (worst, t) =>
-        SEVERITY_RANK[t.pattern.severity] > SEVERITY_RANK[worst]
-          ? t.pattern.severity
-          : worst,
+        SEVERITY_RANK[t.pattern.severity] > SEVERITY_RANK[worst] ? t.pattern.severity : worst,
       "info",
     );
 
@@ -420,10 +544,7 @@ export class SecurityCoachEngine {
       coaching: t.pattern.coaching,
     }));
 
-    const { title, message, recommendation } = generateCoachMessage(
-      threatData,
-      level,
-    );
+    const { title, message, recommendation } = generateCoachMessage(threatData, level);
 
     return {
       id: randomUUID(),
@@ -460,5 +581,74 @@ export class SecurityCoachEngine {
       expiresAt: now + timeoutMs,
       requiresDecision: true,
     };
+  }
+
+  /**
+   * Build an alert from LLM judge result.
+   */
+  private buildAlertFromLLM(llmResult: LLMJudgeResult, input: ThreatMatchInput): CoachAlert {
+    const now = Date.now();
+    const timeoutMs = this.config.decisionTimeoutMs;
+
+    // Map LLM severity to alert level
+    const level = this.llmSeverityToAlertLevel(llmResult.severity);
+
+    return {
+      id: randomUUID(),
+      threats: [], // No pattern threats, LLM detected it
+      level,
+      title: `LLM Judge: ${this.getLLMTitle(llmResult, input)}`,
+      coachMessage: llmResult.reasoning,
+      recommendation: llmResult.safeAlternative
+        ? `${llmResult.recommendation}\n\nSafe alternative: ${llmResult.safeAlternative}`
+        : llmResult.recommendation,
+      timeoutMs,
+      createdAt: now,
+      expiresAt: now + timeoutMs,
+      requiresDecision: level === "block" || level === "warn",
+    };
+  }
+
+  private llmSeverityToAlertLevel(severity: string): CoachAlertLevel {
+    switch (severity) {
+      case "critical":
+        return this.config.blockOnCritical ? "block" : "warn";
+      case "high":
+        return "warn";
+      case "medium":
+        return "warn";
+      case "low":
+      case "info":
+        return "inform";
+      default:
+        return "inform";
+    }
+  }
+
+  private getLLMTitle(llmResult: LLMJudgeResult, input: ThreatMatchInput): string {
+    // Generate a short title from the category
+    const categoryTitles: Record<string, string> = {
+      "data-exfiltration": "Data Exfiltration Detected",
+      "privilege-escalation": "Privilege Escalation Attempt",
+      "destructive-operation": "Destructive Operation",
+      "credential-exposure": "Credential Exposure Risk",
+      "code-injection": "Code Injection Detected",
+      "network-suspicious": "Suspicious Network Activity",
+      "cloud-misconfiguration": "Cloud Misconfiguration",
+      "container-escape": "Container Escape Attempt",
+      "supply-chain-attack": "Supply Chain Risk",
+      "social-engineering": "Social Engineering Detected",
+      "persistence-mechanism": "Persistence Mechanism",
+      reconnaissance: "Reconnaissance Activity",
+    };
+
+    return categoryTitles[llmResult.category] || "Security Threat Detected";
+  }
+
+  /**
+   * Get LLM judge instance (for setting client).
+   */
+  getLLMJudge(): LLMJudge | null {
+    return this.llmJudge;
   }
 }

@@ -52,6 +52,7 @@ import {
 import { getRemoteSkillEligibility } from "../infra/skills-remote.js";
 import { normalizeAgentId } from "../routing/session-key.js";
 import { defaultRuntime, type RuntimeEnv } from "../runtime.js";
+import { initEmbeddedSecurityCoach } from "../security-coach/embedded-init.js";
 import { applyVerboseOverride } from "../sessions/level-overrides.js";
 import { applyModelOverrideToSessionEntry } from "../sessions/model-overrides.js";
 import { resolveSendPolicy } from "../sessions/send-policy.js";
@@ -73,6 +74,10 @@ export async function agentCommand(
   if (!opts.to && !opts.sessionId && !opts.sessionKey && !opts.agentId) {
     throw new Error("Pass --to <E.164>, --session-id, or --agent to choose a session");
   }
+
+  // CRITICAL: Initialize Security Coach for embedded mode BEFORE any agent execution
+  // This ensures threat detection is active even when running without Gateway
+  await initEmbeddedSecurityCoach();
 
   const cfg = loadConfig();
   const agentIdOverrideRaw = opts.agentId?.trim();

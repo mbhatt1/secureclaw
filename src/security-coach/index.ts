@@ -5,6 +5,19 @@
 export { SecurityCoachEngine, DEFAULT_COACH_CONFIG } from "./engine.js";
 export type { CoachAlert, CoachAlertLevel, CoachConfig, CoachDecision } from "./engine.js";
 
+// LLM Judge (Hybrid threat detection)
+export { LLMJudge } from "./llm-judge.js";
+export type { LLMClient } from "./llm-judge.js";
+export type {
+  LLMJudgeConfig,
+  LLMJudgeResult,
+  LLMJudgeSeverity,
+  LLMJudgeCategory,
+} from "./llm-judge-schemas.js";
+export { DEFAULT_LLM_JUDGE_CONFIG, LLM_JUDGE_RESPONSE_SCHEMA } from "./llm-judge-schemas.js";
+export { AnthropicLLMClient } from "./llm-client-anthropic.js";
+export { autoConfigureLLMJudge } from "./llm-auto-setup.js";
+
 export { SecurityCoachRuleStore } from "./rules.js";
 export type { SecurityCoachRule, RuleDecision, RulesFile } from "./rules.js";
 
@@ -36,7 +49,19 @@ export type {
 export { createSecurityCoachHooks, extractCommand, extractFilePath, extractUrl } from "./hooks.js";
 export type { SecurityCoachHooks, SecurityCoachBroadcastFn } from "./hooks.js";
 
-export { setGlobalSecurityCoachHooks, getGlobalSecurityCoachHooks } from "./global.js";
+export {
+  setGlobalSecurityCoachHooks,
+  getGlobalSecurityCoachHooks,
+  isSecurityCoachInitialized,
+} from "./global.js";
+
+// Embedded mode initialization (for --local and fallback scenarios)
+export {
+  initEmbeddedSecurityCoach,
+  getEmbeddedSecurityCoach,
+  isEmbeddedSecurityCoachInitialized,
+  resetEmbeddedSecurityCoach,
+} from "./embedded-init.js";
 
 export {
   generateCoachMessage,
@@ -74,8 +99,19 @@ export type { CoachMetricsSnapshot } from "./metrics.js";
 export { AlertHistoryStore } from "./history.js";
 export type { AlertHistoryEntry } from "./history.js";
 
-export { SiemDispatcher, createSiemEvent, createAlertSiemEvent, createDecisionSiemEvent } from "./siem/dispatcher.js";
-export type { SiemEvent, SiemDestination, SiemConfig, SiemAdapter, SiemDispatcherStats } from "./siem/dispatcher.js";
+export {
+  SiemDispatcher,
+  createSiemEvent,
+  createAlertSiemEvent,
+  createDecisionSiemEvent,
+} from "./siem/dispatcher.js";
+export type {
+  SiemEvent,
+  SiemDestination,
+  SiemConfig,
+  SiemAdapter,
+  SiemDispatcherStats,
+} from "./siem/dispatcher.js";
 
 export { createSplunkAdapter } from "./siem/splunk.js";
 export { createDatadogAdapter } from "./siem/datadog.js";

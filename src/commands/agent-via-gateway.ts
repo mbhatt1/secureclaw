@@ -179,13 +179,17 @@ export async function agentCliCommand(opts: AgentCliOpts, runtime: RuntimeEnv, d
     replyAccountId: opts.replyAccount,
   };
   if (opts.local === true) {
+    runtime.info?.("🛡️  Running in embedded mode with Security Coach protection");
     return await agentCommand(localOpts, runtime, deps);
   }
 
   try {
     return await agentViaGatewayCommand(opts, runtime);
   } catch (err) {
-    runtime.error?.(`Gateway agent failed; falling back to embedded: ${String(err)}`);
+    runtime.error?.(
+      `Gateway unavailable; falling back to embedded mode (Security Coach will still be active)`,
+    );
+    runtime.debug?.(`Gateway error: ${String(err)}`);
     return await agentCommand(localOpts, runtime, deps);
   }
 }
