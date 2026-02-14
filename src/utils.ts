@@ -318,12 +318,10 @@ export function resolveConfigDir(
   }
   const newDir = path.join(resolveRequiredHomeDir(env, homedir), ".secureclaw");
   try {
-    const hasNew = fs.existsSync(newDir);
-    if (hasNew) {
-      return newDir;
-    }
+    fs.accessSync(newDir, fs.constants.F_OK);
+    return newDir;
   } catch {
-    // best-effort
+    // Directory doesn't exist yet
   }
   return newDir;
 }

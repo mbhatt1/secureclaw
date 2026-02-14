@@ -39,9 +39,6 @@ function isExtensionFile(filePath: string): boolean {
 
 function readPackageManifest(dir: string): PackageManifest | null {
   const manifestPath = path.join(dir, "package.json");
-  if (!fs.existsSync(manifestPath)) {
-    return null;
-  }
   try {
     const raw = fs.readFileSync(manifestPath, "utf-8");
     return JSON.parse(raw) as PackageManifest;
@@ -120,9 +117,6 @@ function discoverInDirectory(params: {
   diagnostics: PluginDiagnostic[];
   seen: Set<string>;
 }) {
-  if (!fs.existsSync(params.dir)) {
-    return;
-  }
   let entries: fs.Dirent[] = [];
   try {
     entries = fs.readdirSync(params.dir, { withFileTypes: true });
@@ -183,7 +177,14 @@ function discoverInDirectory(params: {
     const indexCandidates = ["index.ts", "index.js", "index.mjs", "index.cjs"];
     const indexFile = indexCandidates
       .map((candidate) => path.join(fullPath, candidate))
-      .find((candidate) => fs.existsSync(candidate));
+      .find((candidate) => {
+        try {
+          fs.accessSync(candidate, fs.constants.R_OK);
+          return true;
+        } catch {
+          return false;
+        }
+      });
     if (indexFile && isExtensionFile(indexFile)) {
       addCandidate({
         candidates: params.candidates,
@@ -209,7 +210,10 @@ function discoverFromPath(params: {
   seen: Set<string>;
 }) {
   const resolved = resolveUserPath(params.rawPath);
-  if (!fs.existsSync(resolved)) {
+  let stat: fs.Stats;
+  try {
+    stat = fs.statSync(resolved);
+  } catch {
     params.diagnostics.push({
       level: "error",
       message: `plugin path not found: ${resolved}`,
@@ -217,8 +221,6 @@ function discoverFromPath(params: {
     });
     return;
   }
-
-  const stat = fs.statSync(resolved);
   if (stat.isFile()) {
     if (!isExtensionFile(resolved)) {
       params.diagnostics.push({
@@ -269,7 +271,14 @@ function discoverFromPath(params: {
     const indexCandidates = ["index.ts", "index.js", "index.mjs", "index.cjs"];
     const indexFile = indexCandidates
       .map((candidate) => path.join(resolved, candidate))
-      .find((candidate) => fs.existsSync(candidate));
+      .find((candidate) => {
+        try {
+          fs.accessSync(candidate, fs.constants.R_OK);
+          return true;
+        } catch {
+          return false;
+        }
+      });
 
     if (indexFile && isExtensionFile(indexFile)) {
       addCandidate({

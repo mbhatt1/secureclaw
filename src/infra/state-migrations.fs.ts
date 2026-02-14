@@ -16,7 +16,8 @@ export function safeReadDir(dir: string): fs.Dirent[] {
 
 export function existsDir(dir: string): boolean {
   try {
-    return fs.existsSync(dir) && fs.statSync(dir).isDirectory();
+    const stat = fs.statSync(dir);
+    return stat.isDirectory();
   } catch {
     return false;
   }
@@ -28,7 +29,8 @@ export function ensureDir(dir: string) {
 
 export function fileExists(p: string): boolean {
   try {
-    return fs.existsSync(p) && fs.statSync(p).isFile();
+    const stat = fs.statSync(p);
+    return stat.isFile();
   } catch {
     return false;
   }

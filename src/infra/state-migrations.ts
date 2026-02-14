@@ -442,7 +442,8 @@ export async function autoMigrateLegacyStateDir(params: {
   const legacyDirs = resolveLegacyStateDirs(homedir);
   let legacyDir = legacyDirs.find((dir) => {
     try {
-      return fs.existsSync(dir);
+      fs.accessSync(dir, fs.constants.F_OK);
+      return true;
     } catch {
       return false;
     }
@@ -803,8 +804,11 @@ export async function migrateLegacyAgentDir(
   for (const entry of entries) {
     const from = path.join(detected.agentDir.legacyDir, entry.name);
     const to = path.join(detected.agentDir.targetDir, entry.name);
-    if (fs.existsSync(to)) {
-      continue;
+    try {
+      fs.accessSync(to, fs.constants.F_OK);
+      continue; // Target already exists, skip
+    } catch {
+      // Target doesn't exist, proceed with rename
     }
     try {
       fs.renameSync(from, to);

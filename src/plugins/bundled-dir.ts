@@ -12,8 +12,11 @@ export function resolveBundledPluginsDir(): string | undefined {
   try {
     const execDir = path.dirname(process.execPath);
     const sibling = path.join(execDir, "extensions");
-    if (fs.existsSync(sibling)) {
+    try {
+      fs.accessSync(sibling, fs.constants.R_OK);
       return sibling;
+    } catch {
+      // Sibling not accessible
     }
   } catch {
     // ignore
@@ -24,8 +27,11 @@ export function resolveBundledPluginsDir(): string | undefined {
     let cursor = path.dirname(fileURLToPath(import.meta.url));
     for (let i = 0; i < 6; i += 1) {
       const candidate = path.join(cursor, "extensions");
-      if (fs.existsSync(candidate)) {
+      try {
+        fs.accessSync(candidate, fs.constants.R_OK);
         return candidate;
+      } catch {
+        // Candidate not accessible, continue search
       }
       const parent = path.dirname(cursor);
       if (parent === cursor) {

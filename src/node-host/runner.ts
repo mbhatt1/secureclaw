@@ -491,8 +491,11 @@ function resolveExecutable(bin: string, env?: Record<string, string>) {
   for (const dir of resolveEnvPath(env)) {
     for (const ext of extensions) {
       const candidate = path.join(dir, bin + ext);
-      if (fs.existsSync(candidate)) {
+      try {
+        fs.accessSync(candidate, fs.constants.X_OK);
         return candidate;
+      } catch {
+        // Candidate not executable
       }
     }
   }

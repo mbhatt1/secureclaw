@@ -33,9 +33,6 @@ function filterHookEntries(
 
 function readHookPackageManifest(dir: string): HookPackageManifest | null {
   const manifestPath = path.join(dir, "package.json");
-  if (!fs.existsSync(manifestPath)) {
-    return null;
-  }
   try {
     const raw = fs.readFileSync(manifestPath, "utf-8");
     return JSON.parse(raw) as HookPackageManifest;
@@ -59,12 +56,15 @@ function loadHookFromDir(params: {
   nameHint?: string;
 }): Hook | null {
   const hookMdPath = path.join(params.hookDir, "HOOK.md");
-  if (!fs.existsSync(hookMdPath)) {
+  let content: string;
+  try {
+    content = fs.readFileSync(hookMdPath, "utf-8");
+  } catch {
+    // HOOK.md not found or not readable
     return null;
   }
 
   try {
-    const content = fs.readFileSync(hookMdPath, "utf-8");
     const frontmatter = parseFrontmatter(content);
 
     const name = frontmatter.name || params.nameHint || path.basename(params.hookDir);
@@ -74,9 +74,12 @@ function loadHookFromDir(params: {
     let handlerPath: string | undefined;
     for (const candidate of handlerCandidates) {
       const candidatePath = path.join(params.hookDir, candidate);
-      if (fs.existsSync(candidatePath)) {
+      try {
+        fs.accessSync(candidatePath, fs.constants.R_OK);
         handlerPath = candidatePath;
         break;
+      } catch {
+        // Candidate not accessible, try next
       }
     }
 
@@ -106,17 +109,26 @@ function loadHookFromDir(params: {
 function loadHooksFromDir(params: { dir: string; source: HookSource; pluginId?: string }): Hook[] {
   const { dir, source, pluginId } = params;
 
-  if (!fs.existsSync(dir)) {
+  let stat: fs.Stats;
+  try {
+    stat = fs.statSync(dir);
+  } catch {
+    // Directory doesn't exist or not accessible
     return [];
   }
 
-  const stat = fs.statSync(dir);
   if (!stat.isDirectory()) {
     return [];
   }
 
   const hooks: Hook[] = [];
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    // Failed to read directory
+    return [];
+  }
 
   for (const entry of entries) {
     if (!entry.isDirectory()) {

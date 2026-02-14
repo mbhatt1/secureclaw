@@ -487,7 +487,15 @@ export function registerPluginsCli(program: Command) {
       const resolved = resolveUserPath(raw);
       const cfg = loadConfig();
 
-      if (fs.existsSync(resolved)) {
+      let pathExists = false;
+      try {
+        fs.accessSync(resolved, fs.constants.R_OK);
+        pathExists = true;
+      } catch {
+        // Path doesn't exist, will try npm install
+      }
+
+      if (pathExists) {
         if (opts.link) {
           const existing = cfg.plugins?.load?.paths ?? [];
           const merged = Array.from(new Set([...existing, resolved]));

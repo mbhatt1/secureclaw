@@ -58,7 +58,9 @@ export function resolvePluginSkillDirs(params: {
         continue;
       }
       const candidate = path.resolve(record.rootDir, trimmed);
-      if (!fs.existsSync(candidate)) {
+      try {
+        fs.accessSync(candidate, fs.constants.R_OK);
+      } catch {
         log.warn(`plugin skill path not found (${record.id}): ${candidate}`);
         continue;
       }

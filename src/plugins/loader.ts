@@ -58,8 +58,11 @@ const resolvePluginSdkAlias = (): string | null => {
           : [distCandidate]
         : [srcCandidate, distCandidate];
       for (const candidate of orderedCandidates) {
-        if (fs.existsSync(candidate)) {
+        try {
+          fs.accessSync(candidate, fs.constants.R_OK);
           return candidate;
+        } catch {
+          // Candidate not accessible, try next
         }
       }
       const parent = path.dirname(cursor);

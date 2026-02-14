@@ -12,8 +12,11 @@ function resolvePowerShellPath(): string {
       "v1.0",
       "powershell.exe",
     );
-    if (fs.existsSync(candidate)) {
+    try {
+      fs.accessSync(candidate, fs.constants.X_OK);
       return candidate;
+    } catch {
+      // Candidate not executable
     }
   }
   return "powershell.exe";

@@ -534,9 +534,23 @@ export function registerHooksCli(program: Command): void {
       const resolved = resolveUserPath(raw);
       const cfg = loadConfig();
 
-      if (fs.existsSync(resolved)) {
+      let pathExists = false;
+      try {
+        fs.accessSync(resolved, fs.constants.R_OK);
+        pathExists = true;
+      } catch {
+        // Path doesn't exist, will try npm install
+      }
+
+      if (pathExists) {
         if (opts.link) {
-          const stat = fs.statSync(resolved);
+          let stat: fs.Stats;
+          try {
+            stat = fs.statSync(resolved);
+          } catch (err) {
+            defaultRuntime.error(`Failed to stat path: ${String(err)}`);
+            process.exit(1);
+          }
           if (!stat.isDirectory()) {
             defaultRuntime.error("Linked hook paths must be directories.");
             process.exit(1);

@@ -105,7 +105,8 @@ function resolveLegacyAuthDir(): string {
 
 function legacyAuthExists(authDir: string): boolean {
   try {
-    return fs.existsSync(path.join(authDir, "creds.json"));
+    fs.accessSync(path.join(authDir, "creds.json"), fs.constants.R_OK);
+    return true;
   } catch {
     return false;
   }

@@ -383,11 +383,10 @@ async function resolveBrewBinDir(timeoutMs: number, brewExe?: string): Promise<s
 
   for (const candidate of ["/opt/homebrew/bin", "/usr/local/bin"]) {
     try {
-      if (fs.existsSync(candidate)) {
-        return candidate;
-      }
+      fs.accessSync(candidate, fs.constants.R_OK);
+      return candidate;
     } catch {
-      // ignore
+      // Candidate not accessible
     }
   }
   return undefined;

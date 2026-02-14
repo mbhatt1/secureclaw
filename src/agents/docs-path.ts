@@ -11,8 +11,11 @@ export async function resolveSecureClawDocsPath(params: {
   const workspaceDir = params.workspaceDir?.trim();
   if (workspaceDir) {
     const workspaceDocs = path.join(workspaceDir, "docs");
-    if (fs.existsSync(workspaceDocs)) {
+    try {
+      fs.accessSync(workspaceDocs, fs.constants.R_OK);
       return workspaceDocs;
+    } catch {
+      // Workspace docs not accessible
     }
   }
 
@@ -26,5 +29,10 @@ export async function resolveSecureClawDocsPath(params: {
   }
 
   const packageDocs = path.join(packageRoot, "docs");
-  return fs.existsSync(packageDocs) ? packageDocs : null;
+  try {
+    fs.accessSync(packageDocs, fs.constants.R_OK);
+    return packageDocs;
+  } catch {
+    return null;
+  }
 }

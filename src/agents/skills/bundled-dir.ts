@@ -15,8 +15,11 @@ function looksLikeSkillsDir(dir: string): boolean {
         return true;
       }
       if (entry.isDirectory()) {
-        if (fs.existsSync(path.join(fullPath, "SKILL.md"))) {
+        try {
+          fs.accessSync(path.join(fullPath, "SKILL.md"), fs.constants.R_OK);
           return true;
+        } catch {
+          // SKILL.md not accessible
         }
       }
     }
@@ -46,8 +49,11 @@ export function resolveBundledSkillsDir(
     const execPath = opts.execPath ?? process.execPath;
     const execDir = path.dirname(execPath);
     const sibling = path.join(execDir, "skills");
-    if (fs.existsSync(sibling)) {
+    try {
+      fs.accessSync(sibling, fs.constants.R_OK);
       return sibling;
+    } catch {
+      // Sibling not accessible
     }
   } catch {
     // ignore

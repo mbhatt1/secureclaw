@@ -34,8 +34,11 @@ function normalizeStringList(value: unknown): string[] {
 export function resolvePluginManifestPath(rootDir: string): string {
   for (const filename of PLUGIN_MANIFEST_FILENAMES) {
     const candidate = path.join(rootDir, filename);
-    if (fs.existsSync(candidate)) {
+    try {
+      fs.accessSync(candidate, fs.constants.R_OK);
       return candidate;
+    } catch {
+      // Candidate not accessible, try next
     }
   }
   return path.join(rootDir, PLUGIN_MANIFEST_FILENAME);
@@ -43,16 +46,17 @@ export function resolvePluginManifestPath(rootDir: string): string {
 
 export function loadPluginManifest(rootDir: string): PluginManifestLoadResult {
   const manifestPath = resolvePluginManifestPath(rootDir);
-  if (!fs.existsSync(manifestPath)) {
-    return { ok: false, error: `plugin manifest not found: ${manifestPath}`, manifestPath };
-  }
   let raw: unknown;
   try {
     raw = JSON.parse(fs.readFileSync(manifestPath, "utf-8")) as unknown;
   } catch (err) {
+    const error =
+      err instanceof Error && err.message.includes("ENOENT")
+        ? `plugin manifest not found: ${manifestPath}`
+        : `failed to parse plugin manifest: ${String(err)}`;
     return {
       ok: false,
-      error: `failed to parse plugin manifest: ${String(err)}`,
+      error,
       manifestPath,
     };
   }

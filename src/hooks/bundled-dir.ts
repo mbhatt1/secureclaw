@@ -12,8 +12,11 @@ export function resolveBundledHooksDir(): string | undefined {
   try {
     const execDir = path.dirname(process.execPath);
     const sibling = path.join(execDir, "hooks", "bundled");
-    if (fs.existsSync(sibling)) {
+    try {
+      fs.accessSync(sibling, fs.constants.R_OK);
       return sibling;
+    } catch {
+      // Sibling not accessible
     }
   } catch {
     // ignore
@@ -24,8 +27,11 @@ export function resolveBundledHooksDir(): string | undefined {
   try {
     const moduleDir = path.dirname(fileURLToPath(import.meta.url));
     const distBundled = path.join(moduleDir, "bundled");
-    if (fs.existsSync(distBundled)) {
+    try {
+      fs.accessSync(distBundled, fs.constants.R_OK);
       return distBundled;
+    } catch {
+      // distBundled not accessible
     }
   } catch {
     // ignore
@@ -37,8 +43,11 @@ export function resolveBundledHooksDir(): string | undefined {
     const moduleDir = path.dirname(fileURLToPath(import.meta.url));
     const root = path.resolve(moduleDir, "..", "..");
     const srcBundled = path.join(root, "src", "hooks", "bundled");
-    if (fs.existsSync(srcBundled)) {
+    try {
+      fs.accessSync(srcBundled, fs.constants.R_OK);
       return srcBundled;
+    } catch {
+      // srcBundled not accessible
     }
   } catch {
     // ignore

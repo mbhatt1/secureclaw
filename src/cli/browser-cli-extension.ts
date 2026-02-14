@@ -36,7 +36,12 @@ function installedExtensionRootDir() {
 }
 
 function hasManifest(dir: string) {
-  return fs.existsSync(path.join(dir, "manifest.json"));
+  try {
+    fs.accessSync(path.join(dir, "manifest.json"), fs.constants.R_OK);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function installChromeExtension(opts?: {
@@ -52,11 +57,15 @@ export async function installChromeExtension(opts?: {
   const dest = path.join(stateDir, "browser", "chrome-extension");
   fs.mkdirSync(path.dirname(dest), { recursive: true });
 
-  if (fs.existsSync(dest)) {
+  try {
+    fs.accessSync(dest, fs.constants.F_OK);
+    // Destination exists, remove it
     await movePathToTrash(dest).catch(() => {
       const backup = `${dest}.old-${Date.now()}`;
       fs.renameSync(dest, backup);
     });
+  } catch {
+    // Destination doesn't exist, proceed with install
   }
 
   await fs.promises.cp(src, dest, { recursive: true });
