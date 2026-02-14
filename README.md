@@ -496,6 +496,7 @@ Use these when you’re past the onboarding flow and want the deeper reference.
 - [Background process](https://docs.secureclaw.app/gateway/background-process)
 - [Browser troubleshooting (Linux)](https://docs.secureclaw.app/tools/browser-linux-troubleshooting)
 - [Logging](https://docs.secureclaw.app/logging)
+- [Production Audit Reports](docs/audits/AUDIT-DASHBOARD.md) - Comprehensive security, performance, and quality audits
 
 ## Deep dives
 
