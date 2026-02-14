@@ -272,22 +272,22 @@ export const UnifiedConfigSchema = z.object({
 // =============================================================================
 
 export type UnifiedConfig = z.infer<typeof UnifiedConfigSchema>;
-export type GatewayConfig = z.infer<typeof GatewayConfigSchema>;
-export type AgentConfig = z.infer<typeof AgentConfigSchema>;
-export type SandboxConfig = z.infer<typeof SandboxConfigSchema>;
-export type BrowserConfig = z.infer<typeof BrowserConfigSchema>;
-export type MediaConfig = z.infer<typeof MediaConfigSchema>;
-export type ImageConfig = z.infer<typeof ImageConfigSchema>;
-export type VideoConfig = z.infer<typeof VideoConfigSchema>;
-export type TtsConfig = z.infer<typeof TtsConfigSchema>;
-export type LoggingConfig = z.infer<typeof LoggingConfigSchema>;
-export type MemoryConfig = z.infer<typeof MemoryConfigSchema>;
-export type SessionConfig = z.infer<typeof SessionConfigSchema>;
-export type SecurityCoachConfig = z.infer<typeof SecurityCoachConfigSchema>;
-export type WebsocketConfig = z.infer<typeof WebsocketConfigSchema>;
-export type MemoryMonitorConfig = z.infer<typeof MemoryMonitorConfigSchema>;
-export type MessageBufferConfig = z.infer<typeof MessageBufferConfigSchema>;
-export type SqliteConfig = z.infer<typeof SqliteConfigSchema>;
+export type UnifiedGatewayConfig = z.infer<typeof GatewayConfigSchema>;
+export type UnifiedAgentConfig = z.infer<typeof AgentConfigSchema>;
+export type UnifiedSandboxConfig = z.infer<typeof SandboxConfigSchema>;
+export type UnifiedBrowserConfig = z.infer<typeof BrowserConfigSchema>;
+export type UnifiedMediaConfig = z.infer<typeof MediaConfigSchema>;
+export type UnifiedImageConfig = z.infer<typeof ImageConfigSchema>;
+export type UnifiedVideoConfig = z.infer<typeof VideoConfigSchema>;
+export type UnifiedTtsConfig = z.infer<typeof TtsConfigSchema>;
+export type UnifiedLoggingConfig = z.infer<typeof LoggingConfigSchema>;
+export type UnifiedMemoryConfig = z.infer<typeof MemoryConfigSchema>;
+export type UnifiedSessionConfig = z.infer<typeof SessionConfigSchema>;
+export type UnifiedSecurityCoachConfig = z.infer<typeof SecurityCoachConfigSchema>;
+export type UnifiedWebsocketConfig = z.infer<typeof WebsocketConfigSchema>;
+export type UnifiedMemoryMonitorConfig = z.infer<typeof MemoryMonitorConfigSchema>;
+export type UnifiedMessageBufferConfig = z.infer<typeof MessageBufferConfigSchema>;
+export type UnifiedSqliteConfig = z.infer<typeof SqliteConfigSchema>;
 
 // =============================================================================
 // VALIDATION HELPERS
