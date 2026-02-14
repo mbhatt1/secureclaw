@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import type { NodesRpcOpts } from "./types.js";
 import { randomIdempotencyKey } from "../../gateway/call.js";
 import { defaultRuntime } from "../../runtime.js";
+import { parseNonNegativeIntSafe, parseTimeoutMsSafe } from "../../utils/safe-parse.js";
 import { runNodesCommand } from "./cli-utils.js";
 import { callGatewayCli, nodesCallOpts, resolveNodeId } from "./rpc.js";
 
@@ -23,7 +24,9 @@ export function registerNodesLocationCommands(nodes: Command) {
       .action(async (opts: NodesRpcOpts) => {
         await runNodesCommand("location get", async () => {
           const nodeId = await resolveNodeId(opts, String(opts.node ?? ""));
-          const maxAgeMs = opts.maxAge ? Number.parseInt(String(opts.maxAge), 10) : undefined;
+          const maxAgeMs = opts.maxAge
+            ? parseNonNegativeIntSafe(String(opts.maxAge), 3600000)
+            : undefined;
           const desiredAccuracyRaw =
             typeof opts.accuracy === "string" ? opts.accuracy.trim().toLowerCase() : undefined;
           const desiredAccuracy =
@@ -33,10 +36,10 @@ export function registerNodesLocationCommands(nodes: Command) {
               ? desiredAccuracyRaw
               : undefined;
           const timeoutMs = opts.locationTimeout
-            ? Number.parseInt(String(opts.locationTimeout), 10)
+            ? parseTimeoutMsSafe(String(opts.locationTimeout), 1, 60000)
             : undefined;
           const invokeTimeoutMs = opts.invokeTimeout
-            ? Number.parseInt(String(opts.invokeTimeout), 10)
+            ? parseTimeoutMsSafe(String(opts.invokeTimeout), 1, 300000)
             : undefined;
 
           const invokeParams: Record<string, unknown> = {

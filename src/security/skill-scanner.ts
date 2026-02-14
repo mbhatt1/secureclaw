@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { hasErrnoCode } from "../infra/errors.js";
+import { parsePortSafe } from "../utils/safe-parse.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -172,9 +173,13 @@ export function scanSource(source: string, filePath: string): SkillScanFinding[]
 
       // Special handling for suspicious-network: check port
       if (rule.ruleId === "suspicious-network") {
-        const port = parseInt(match[1], 10);
-        if (STANDARD_PORTS.has(port)) {
-          continue;
+        try {
+          const port = parsePortSafe(match[1]);
+          if (STANDARD_PORTS.has(port)) {
+            continue;
+          }
+        } catch {
+          // Invalid port, flag it as suspicious
         }
       }
 

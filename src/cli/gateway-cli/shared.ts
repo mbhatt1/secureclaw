@@ -5,6 +5,7 @@ import {
 } from "../../daemon/constants.js";
 import { resolveGatewayService } from "../../daemon/service.js";
 import { defaultRuntime } from "../../runtime.js";
+import { tryParseInt } from "../../utils/safe-parse.js";
 import { formatCliCommand } from "../command-format.js";
 
 export function parsePort(raw: unknown): number | null {
@@ -20,8 +21,8 @@ export function parsePort(raw: unknown): number | null {
   if (value === null) {
     return null;
   }
-  const parsed = Number.parseInt(value, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
+  const parsed = tryParseInt(value, 10);
+  if (parsed === undefined || parsed <= 0 || parsed > 65535) {
     return null;
   }
   return parsed;

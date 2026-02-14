@@ -93,7 +93,8 @@ async function loadLLMClient(log?: Logger): Promise<LLMClient | null> {
     }
   } catch (err) {
     // File doesn't exist or is invalid
-    const code = (err as any).code;
+    const code =
+      err && typeof err === "object" && "code" in err ? (err as { code: string }).code : undefined;
     if (code !== "ENOENT") {
       log?.warn?.(`Failed to load API keys from ${apiKeysPath}: ${String(err)}`);
     }

@@ -194,8 +194,7 @@ export async function handleInlineActions(params: {
           command: rawArgs,
           commandName: skillInvocation.command.name,
           skillName: skillInvocation.command.skillName,
-          // oxlint-disable-next-line typescript/no-explicit-any
-        } as any);
+        } as Record<string, unknown>);
         const text = extractTextFromToolResult(result) ?? "✅ Done.";
         typing.cleanup();
         return { kind: "reply", reply: { text } };

@@ -12,6 +12,7 @@ import { ensureControlUiAssetsBuilt } from "../infra/control-ui-assets.js";
 import { defaultRuntime } from "../runtime.js";
 import { note } from "../terminal/note.js";
 import { resolveUserPath } from "../utils.js";
+import { parsePortSafe } from "../utils/safe-parse.js";
 import { createClackPrompter } from "../wizard/clack-prompter.js";
 import { WizardCancelledError } from "../wizard/prompts.js";
 import { removeChannelConfigWizard } from "./configure.channels.js";
@@ -357,11 +358,18 @@ export async function runConfigureWizard(
             await text({
               message: "Gateway port for service install",
               initialValue: String(gatewayPort),
-              validate: (value) => (Number.isFinite(Number(value)) ? undefined : "Invalid port"),
+              validate: (value) => {
+                try {
+                  parsePortSafe(String(value));
+                  return undefined;
+                } catch {
+                  return "Invalid port (must be 1-65535)";
+                }
+              },
             }),
             runtime,
           );
-          gatewayPort = Number.parseInt(String(portInput), 10);
+          gatewayPort = parsePortSafe(String(portInput));
         }
 
         await maybeInstallDaemon({ runtime, port: gatewayPort, gatewayToken });
@@ -481,11 +489,18 @@ export async function runConfigureWizard(
               await text({
                 message: "Gateway port for service install",
                 initialValue: String(gatewayPort),
-                validate: (value) => (Number.isFinite(Number(value)) ? undefined : "Invalid port"),
+                validate: (value) => {
+                  try {
+                    parsePortSafe(String(value));
+                    return undefined;
+                  } catch {
+                    return "Invalid port (must be 1-65535)";
+                  }
+                },
               }),
               runtime,
             );
-            gatewayPort = Number.parseInt(String(portInput), 10);
+            gatewayPort = parsePortSafe(String(portInput));
           }
           await maybeInstallDaemon({
             runtime,

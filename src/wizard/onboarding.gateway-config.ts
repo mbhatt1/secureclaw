@@ -9,6 +9,7 @@ import type {
 import type { WizardPrompter } from "./prompts.js";
 import { normalizeGatewayTokenInput, randomToken } from "../commands/onboard-helpers.js";
 import { findTailscaleBinary } from "../infra/tailscale.js";
+import { parsePortSafe, parseIntSafe } from "../utils/safe-parse.js";
 
 // These commands are "high risk" (privacy writes/recording) and should be
 // explicitly armed by the user when they want to use them.
@@ -48,15 +49,21 @@ export async function configureGatewayForOnboarding(
   const port =
     flow === "quickstart"
       ? quickstartGateway.port
-      : Number.parseInt(
+      : parsePortSafe(
           String(
             await prompter.text({
               message: "Gateway port",
               initialValue: String(localPort),
-              validate: (value) => (Number.isFinite(Number(value)) ? undefined : "Invalid port"),
+              validate: (value) => {
+                try {
+                  parsePortSafe(value);
+                  return undefined;
+                } catch {
+                  return "Invalid port (must be 1-65535)";
+                }
+              },
             }),
           ),
-          10,
         );
 
   let bind: GatewayWizardSettings["bind"] =
@@ -92,8 +99,12 @@ export async function configureGatewayForOnboarding(
           }
           if (
             parts.every((part) => {
-              const n = parseInt(part, 10);
-              return !Number.isNaN(n) && n >= 0 && n <= 255 && part === String(n);
+              try {
+                const n = parseIntSafe(part, 10, 0, 255);
+                return part === String(n);
+              } catch {
+                return false;
+              }
             })
           ) {
             return undefined;

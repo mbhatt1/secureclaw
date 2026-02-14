@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import type { SecureClawConfig } from "./types.js";
 import { expandHomePrefix, resolveRequiredHomeDir } from "../infra/home-dir.js";
+import { tryParseInt } from "../utils/safe-parse.js";
 // NOTE: Path constants now sourced from unified config.
 import { PATH_DEFAULTS } from "./defaults.unified.js";
 
@@ -72,13 +73,19 @@ export function resolveStateDir(
   }
   const newDir = newStateDir(effectiveHomedir);
   const legacyDirs = legacyStateDirs(effectiveHomedir);
-  const hasNew = fs.existsSync(newDir);
-  if (hasNew) {
+
+  // Check if new directory exists
+  try {
+    fs.accessSync(newDir, fs.constants.F_OK);
     return newDir;
+  } catch {
+    // New directory doesn't exist, check legacy
   }
+
   const existingLegacy = legacyDirs.find((dir) => {
     try {
-      return fs.existsSync(dir);
+      fs.accessSync(dir, fs.constants.F_OK);
+      return true;
     } catch {
       return false;
     }
@@ -141,7 +148,8 @@ export function resolveConfigPathCandidate(
   const candidates = resolveDefaultConfigCandidates(env, homedir);
   const existing = candidates.find((candidate) => {
     try {
-      return fs.existsSync(candidate);
+      fs.accessSync(candidate, fs.constants.R_OK);
+      return true;
     } catch {
       return false;
     }
@@ -171,7 +179,8 @@ export function resolveConfigPath(
   ];
   const existing = candidates.find((candidate) => {
     try {
-      return fs.existsSync(candidate);
+      fs.accessSync(candidate, fs.constants.R_OK);
+      return true;
     } catch {
       return false;
     }
@@ -278,8 +287,8 @@ export function resolveGatewayPort(
     env.OPENCLAW_GATEWAY_PORT?.trim() ||
     env.CLAWDBOT_GATEWAY_PORT?.trim();
   if (envRaw) {
-    const parsed = Number.parseInt(envRaw, 10);
-    if (Number.isFinite(parsed) && parsed > 0) {
+    const parsed = tryParseInt(envRaw, 10);
+    if (parsed !== undefined && parsed > 0 && parsed <= 65535) {
       return parsed;
     }
   }

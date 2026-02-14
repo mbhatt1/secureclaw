@@ -4,6 +4,11 @@ import { randomIdempotencyKey } from "../../gateway/call.js";
 import { defaultRuntime } from "../../runtime.js";
 import { shortenHomePath } from "../../utils.js";
 import {
+  parseNonNegativeIntSafe,
+  parseFloatSafe,
+  parseTimeoutMsSafe,
+} from "../../utils/safe-parse.js";
+import {
   parseScreenRecordPayload,
   screenRecordTempPath,
   writeScreenRecordToFile,
@@ -32,10 +37,10 @@ export function registerNodesScreenCommands(nodes: Command) {
         await runNodesCommand("screen record", async () => {
           const nodeId = await resolveNodeId(opts, String(opts.node ?? ""));
           const durationMs = parseDurationMs(opts.duration ?? "");
-          const screenIndex = Number.parseInt(String(opts.screen ?? "0"), 10);
-          const fps = Number.parseFloat(String(opts.fps ?? "10"));
+          const screenIndex = parseNonNegativeIntSafe(String(opts.screen ?? "0"), 10);
+          const fps = parseFloatSafe(String(opts.fps ?? "10"), 0.1, 120);
           const timeoutMs = opts.invokeTimeout
-            ? Number.parseInt(String(opts.invokeTimeout), 10)
+            ? parseTimeoutMsSafe(String(opts.invokeTimeout), 1, 300000)
             : undefined;
 
           const invokeParams: Record<string, unknown> = {

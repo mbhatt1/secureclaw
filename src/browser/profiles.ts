@@ -12,6 +12,8 @@
  *   18792-18799 - Reserved for future one-off services (canvas at 18793)
  */
 
+import { tryParseInt } from "../utils/safe-parse.js";
+
 export const CDP_PORT_RANGE_START = 18800;
 export const CDP_PORT_RANGE_END = 18899;
 
@@ -62,13 +64,14 @@ export function getUsedPorts(
     }
     try {
       const parsed = new URL(rawUrl);
+      const portParsed = parsed.port ? tryParseInt(parsed.port, 10) : undefined;
       const port =
-        parsed.port && Number.parseInt(parsed.port, 10) > 0
-          ? Number.parseInt(parsed.port, 10)
+        portParsed !== undefined && portParsed > 0
+          ? portParsed
           : parsed.protocol === "https:"
             ? 443
             : 80;
-      if (!Number.isNaN(port) && port > 0 && port <= 65535) {
+      if (port > 0 && port <= 65535) {
         used.add(port);
       }
     } catch {

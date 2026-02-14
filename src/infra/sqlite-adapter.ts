@@ -198,20 +198,28 @@ export class OptimizedSQLiteAdapter {
     const stmt = this.db.prepare(sql);
 
     return {
-      get: (...params: unknown[]) => {
+      get: (...params: unknown[]): T | undefined => {
         this.metrics.queries++;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return stmt.get(...(params as any[])) as T | undefined;
+        // The native sqlite prepare statement's get() expects any[] for params
+        return stmt.get(
+          ...(params as Array<string | number | bigint | boolean | null | Uint8Array>),
+        ) as T | undefined;
       },
-      all: (...params: unknown[]) => {
+      all: (...params: unknown[]): T[] => {
         this.metrics.queries++;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return stmt.all(...(params as any[])) as T[];
+        // The native sqlite prepare statement's all() expects any[] for params
+        return stmt.all(
+          ...(params as Array<string | number | bigint | boolean | null | Uint8Array>),
+        ) as T[];
       },
-      run: (...params: unknown[]) => {
+      run: (
+        ...params: unknown[]
+      ): { changes: number | bigint; lastInsertRowid: number | bigint } => {
         this.metrics.queries++;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return stmt.run(...(params as any[]));
+        // The native sqlite prepare statement's run() expects any[] for params
+        return stmt.run(
+          ...(params as Array<string | number | bigint | boolean | null | Uint8Array>),
+        );
       },
     };
   }
@@ -258,8 +266,8 @@ export class OptimizedSQLiteAdapter {
 
       for (const item of items) {
         const params = paramExtractor(item);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        stmt.run(...(params as any[]));
+        // The native sqlite prepare statement's run() expects any[] for params
+        stmt.run(...(params as Array<string | number | bigint | boolean | null | Uint8Array>));
       }
     });
   }

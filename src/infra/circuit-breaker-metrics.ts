@@ -53,7 +53,6 @@ export type CircuitBreakerMetricsSnapshot = {
 // Constants
 // ---------------------------------------------------------------------------
 
-const ONE_MINUTE_MS = 60 * 1000;
 const FAILURE_RATE_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
 // ---------------------------------------------------------------------------

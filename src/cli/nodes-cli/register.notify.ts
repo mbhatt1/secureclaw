@@ -2,6 +2,7 @@ import type { Command } from "commander";
 import type { NodesRpcOpts } from "./types.js";
 import { randomIdempotencyKey } from "../../gateway/call.js";
 import { defaultRuntime } from "../../runtime.js";
+import { parseTimeoutMsSafe } from "../../utils/safe-parse.js";
 import { getNodesTheme, runNodesCommand } from "./cli-utils.js";
 import { callGatewayCli, nodesCallOpts, resolveNodeId } from "./rpc.js";
 
@@ -26,7 +27,7 @@ export function registerNodesNotifyCommand(nodes: Command) {
             throw new Error("missing --title or --body");
           }
           const invokeTimeout = opts.invokeTimeout
-            ? Number.parseInt(String(opts.invokeTimeout), 10)
+            ? parseTimeoutMsSafe(String(opts.invokeTimeout), 1, 300000)
             : undefined;
           const invokeParams: Record<string, unknown> = {
             nodeId,

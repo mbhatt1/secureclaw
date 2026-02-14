@@ -57,9 +57,13 @@ parentPort.on("message", async (msg: { taskId: number; task: WorkerTask }) => {
       }
 
       default: {
+        const unknownType =
+          task && typeof task === "object" && "type" in task
+            ? String((task as { type: unknown }).type)
+            : "unknown";
         result = {
           type: "error",
-          error: `Unknown task type: ${(task as any).type}`,
+          error: `Unknown task type: ${unknownType}`,
         };
       }
     }

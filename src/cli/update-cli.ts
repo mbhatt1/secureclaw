@@ -57,6 +57,7 @@ import { stylePromptHint, stylePromptMessage } from "../terminal/prompt-style.js
 import { renderTable } from "../terminal/table.js";
 import { theme } from "../terminal/theme.js";
 import { pathExists } from "../utils.js";
+import { parsePositiveIntSafe } from "../utils/safe-parse.js";
 import { replaceCliName, resolveCliName } from "./cli-name.js";
 import { formatCliCommand } from "./command-format.js";
 import { installCompletion } from "./completion-cli.js";
@@ -437,7 +438,7 @@ function formatGitStatusLine(params: {
 }
 
 export async function updateStatusCommand(opts: UpdateStatusOptions): Promise<void> {
-  const timeoutMs = opts.timeout ? Number.parseInt(opts.timeout, 10) * 1000 : undefined;
+  const timeoutMs = opts.timeout ? parsePositiveIntSafe(opts.timeout, 3600) * 1000 : undefined;
   if (timeoutMs !== undefined && (Number.isNaN(timeoutMs) || timeoutMs <= 0)) {
     defaultRuntime.error("--timeout must be a positive integer (seconds)");
     defaultRuntime.exit(1);
@@ -674,7 +675,7 @@ function printResult(result: UpdateRunResult, opts: PrintResultOptions) {
 
 export async function updateCommand(opts: UpdateCommandOptions): Promise<void> {
   suppressDeprecations();
-  const timeoutMs = opts.timeout ? Number.parseInt(opts.timeout, 10) * 1000 : undefined;
+  const timeoutMs = opts.timeout ? parsePositiveIntSafe(opts.timeout, 3600) * 1000 : undefined;
   const shouldRestart = opts.restart !== false;
 
   if (timeoutMs !== undefined && (Number.isNaN(timeoutMs) || timeoutMs <= 0)) {
@@ -1111,7 +1112,7 @@ export async function updateWizardCommand(opts: UpdateWizardOptions = {}): Promi
     return;
   }
 
-  const timeoutMs = opts.timeout ? Number.parseInt(opts.timeout, 10) * 1000 : undefined;
+  const timeoutMs = opts.timeout ? parsePositiveIntSafe(opts.timeout, 3600) * 1000 : undefined;
   if (timeoutMs !== undefined && (Number.isNaN(timeoutMs) || timeoutMs <= 0)) {
     defaultRuntime.error("--timeout must be a positive integer (seconds)");
     defaultRuntime.exit(1);

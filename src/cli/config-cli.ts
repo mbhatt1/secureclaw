@@ -6,6 +6,7 @@ import { defaultRuntime } from "../runtime.js";
 import { formatDocsLink } from "../terminal/links.js";
 import { theme } from "../terminal/theme.js";
 import { shortenHomePath } from "../utils.js";
+import { tryParseInt } from "../utils/safe-parse.js";
 import { formatCliCommand } from "./command-format.js";
 
 type PathSegment = string;
@@ -93,8 +94,8 @@ function getAtPath(root: unknown, path: PathSegment[]): { found: boolean; value?
       if (!isIndexSegment(segment)) {
         return { found: false };
       }
-      const index = Number.parseInt(segment, 10);
-      if (!Number.isFinite(index) || index < 0 || index >= current.length) {
+      const index = tryParseInt(segment, 10);
+      if (index === undefined || index < 0 || index >= current.length) {
         return { found: false };
       }
       current = current[index];
@@ -119,7 +120,10 @@ function setAtPath(root: Record<string, unknown>, path: PathSegment[], value: un
       if (!isIndexSegment(segment)) {
         throw new Error(`Expected numeric index for array segment "${segment}"`);
       }
-      const index = Number.parseInt(segment, 10);
+      const index = tryParseInt(segment, 10);
+      if (index === undefined) {
+        throw new Error(`Invalid array index: "${segment}"`);
+      }
       const existing = current[index];
       if (!existing || typeof existing !== "object") {
         current[index] = nextIsIndex ? [] : {};
@@ -143,7 +147,10 @@ function setAtPath(root: Record<string, unknown>, path: PathSegment[], value: un
     if (!isIndexSegment(last)) {
       throw new Error(`Expected numeric index for array segment "${last}"`);
     }
-    const index = Number.parseInt(last, 10);
+    const index = tryParseInt(last, 10);
+    if (index === undefined) {
+      throw new Error(`Invalid array index: "${last}"`);
+    }
     current[index] = value;
     return;
   }
@@ -164,8 +171,8 @@ function unsetAtPath(root: Record<string, unknown>, path: PathSegment[]): boolea
       if (!isIndexSegment(segment)) {
         return false;
       }
-      const index = Number.parseInt(segment, 10);
-      if (!Number.isFinite(index) || index < 0 || index >= current.length) {
+      const index = tryParseInt(segment, 10);
+      if (index === undefined || index < 0 || index >= current.length) {
         return false;
       }
       current = current[index];
@@ -183,8 +190,8 @@ function unsetAtPath(root: Record<string, unknown>, path: PathSegment[]): boolea
     if (!isIndexSegment(last)) {
       return false;
     }
-    const index = Number.parseInt(last, 10);
-    if (!Number.isFinite(index) || index < 0 || index >= current.length) {
+    const index = tryParseInt(last, 10);
+    if (index === undefined || index < 0 || index >= current.length) {
       return false;
     }
     current.splice(index, 1);

@@ -185,8 +185,8 @@ export function toClientToolDefinitions(
       name: func.name,
       label: func.name,
       description: func.description ?? "",
-      // oxlint-disable-next-line typescript/no-explicit-any
-      parameters: func.parameters as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      parameters: (func.parameters as any) ?? {},
       execute: async (...args: ToolExecuteArgs): Promise<AgentToolResult<unknown>> => {
         const { toolCallId, params } = splitToolExecuteArgs(args);
         const outcome = await runBeforeToolCallHook({

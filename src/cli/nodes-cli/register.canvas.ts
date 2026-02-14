@@ -4,6 +4,11 @@ import type { NodesRpcOpts } from "./types.js";
 import { randomIdempotencyKey } from "../../gateway/call.js";
 import { defaultRuntime } from "../../runtime.js";
 import { shortenHomePath } from "../../utils.js";
+import {
+  parsePositiveIntSafe,
+  parseFloatSafe,
+  parseTimeoutMsSafe,
+} from "../../utils/safe-parse.js";
 import { writeBase64ToFile } from "../nodes-camera.js";
 import { canvasSnapshotTempPath, parseCanvasSnapshotPayload } from "../nodes-canvas.js";
 import { parseTimeoutMs } from "../nodes-run.js";
@@ -52,10 +57,12 @@ export function registerNodesCanvasCommands(nodes: Command) {
             throw new Error(`invalid format: ${String(opts.format)} (expected png|jpg|jpeg)`);
           }
 
-          const maxWidth = opts.maxWidth ? Number.parseInt(String(opts.maxWidth), 10) : undefined;
-          const quality = opts.quality ? Number.parseFloat(String(opts.quality)) : undefined;
+          const maxWidth = opts.maxWidth
+            ? parsePositiveIntSafe(String(opts.maxWidth), 16384)
+            : undefined;
+          const quality = opts.quality ? parseFloatSafe(String(opts.quality), 0, 100) : undefined;
           const timeoutMs = opts.invokeTimeout
-            ? Number.parseInt(String(opts.invokeTimeout), 10)
+            ? parseTimeoutMsSafe(String(opts.invokeTimeout), 1, 300000)
             : undefined;
 
           const invokeParams: Record<string, unknown> = {
@@ -106,10 +113,10 @@ export function registerNodesCanvasCommands(nodes: Command) {
       .action(async (opts: NodesRpcOpts) => {
         await runNodesCommand("canvas present", async () => {
           const placement = {
-            x: opts.x ? Number.parseFloat(opts.x) : undefined,
-            y: opts.y ? Number.parseFloat(opts.y) : undefined,
-            width: opts.width ? Number.parseFloat(opts.width) : undefined,
-            height: opts.height ? Number.parseFloat(opts.height) : undefined,
+            x: opts.x ? parseFloatSafe(opts.x, 0, 16384) : undefined,
+            y: opts.y ? parseFloatSafe(opts.y, 0, 16384) : undefined,
+            width: opts.width ? parseFloatSafe(opts.width, 0, 16384) : undefined,
+            height: opts.height ? parseFloatSafe(opts.height, 0, 16384) : undefined,
           };
           const params: Record<string, unknown> = {};
           if (opts.target) {

@@ -14,6 +14,7 @@ import {
 } from "../../infra/exec-approvals.js";
 import { buildNodeShellCommand } from "../../infra/node-shell.js";
 import { defaultRuntime } from "../../runtime.js";
+import { parseTimeoutMsSafe } from "../../utils/safe-parse.js";
 import { parseEnvPairs, parseTimeoutMs } from "../nodes-run.js";
 import { getNodesTheme, runNodesCommand } from "./cli-utils.js";
 import { parseNodeList } from "./format.js";
@@ -153,7 +154,7 @@ export function registerNodesInvokeCommands(nodes: Command) {
           }
           const params = JSON.parse(String(opts.params ?? "{}")) as unknown;
           const timeoutMs = opts.invokeTimeout
-            ? Number.parseInt(String(opts.invokeTimeout), 10)
+            ? parseTimeoutMsSafe(String(opts.invokeTimeout), 1, 300000)
             : undefined;
 
           const invokeParams: Record<string, unknown> = {

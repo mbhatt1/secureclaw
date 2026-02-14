@@ -231,15 +231,13 @@ export async function handleToolsInvokeHttpRequest(
 
   const coreToolNames = new Set(
     allTools
-      // oxlint-disable-next-line typescript/no-explicit-any
-      .filter((tool) => !getPluginToolMeta(tool as any))
+      .filter((tool) => !getPluginToolMeta(tool))
       .map((tool) => normalizeToolName(tool.name))
       .filter(Boolean),
   );
   const pluginGroups = buildPluginToolGroups({
     tools: allTools,
-    // oxlint-disable-next-line typescript/no-explicit-any
-    toolMeta: (tool) => getPluginToolMeta(tool as any),
+    toolMeta: (tool) => getPluginToolMeta(tool),
   });
   const resolvePolicy = (policy: typeof profilePolicy, label: string) => {
     const resolved = stripPluginOnlyAllowlist(policy, pluginGroups, coreToolNames);
@@ -324,7 +322,7 @@ export async function handleToolsInvokeHttpRequest(
         });
         return true;
       }
-    } catch (err) {
+    } catch {
       // Fail closed — block tool on coach error
       sendJson(res, 503, { ok: false, error: "Security coach unavailable — tool blocked" });
       return true;
@@ -332,14 +330,17 @@ export async function handleToolsInvokeHttpRequest(
   }
 
   try {
+    type ToolWithExecute = {
+      parameters?: unknown;
+      execute?: (id: string, args: Record<string, unknown>) => Promise<unknown>;
+    };
+    const toolWithExecute = tool as ToolWithExecute;
     const toolArgs = mergeActionIntoArgsIfSupported({
-      // oxlint-disable-next-line typescript/no-explicit-any
-      toolSchema: (tool as any).parameters,
+      toolSchema: toolWithExecute.parameters,
       action,
       args,
     });
-    // oxlint-disable-next-line typescript/no-explicit-any
-    const result = await (tool as any).execute?.(`http-${Date.now()}`, toolArgs);
+    const result = await toolWithExecute.execute?.(`http-${Date.now()}`, toolArgs);
     sendJson(res, 200, { ok: true, result });
   } catch (err) {
     sendJson(res, 400, {

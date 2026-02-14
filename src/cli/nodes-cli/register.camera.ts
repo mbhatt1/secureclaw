@@ -5,6 +5,12 @@ import { defaultRuntime } from "../../runtime.js";
 import { renderTable } from "../../terminal/table.js";
 import { shortenHomePath } from "../../utils.js";
 import {
+  parsePositiveIntSafe,
+  parseFloatSafe,
+  parseTimeoutMsSafe,
+  parseNonNegativeIntSafe,
+} from "../../utils/safe-parse.js";
+import {
   type CameraFacing,
   cameraTempPath,
   parseCameraClipPayload,
@@ -113,12 +119,16 @@ export function registerNodesCameraCommands(nodes: Command) {
                     );
                   })();
 
-          const maxWidth = opts.maxWidth ? Number.parseInt(String(opts.maxWidth), 10) : undefined;
-          const quality = opts.quality ? Number.parseFloat(String(opts.quality)) : undefined;
-          const delayMs = opts.delayMs ? Number.parseInt(String(opts.delayMs), 10) : undefined;
+          const maxWidth = opts.maxWidth
+            ? parsePositiveIntSafe(String(opts.maxWidth), 16384)
+            : undefined;
+          const quality = opts.quality ? parseFloatSafe(String(opts.quality), 0, 100) : undefined;
+          const delayMs = opts.delayMs
+            ? parseNonNegativeIntSafe(String(opts.delayMs), 30000)
+            : undefined;
           const deviceId = opts.deviceId ? String(opts.deviceId).trim() : undefined;
           const timeoutMs = opts.invokeTimeout
-            ? Number.parseInt(String(opts.invokeTimeout), 10)
+            ? parseTimeoutMsSafe(String(opts.invokeTimeout), 1, 300000)
             : undefined;
 
           const results: Array<{
@@ -195,7 +205,7 @@ export function registerNodesCameraCommands(nodes: Command) {
           const durationMs = parseDurationMs(String(opts.duration ?? "3000"));
           const includeAudio = opts.audio !== false;
           const timeoutMs = opts.invokeTimeout
-            ? Number.parseInt(String(opts.invokeTimeout), 10)
+            ? parseTimeoutMsSafe(String(opts.invokeTimeout), 1, 300000)
             : undefined;
           const deviceId = opts.deviceId ? String(opts.deviceId).trim() : undefined;
 

@@ -1,6 +1,7 @@
 import type { Command } from "commander";
 import { danger } from "../../globals.js";
 import { defaultRuntime } from "../../runtime.js";
+import { parsePositiveIntSafe } from "../../utils/safe-parse.js";
 import { addGatewayClientOptions, callGatewayFromCli } from "../gateway-rpc.js";
 import { warnIfCronSchedulerDisabled } from "./shared.js";
 
@@ -72,8 +73,7 @@ export function registerCronSimpleCommands(cron: Command) {
       .option("--limit <n>", "Max entries (default 50)", "50")
       .action(async (opts) => {
         try {
-          const limitRaw = Number.parseInt(String(opts.limit ?? "50"), 10);
-          const limit = Number.isFinite(limitRaw) && limitRaw > 0 ? limitRaw : 50;
+          const limit = parsePositiveIntSafe(String(opts.limit ?? "50"), 1000);
           const id = String(opts.id);
           const res = await callGatewayFromCli("cron.runs", opts, {
             id,

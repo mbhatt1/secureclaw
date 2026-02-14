@@ -14,7 +14,7 @@
  */
 
 import { config as dotenvConfig } from "dotenv";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { UnifiedConfig } from "./schema.unified.js";
 import { tryParseInt } from "../utils/safe-parse.js";
@@ -54,10 +54,12 @@ function parseEnvVars(env: NodeJS.ProcessEnv): Partial<UnifiedConfig> {
   const config: Partial<UnifiedConfig> = {};
 
   // Helper to set nested value
-  const set = (section: keyof UnifiedConfig, key: string, value: unknown) => {
+  const set = (section: keyof UnifiedConfig, key: string, value: unknown): void => {
     if (!config[section]) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       config[section] = {} as any;
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (config[section] as any)[key] = value;
   };
 

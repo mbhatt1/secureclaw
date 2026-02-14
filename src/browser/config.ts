@@ -6,6 +6,7 @@ import {
   DEFAULT_BROWSER_CONTROL_PORT,
 } from "../config/port-defaults.js";
 import { isLoopbackHost } from "../gateway/net.js";
+import { tryParseInt } from "../utils/safe-parse.js";
 import {
   DEFAULT_SECURECLAW_BROWSER_COLOR,
   DEFAULT_SECURECLAW_BROWSER_ENABLED,
@@ -67,14 +68,15 @@ export function parseHttpUrl(raw: string, label: string) {
     throw new Error(`${label} must be http(s), got: ${parsed.protocol.replace(":", "")}`);
   }
 
+  const portParsed = parsed.port ? tryParseInt(parsed.port, 10) : undefined;
   const port =
-    parsed.port && Number.parseInt(parsed.port, 10) > 0
-      ? Number.parseInt(parsed.port, 10)
+    portParsed !== undefined && portParsed > 0
+      ? portParsed
       : parsed.protocol === "https:"
         ? 443
         : 80;
 
-  if (Number.isNaN(port) || port <= 0 || port > 65535) {
+  if (port <= 0 || port > 65535) {
     throw new Error(`${label} has invalid port: ${parsed.port}`);
   }
 

@@ -1,6 +1,7 @@
 import net from "node:net";
 import os from "node:os";
 import { pickPrimaryTailnetIPv4, pickPrimaryTailnetIPv6 } from "../infra/tailnet.js";
+import { tryParseInt } from "../utils/safe-parse.js";
 
 /**
  * Pick the primary non-internal IPv4 address (LAN IP).
@@ -250,8 +251,8 @@ export function isValidIPv4(host: string): boolean {
     return false;
   }
   return parts.every((part) => {
-    const n = parseInt(part, 10);
-    return !Number.isNaN(n) && n >= 0 && n <= 255 && part === String(n);
+    const n = tryParseInt(part, 10);
+    return n !== undefined && n >= 0 && n <= 255 && part === String(n);
   });
 }
 
