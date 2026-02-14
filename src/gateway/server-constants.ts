@@ -1,7 +1,10 @@
-export const MAX_PAYLOAD_BYTES = 8 * 1024 * 1024; // cap incoming frame size (~8 MiB; fits ~5,000,000 decoded bytes as base64 + JSON overhead)
-export const MAX_BUFFERED_BYTES = 16 * 1024 * 1024; // per-connection send buffer limit (2x max payload)
+// NOTE: Now sourced from unified config. Import from config/defaults.unified.ts instead.
+import { GATEWAY_DEFAULTS } from "../config/defaults.unified.js";
 
-const DEFAULT_MAX_CHAT_HISTORY_MESSAGES_BYTES = 6 * 1024 * 1024; // keep history responses comfortably under client WS limits
+export const MAX_PAYLOAD_BYTES = GATEWAY_DEFAULTS.MAX_PAYLOAD_BYTES;
+export const MAX_BUFFERED_BYTES = GATEWAY_DEFAULTS.MAX_BUFFERED_BYTES;
+
+const DEFAULT_MAX_CHAT_HISTORY_MESSAGES_BYTES = GATEWAY_DEFAULTS.MAX_CHAT_HISTORY_MESSAGES_BYTES;
 let maxChatHistoryMessagesBytes = DEFAULT_MAX_CHAT_HISTORY_MESSAGES_BYTES;
 
 export const getMaxChatHistoryMessagesBytes = () => maxChatHistoryMessagesBytes;
@@ -18,7 +21,7 @@ export const __setMaxChatHistoryMessagesBytesForTest = (value?: number) => {
     maxChatHistoryMessagesBytes = value;
   }
 };
-export const DEFAULT_HANDSHAKE_TIMEOUT_MS = 10_000;
+export const DEFAULT_HANDSHAKE_TIMEOUT_MS = GATEWAY_DEFAULTS.HANDSHAKE_TIMEOUT_MS;
 export const getHandshakeTimeoutMs = () => {
   if (process.env.VITEST && process.env.SECURECLAW_TEST_HANDSHAKE_TIMEOUT_MS) {
     const parsed = Number(process.env.SECURECLAW_TEST_HANDSHAKE_TIMEOUT_MS);
@@ -28,7 +31,7 @@ export const getHandshakeTimeoutMs = () => {
   }
   return DEFAULT_HANDSHAKE_TIMEOUT_MS;
 };
-export const TICK_INTERVAL_MS = 30_000;
-export const HEALTH_REFRESH_INTERVAL_MS = 60_000;
-export const DEDUPE_TTL_MS = 5 * 60_000;
-export const DEDUPE_MAX = 1000;
+export const TICK_INTERVAL_MS = GATEWAY_DEFAULTS.TICK_INTERVAL_MS;
+export const HEALTH_REFRESH_INTERVAL_MS = GATEWAY_DEFAULTS.HEALTH_REFRESH_INTERVAL_MS;
+export const DEDUPE_TTL_MS = GATEWAY_DEFAULTS.DEDUPE_TTL_MS;
+export const DEDUPE_MAX = GATEWAY_DEFAULTS.DEDUPE_MAX;

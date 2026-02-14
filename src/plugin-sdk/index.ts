@@ -148,7 +148,7 @@ export {
   recordPendingHistoryEntryIfEnabled,
 } from "../auto-reply/reply/history.js";
 export type { HistoryEntry } from "../auto-reply/reply/history.js";
-export { mergeAllowlist, summarizeMapping } from "../channels/allowlists/resolve-utils.js";
+export { mergeAllowlist, summarizeMapping } from "../channels/allowlist-resolve-utils.js";
 export {
   resolveMentionGating,
   resolveMentionGatingWithBypass,

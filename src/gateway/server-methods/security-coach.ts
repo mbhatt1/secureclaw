@@ -214,11 +214,14 @@ export function createSecurityCoachHandlers(
         }
       }
 
-      context.broadcast(
-        SECURITY_COACH_EVENTS.ALERT_RESOLVED,
-        { id, decision, resolvedBy: resolvedBy ?? null, ts: Date.now() },
-        { dropIfSlow: true },
-      );
+      // OPTIMIZATION: Pre-construct payload to avoid object spread overhead
+      const resolvePayload = {
+        id,
+        decision,
+        resolvedBy: resolvedBy ?? null,
+        ts: Date.now(),
+      };
+      context.broadcast(SECURITY_COACH_EVENTS.ALERT_RESOLVED, resolvePayload, { dropIfSlow: true });
 
       respond(true, { ok: true }, undefined);
     },

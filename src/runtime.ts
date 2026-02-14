@@ -4,6 +4,8 @@ import { restoreTerminalState } from "./terminal/restore.js";
 export type RuntimeEnv = {
   log: typeof console.log;
   error: typeof console.error;
+  info?: typeof console.info;
+  debug?: typeof console.debug;
   exit: (code: number) => never;
 };
 

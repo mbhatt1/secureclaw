@@ -1,15 +1,18 @@
 // Default service labels (canonical + legacy compatibility)
-export const GATEWAY_LAUNCH_AGENT_LABEL = "ai.secureclaw.gateway";
-export const GATEWAY_SYSTEMD_SERVICE_NAME = "secureclaw-gateway";
-export const GATEWAY_WINDOWS_TASK_NAME = "SecureClaw Gateway";
-export const GATEWAY_SERVICE_MARKER = "secureclaw";
-export const GATEWAY_SERVICE_KIND = "gateway";
-export const NODE_LAUNCH_AGENT_LABEL = "ai.secureclaw.node";
-export const NODE_SYSTEMD_SERVICE_NAME = "secureclaw-node";
-export const NODE_WINDOWS_TASK_NAME = "SecureClaw Node";
-export const NODE_SERVICE_MARKER = "secureclaw";
-export const NODE_SERVICE_KIND = "node";
-export const NODE_WINDOWS_TASK_SCRIPT_NAME = "node.cmd";
+// NOTE: Now sourced from unified config. Import from config/defaults.unified.ts instead.
+import { DAEMON_DEFAULTS } from "../config/defaults.unified.js";
+
+export const GATEWAY_LAUNCH_AGENT_LABEL = DAEMON_DEFAULTS.GATEWAY_LAUNCH_AGENT_LABEL;
+export const GATEWAY_SYSTEMD_SERVICE_NAME = DAEMON_DEFAULTS.GATEWAY_SYSTEMD_SERVICE_NAME;
+export const GATEWAY_WINDOWS_TASK_NAME = DAEMON_DEFAULTS.GATEWAY_WINDOWS_TASK_NAME;
+export const GATEWAY_SERVICE_MARKER = DAEMON_DEFAULTS.GATEWAY_SERVICE_MARKER;
+export const GATEWAY_SERVICE_KIND = DAEMON_DEFAULTS.GATEWAY_SERVICE_KIND;
+export const NODE_LAUNCH_AGENT_LABEL = DAEMON_DEFAULTS.NODE_LAUNCH_AGENT_LABEL;
+export const NODE_SYSTEMD_SERVICE_NAME = DAEMON_DEFAULTS.NODE_SYSTEMD_SERVICE_NAME;
+export const NODE_WINDOWS_TASK_NAME = DAEMON_DEFAULTS.NODE_WINDOWS_TASK_NAME;
+export const NODE_SERVICE_MARKER = DAEMON_DEFAULTS.NODE_SERVICE_MARKER;
+export const NODE_SERVICE_KIND = DAEMON_DEFAULTS.NODE_SERVICE_KIND;
+export const NODE_WINDOWS_TASK_SCRIPT_NAME = DAEMON_DEFAULTS.NODE_WINDOWS_TASK_SCRIPT_NAME;
 export const LEGACY_GATEWAY_LAUNCH_AGENT_LABELS: string[] = [];
 export const LEGACY_GATEWAY_SYSTEMD_SERVICE_NAMES: string[] = [];
 export const LEGACY_GATEWAY_WINDOWS_TASK_NAMES: string[] = [];

@@ -51,7 +51,7 @@ const DEFAULT_OPTIMIZED_CONFIG: OptimizedEngineConfig = {
 
 export class OptimizedSecurityCoachEngine extends SecurityCoachEngine {
   private optimizedConfig: OptimizedEngineConfig;
-  private cache?: PatternMatchCache;
+  private optimizedCache?: PatternMatchCache;
   private workerPool?: ReturnType<typeof getWorkerPool>;
 
   constructor(
@@ -63,7 +63,7 @@ export class OptimizedSecurityCoachEngine extends SecurityCoachEngine {
 
     // Initialize cache
     if (this.optimizedConfig.useCache) {
-      this.cache = new PatternMatchCache(
+      this.optimizedCache = new PatternMatchCache(
         this.optimizedConfig.cacheSize,
         this.optimizedConfig.cacheTTL,
       );
@@ -80,8 +80,8 @@ export class OptimizedSecurityCoachEngine extends SecurityCoachEngine {
    */
   protected async matchThreatsInternal(input: ThreatMatchInput): Promise<ThreatMatch[]> {
     // LAYER 1: Check cache first
-    if (this.cache) {
-      const cached = this.cache.get(input);
+    if (this.optimizedCache) {
+      const cached = this.optimizedCache.get(input);
       if (cached) {
         return cached;
       }
@@ -104,8 +104,8 @@ export class OptimizedSecurityCoachEngine extends SecurityCoachEngine {
     }
 
     // LAYER 4: Cache result
-    if (this.cache) {
-      this.cache.set(input, matches);
+    if (this.optimizedCache) {
+      this.optimizedCache.set(input, matches);
     }
 
     return matches;
@@ -128,7 +128,7 @@ export class OptimizedSecurityCoachEngine extends SecurityCoachEngine {
    * Get cache statistics.
    */
   getCacheStats() {
-    return this.cache?.getStats() ?? null;
+    return this.optimizedCache?.getStats() ?? null;
   }
 
   /**
@@ -142,14 +142,14 @@ export class OptimizedSecurityCoachEngine extends SecurityCoachEngine {
    * Prune expired cache entries.
    */
   pruneCache(): number {
-    return this.cache?.prune() ?? 0;
+    return this.optimizedCache?.prune() ?? 0;
   }
 
   /**
    * Clear cache.
    */
   clearCache(): void {
-    this.cache?.clear();
+    this.optimizedCache?.clear();
   }
 
   /**

@@ -4,8 +4,8 @@ import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SecureClawConfig } from "../config/config.js";
 import type { CliBackendConfig } from "../config/types.js";
+import { cleanupSuspendedCliProcesses } from "./cli-runner-helpers.js";
 import { runCliAgent } from "./cli-runner.js";
-import { cleanupSuspendedCliProcesses } from "./cli-runner/helpers.js";
 
 const runCommandWithTimeoutMock = vi.fn();
 const runExecMock = vi.fn();

@@ -110,6 +110,7 @@ export function attachGatewayWsConnectionHandler(params: {
       }
     };
 
+    // OPTIMIZATION: Inline JSON.stringify to reduce function call overhead
     const send = (obj: unknown) => {
       try {
         socket.send(JSON.stringify(obj));

@@ -19,7 +19,7 @@ import {
   resolveProbeBudgetMs,
   resolveTargets,
   sanitizeSshTarget,
-} from "./gateway-status/helpers.js";
+} from "./gateway-status-helpers.js";
 
 export async function gatewayStatusCommand(
   opts: {

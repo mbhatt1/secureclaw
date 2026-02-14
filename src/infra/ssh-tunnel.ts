@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import net from "node:net";
-import { isErrno } from "./errors.js";
+import { isErrno, ValidationError, OperationError, TimeoutError, NetworkError } from "./errors.js";
 import { ensurePortAvailable } from "./ports.js";
 
 export type SshParsedTarget = {
@@ -66,7 +66,11 @@ async function pickEphemeralPort(): Promise<number> {
       const addr = server.address();
       server.close(() => {
         if (!addr || typeof addr === "string") {
-          reject(new Error("failed to allocate a local port"));
+          reject(
+            new OperationError("Failed to allocate a local port", {
+              operation: "pickEphemeralPort",
+            }),
+          );
           return;
         }
         resolve(addr.port);
@@ -97,7 +101,11 @@ async function waitForLocalListener(port: number, timeoutMs: number): Promise<vo
     }
     await new Promise((r) => setTimeout(r, 50));
   }
-  throw new Error(`ssh tunnel did not start listening on localhost:${port}`);
+  throw new TimeoutError("SSH tunnel did not start listening", {
+    operation: "startSshTunnel",
+    timeoutMs,
+    metadata: { port, host: "localhost" },
+  });
 }
 
 export async function startSshPortForward(opts: {
@@ -109,7 +117,10 @@ export async function startSshPortForward(opts: {
 }): Promise<SshTunnel> {
   const parsed = parseSshTarget(opts.target);
   if (!parsed) {
-    throw new Error(`invalid SSH target: ${opts.target}`);
+    throw new ValidationError("Invalid SSH target", {
+      field: "target",
+      value: opts.target,
+    });
   }
 
   let localPort = opts.localPortPreferred;
@@ -189,14 +200,28 @@ export async function startSshPortForward(opts: {
       waitForLocalListener(localPort, Math.max(250, opts.timeoutMs)),
       new Promise<void>((_, reject) => {
         child.once("exit", (code, signal) => {
-          reject(new Error(`ssh exited (${code ?? "null"}${signal ? `/${signal}` : ""})`));
+          reject(
+            new NetworkError("SSH process exited unexpectedly", {
+              metadata: {
+                exitCode: code,
+                signal,
+              },
+            }),
+          );
         });
       }),
     ]);
   } catch (err) {
     await stop();
-    const suffix = stderr.length > 0 ? `\n${stderr.join("\n")}` : "";
-    throw new Error(`${err instanceof Error ? err.message : String(err)}${suffix}`, { cause: err });
+    throw new NetworkError("Failed to establish SSH tunnel", {
+      metadata: {
+        target: opts.target,
+        localPort,
+        remotePort: opts.remotePort,
+        stderr: stderr.length > 0 ? stderr : undefined,
+      },
+      cause: err,
+    });
   }
 
   return {

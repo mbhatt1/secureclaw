@@ -49,11 +49,36 @@ export async function initEmbeddedSecurityCoach(
   setGlobalSecurityCoachHooks({
     onInboundChannelMessage: async (input) => {
       const result = await engine.evaluate(input);
-      return result;
+      // Map evaluate result to onInboundChannelMessage return type
+      if (!result.allowed) {
+        return {
+          cancel: true,
+          reason: result.alert?.title ?? "Security Coach: blocked by saved rule",
+        };
+      }
+      return undefined;
     },
     beforeToolCall: async (input) => {
       const result = await engine.evaluate(input);
-      return result;
+      // Map evaluate result to beforeToolCall return type
+      if (!result.allowed) {
+        return {
+          block: true,
+          blockReason: result.alert?.title ?? "Security Coach: blocked by saved rule",
+        };
+      }
+      return undefined;
+    },
+    afterToolCall: async () => {
+      // No-op for embedded mode
+    },
+    beforeMessageSending: async () => {
+      // No-op for embedded mode
+      return undefined;
+    },
+    onOutboundChannelMessage: async () => {
+      // No-op for embedded mode
+      return undefined;
     },
   });
 
@@ -61,7 +86,7 @@ export async function initEmbeddedSecurityCoach(
   embeddedEngineInstance = engine;
 
   log?.info?.("✅ Security Coach initialized successfully (embedded mode)");
-  log?.info?.(`   - Patterns: ${ruleStore.getRules().length} threat patterns loaded`);
+  log?.info?.(`   - Patterns: ${ruleStore.getAllRules().length} threat patterns loaded`);
 
   const llmJudge = engine.getLLMJudge();
   if (llmJudge) {

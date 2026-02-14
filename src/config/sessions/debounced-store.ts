@@ -6,6 +6,7 @@
  */
 
 import type { SessionEntry } from "./types.js";
+import { StateError } from "../../infra/errors.js";
 import { createSubsystemLogger } from "../../logging/subsystem.js";
 import { saveSessionStore } from "./store.js";
 
@@ -63,7 +64,10 @@ class DebouncedSessionStoreWriter {
     opts?: SaveSessionStoreOptions,
   ): Promise<void> {
     if (this.closed) {
-      throw new Error("DebouncedSessionStoreWriter is closed");
+      throw new StateError("Cannot write to closed DebouncedSessionStoreWriter", {
+        currentState: "closed",
+        expectedState: "open",
+      });
     }
 
     return new Promise<void>((resolve, reject) => {

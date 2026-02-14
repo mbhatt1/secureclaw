@@ -238,26 +238,18 @@ export function attachGatewayWsMessageHandler(params: {
     const text = rawDataToString(data);
     try {
       const parsed = JSON.parse(text);
-      const frameType =
-        parsed && typeof parsed === "object" && "type" in parsed
-          ? typeof (parsed as { type?: unknown }).type === "string"
-            ? String((parsed as { type?: unknown }).type)
-            : undefined
-          : undefined;
-      const frameMethod =
-        parsed && typeof parsed === "object" && "method" in parsed
-          ? typeof (parsed as { method?: unknown }).method === "string"
-            ? String((parsed as { method?: unknown }).method)
-            : undefined
-          : undefined;
-      const frameId =
-        parsed && typeof parsed === "object" && "id" in parsed
-          ? typeof (parsed as { id?: unknown }).id === "string"
-            ? String((parsed as { id?: unknown }).id)
-            : undefined
-          : undefined;
-      if (frameType || frameMethod || frameId) {
-        setLastFrameMeta({ type: frameType, method: frameMethod, id: frameId });
+      // OPTIMIZATION: Simplified type extraction (avoid multiple typeof checks)
+      const frameType = parsed?.type;
+      const frameMethod = parsed?.method;
+      const frameId = parsed?.id;
+      const isValidFrame = parsed && typeof parsed === "object";
+
+      if (isValidFrame && (frameType || frameMethod || frameId)) {
+        setLastFrameMeta({
+          type: typeof frameType === "string" ? frameType : undefined,
+          method: typeof frameMethod === "string" ? frameMethod : undefined,
+          id: typeof frameId === "string" ? frameId : undefined,
+        });
       }
 
       const client = getClient();

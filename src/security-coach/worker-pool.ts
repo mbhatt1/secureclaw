@@ -103,7 +103,7 @@ export class SecurityCoachWorkerPool {
       });
 
       // Handle worker errors
-      worker.on("error", (err) => {
+      worker.on("error", (err: Error) => {
         console.error(`[worker-pool] Worker ${i} error:`, err);
         // Reject all pending tasks for this worker
         for (const [taskId, pending] of this.pendingTasks) {

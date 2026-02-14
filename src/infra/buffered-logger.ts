@@ -135,9 +135,8 @@ export class BufferedFileLogger {
       // Log to console as fallback (can't use file logger)
       console.error("buffered logger flush failed:", err);
 
-      // Put entries back in buffer for retry
-      const toRestore = entries.slice();
-      this.buffer.unshift(...toRestore);
+      // Put entries back in buffer for retry - capture entries from outer scope
+      this.buffer.unshift(...entries);
     } finally {
       this.flushing = false;
     }

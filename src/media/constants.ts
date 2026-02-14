@@ -1,7 +1,10 @@
-export const MAX_IMAGE_BYTES = 6 * 1024 * 1024; // 6MB
-export const MAX_AUDIO_BYTES = 16 * 1024 * 1024; // 16MB
-export const MAX_VIDEO_BYTES = 16 * 1024 * 1024; // 16MB
-export const MAX_DOCUMENT_BYTES = 100 * 1024 * 1024; // 100MB
+// NOTE: Now sourced from unified config. Import from config/defaults.unified.ts instead.
+import { MEDIA_DEFAULTS } from "../config/defaults.unified.js";
+
+export const MAX_IMAGE_BYTES = MEDIA_DEFAULTS.MAX_IMAGE_BYTES;
+export const MAX_AUDIO_BYTES = MEDIA_DEFAULTS.MAX_AUDIO_BYTES;
+export const MAX_VIDEO_BYTES = MEDIA_DEFAULTS.MAX_VIDEO_BYTES;
+export const MAX_DOCUMENT_BYTES = MEDIA_DEFAULTS.MAX_DOCUMENT_BYTES;
 
 export type MediaKind = "image" | "audio" | "video" | "document" | "unknown";
 

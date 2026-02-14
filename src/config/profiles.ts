@@ -7,6 +7,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { SecureClawConfig } from "./types.js";
+import { ConfigError } from "../infra/errors.js";
 import { parseConfigJson5 } from "./io.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -72,17 +73,27 @@ export function loadProfile(profileName: string): Partial<SecureClawConfig> {
   const profile = profiles.find((p) => p.name === profileName);
 
   if (!profile) {
-    const available = profiles.map((p) => p.name).join(", ");
-    throw new Error(
-      `Profile '${profileName}' not found. Available profiles: ${available || "none"}`,
-    );
+    const available = profiles.map((p) => p.name);
+    throw new ConfigError(`Profile '${profileName}' not found`, {
+      configKey: "profile",
+      metadata: {
+        profileName,
+        availableProfiles: available,
+      },
+    });
   }
 
   const content = readFileSync(profile.path, "utf-8");
   const result = parseConfigJson5(content);
 
   if (!result.ok) {
-    throw new Error(`Failed to parse profile '${profileName}': ${result.error}`);
+    throw new ConfigError(`Failed to parse profile '${profileName}'`, {
+      configKey: "profile",
+      metadata: {
+        profileName,
+        parseError: result.error,
+      },
+    });
   }
 
   return result.parsed as Partial<SecureClawConfig>;

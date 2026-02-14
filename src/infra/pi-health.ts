@@ -5,9 +5,10 @@
 
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { isRaspberryPi } from "../config/profiles.js";
 
 // Re-export from profiles for convenience
-export { isRaspberryPi } from "../config/profiles.js";
+export { isRaspberryPi };
 
 export interface PiHealthMetrics {
   platform: string;

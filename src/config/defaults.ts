@@ -3,6 +3,8 @@ import type { ModelDefinitionConfig } from "./types.models.js";
 import { DEFAULT_CONTEXT_TOKENS } from "../agents/defaults.js";
 import { parseModelRef } from "../agents/model-selection.js";
 import { DEFAULT_AGENT_MAX_CONCURRENT, DEFAULT_SUBAGENT_MAX_CONCURRENT } from "./agent-limits.js";
+// NOTE: Now sourced from unified config. Import from config/defaults.unified.ts instead.
+import { MODEL_ALIASES, MODEL_COST_DEFAULTS, AGENT_DEFAULTS } from "./defaults.unified.js";
 import { resolveTalkApiKey } from "./talk.js";
 
 type WarnState = { warned: boolean };
@@ -11,28 +13,11 @@ let defaultWarnState: WarnState = { warned: false };
 
 type AnthropicAuthDefaultsMode = "api_key" | "oauth";
 
-const DEFAULT_MODEL_ALIASES: Readonly<Record<string, string>> = {
-  // Anthropic (pi-ai catalog uses "latest" ids without date suffix)
-  opus: "anthropic/claude-opus-4-6",
-  sonnet: "anthropic/claude-sonnet-4-5",
+const DEFAULT_MODEL_ALIASES: Readonly<Record<string, string>> = MODEL_ALIASES;
 
-  // OpenAI
-  gpt: "openai/gpt-5.2",
-  "gpt-mini": "openai/gpt-5-mini",
-
-  // Google Gemini (3.x are preview ids in the catalog)
-  gemini: "google/gemini-3-pro-preview",
-  "gemini-flash": "google/gemini-3-flash-preview",
-};
-
-const DEFAULT_MODEL_COST: ModelDefinitionConfig["cost"] = {
-  input: 0,
-  output: 0,
-  cacheRead: 0,
-  cacheWrite: 0,
-};
+const DEFAULT_MODEL_COST: ModelDefinitionConfig["cost"] = MODEL_COST_DEFAULTS;
 const DEFAULT_MODEL_INPUT: ModelDefinitionConfig["input"] = ["text"];
-const DEFAULT_MODEL_MAX_TOKENS = 8192;
+const DEFAULT_MODEL_MAX_TOKENS = AGENT_DEFAULTS.MODEL_MAX_TOKENS;
 
 type ModelDefinitionLike = Partial<ModelDefinitionConfig> &
   Pick<ModelDefinitionConfig, "id" | "name">;

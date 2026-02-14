@@ -17,9 +17,9 @@ import {
 import { readConfigFileSnapshot, writeConfigFile } from "../config/config.js";
 import { resolveStateDir } from "../config/paths.js";
 import { formatDurationPrecise } from "../infra/format-time/format-duration.ts";
-import { resolveSecureClawPackageRoot } from "../infra/secureclaw-root.js";
 import { trimLogTail } from "../infra/restart-sentinel.js";
 import { parseSemver } from "../infra/runtime-guard.js";
+import { resolveSecureClawPackageRoot } from "../infra/secureclaw-root.js";
 import {
   channelToNpmTag,
   DEFAULT_GIT_CHANNEL,
@@ -62,7 +62,7 @@ import { formatCliCommand } from "./command-format.js";
 import { installCompletion } from "./completion-cli.js";
 import { runDaemonRestart } from "./daemon-cli.js";
 import { formatHelpExamples } from "./help-format.js";
-import { suppressDeprecations } from "./update-cli/suppress-deprecations.js";
+import { suppressDeprecations } from "./suppress-deprecations.js";
 
 export type UpdateCommandOptions = {
   json?: boolean;

@@ -6,6 +6,7 @@ import lockfile from "proper-lockfile";
 import type { ChannelId, ChannelPairingAdapter } from "../channels/plugins/types.js";
 import { getPairingAdapter } from "../channels/plugins/pairing.js";
 import { resolveOAuthDir, resolveStateDir } from "../config/paths.js";
+import { ValidationError, OperationError } from "../infra/errors.js";
 import { resolveRequiredHomeDir } from "../infra/home-dir.js";
 import { safeParseJson } from "../utils.js";
 
@@ -53,11 +54,18 @@ function resolveCredentialsDir(env: NodeJS.ProcessEnv = process.env): string {
 function safeChannelKey(channel: PairingChannel): string {
   const raw = String(channel).trim().toLowerCase();
   if (!raw) {
-    throw new Error("invalid pairing channel");
+    throw new ValidationError("Invalid pairing channel", {
+      field: "channel",
+      value: channel,
+    });
   }
   const safe = raw.replace(/[\\/:*?"<>|]/g, "_").replace(/\.\./g, "_");
   if (!safe || safe === "_") {
-    throw new Error("invalid pairing channel");
+    throw new ValidationError("Invalid pairing channel after sanitization", {
+      field: "channel",
+      value: channel,
+      metadata: { sanitized: safe },
+    });
   }
   return safe;
 }
@@ -126,8 +134,8 @@ async function withFileLock<T>(
     if (release) {
       try {
         await release();
-      } catch {
-        // ignore unlock errors
+      } catch (err) {
+        // Ignore unlock errors - lock will expire automatically via stale timeout
       }
     }
   }
@@ -194,7 +202,10 @@ function generateUniqueCode(existing: Set<string>): string {
       return code;
     }
   }
-  throw new Error("failed to generate unique pairing code");
+  throw new OperationError("Failed to generate unique pairing code", {
+    operation: "generatePairingCode",
+    metadata: { maxAttempts: 500 },
+  });
 }
 
 function normalizeId(value: string | number): string {

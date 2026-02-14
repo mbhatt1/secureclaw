@@ -1,14 +1,16 @@
 import path from "node:path";
 import { CHANNEL_IDS } from "../../channels/registry.js";
 import { STATE_DIR } from "../../config/config.js";
+// NOTE: Now sourced from unified config. Import from config/defaults.unified.ts instead.
+import { SANDBOX_DEFAULTS } from "../../config/defaults.unified.js";
 
 export const DEFAULT_SANDBOX_WORKSPACE_ROOT = path.join(STATE_DIR, "sandboxes");
 
-export const DEFAULT_SANDBOX_IMAGE = "secureclaw-sandbox:bookworm-slim";
-export const DEFAULT_SANDBOX_CONTAINER_PREFIX = "secureclaw-sbx-";
-export const DEFAULT_SANDBOX_WORKDIR = "/workspace";
-export const DEFAULT_SANDBOX_IDLE_HOURS = 24;
-export const DEFAULT_SANDBOX_MAX_AGE_DAYS = 7;
+export const DEFAULT_SANDBOX_IMAGE = SANDBOX_DEFAULTS.IMAGE;
+export const DEFAULT_SANDBOX_CONTAINER_PREFIX = SANDBOX_DEFAULTS.CONTAINER_PREFIX;
+export const DEFAULT_SANDBOX_WORKDIR = SANDBOX_DEFAULTS.WORKDIR;
+export const DEFAULT_SANDBOX_IDLE_HOURS = SANDBOX_DEFAULTS.IDLE_HOURS;
+export const DEFAULT_SANDBOX_MAX_AGE_DAYS = SANDBOX_DEFAULTS.MAX_AGE_DAYS;
 
 export const DEFAULT_TOOL_ALLOW = [
   "exec",
@@ -35,16 +37,17 @@ export const DEFAULT_TOOL_DENY = [
   ...CHANNEL_IDS,
 ] as const;
 
-export const DEFAULT_SANDBOX_BROWSER_IMAGE = "secureclaw-sandbox-browser:bookworm-slim";
-export const DEFAULT_SANDBOX_COMMON_IMAGE = "secureclaw-sandbox-common:bookworm-slim";
+export const DEFAULT_SANDBOX_BROWSER_IMAGE = SANDBOX_DEFAULTS.BROWSER_IMAGE;
+export const DEFAULT_SANDBOX_COMMON_IMAGE = SANDBOX_DEFAULTS.COMMON_IMAGE;
 
-export const DEFAULT_SANDBOX_BROWSER_PREFIX = "secureclaw-sbx-browser-";
-export const DEFAULT_SANDBOX_BROWSER_CDP_PORT = 9222;
-export const DEFAULT_SANDBOX_BROWSER_VNC_PORT = 5900;
-export const DEFAULT_SANDBOX_BROWSER_NOVNC_PORT = 6080;
-export const DEFAULT_SANDBOX_BROWSER_AUTOSTART_TIMEOUT_MS = 12_000;
+export const DEFAULT_SANDBOX_BROWSER_PREFIX = SANDBOX_DEFAULTS.BROWSER_PREFIX;
+export const DEFAULT_SANDBOX_BROWSER_CDP_PORT = SANDBOX_DEFAULTS.BROWSER_CDP_PORT;
+export const DEFAULT_SANDBOX_BROWSER_VNC_PORT = SANDBOX_DEFAULTS.BROWSER_VNC_PORT;
+export const DEFAULT_SANDBOX_BROWSER_NOVNC_PORT = SANDBOX_DEFAULTS.BROWSER_NOVNC_PORT;
+export const DEFAULT_SANDBOX_BROWSER_AUTOSTART_TIMEOUT_MS =
+  SANDBOX_DEFAULTS.BROWSER_AUTOSTART_TIMEOUT_MS;
 
-export const SANDBOX_AGENT_WORKSPACE_MOUNT = "/agent";
+export const SANDBOX_AGENT_WORKSPACE_MOUNT = SANDBOX_DEFAULTS.AGENT_WORKSPACE_MOUNT;
 
 export const SANDBOX_STATE_DIR = path.join(STATE_DIR, "sandbox");
 export const SANDBOX_REGISTRY_PATH = path.join(SANDBOX_STATE_DIR, "containers.json");

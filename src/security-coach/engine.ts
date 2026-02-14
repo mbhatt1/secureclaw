@@ -507,7 +507,9 @@ export class SecurityCoachEngine {
 
   /** Get the current configuration. */
   getConfig(): CoachConfig {
-    return { ...this.config };
+    // OPTIMIZATION: Return frozen object instead of spreading (read-only access)
+    // Callers should not mutate the returned config - use updateConfig() instead
+    return this.config;
   }
 
   /** Load persisted configuration from disk (synchronous). */

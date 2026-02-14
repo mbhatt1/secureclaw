@@ -95,7 +95,9 @@ export async function fetchRemoteMedia(options: FetchMediaOptions): Promise<Fetc
     finalUrl = result.finalUrl;
     release = result.release;
   } catch (err) {
-    throw new MediaFetchError("fetch_failed", `Failed to fetch media from ${url}: ${String(err)}`);
+    throw new MediaFetchError("fetch_failed", `Failed to fetch media from ${url}: ${String(err)}`, {
+      cause: err,
+    });
   }
 
   try {

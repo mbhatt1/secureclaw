@@ -3,6 +3,8 @@ import os from "node:os";
 import path from "node:path";
 import type { SecureClawConfig } from "./types.js";
 import { expandHomePrefix, resolveRequiredHomeDir } from "../infra/home-dir.js";
+// NOTE: Path constants now sourced from unified config.
+import { PATH_DEFAULTS } from "./defaults.unified.js";
 
 /**
  * Nix mode detection: When SECURECLAW_NIX_MODE=1 (or legacy OPENCLAW_NIX_MODE=1), the gateway is running under Nix.
@@ -17,10 +19,10 @@ export function resolveIsNixMode(env: NodeJS.ProcessEnv = process.env): boolean 
 
 export const isNixMode = resolveIsNixMode();
 
-const LEGACY_STATE_DIRNAMES = [".openclaw", ".clawdbot", ".moltbot", ".moldbot"] as const;
-const NEW_STATE_DIRNAME = ".secureclaw";
-const CONFIG_FILENAME = "secureclaw.json";
-const LEGACY_CONFIG_FILENAMES = ["openclaw.json", "clawdbot.json", "moltbot.json", "moldbot.json"] as const;
+const LEGACY_STATE_DIRNAMES = PATH_DEFAULTS.LEGACY_STATE_DIRNAMES;
+const NEW_STATE_DIRNAME = PATH_DEFAULTS.STATE_DIRNAME;
+const CONFIG_FILENAME = PATH_DEFAULTS.CONFIG_FILENAME;
+const LEGACY_CONFIG_FILENAMES = PATH_DEFAULTS.LEGACY_CONFIG_FILENAMES;
 
 function resolveDefaultHomeDir(): string {
   return resolveRequiredHomeDir(process.env, os.homedir);
@@ -61,7 +63,10 @@ export function resolveStateDir(
   homedir: () => string = envHomedir(env),
 ): string {
   const effectiveHomedir = () => resolveRequiredHomeDir(env, homedir);
-  const override = env.SECURECLAW_STATE_DIR?.trim() || env.OPENCLAW_STATE_DIR?.trim() || env.CLAWDBOT_STATE_DIR?.trim();
+  const override =
+    env.SECURECLAW_STATE_DIR?.trim() ||
+    env.OPENCLAW_STATE_DIR?.trim() ||
+    env.CLAWDBOT_STATE_DIR?.trim();
   if (override) {
     return resolveUserPath(override, env, effectiveHomedir);
   }
@@ -115,7 +120,10 @@ export function resolveCanonicalConfigPath(
   env: NodeJS.ProcessEnv = process.env,
   stateDir: string = resolveStateDir(env, envHomedir(env)),
 ): string {
-  const override = env.SECURECLAW_CONFIG_PATH?.trim() || env.OPENCLAW_CONFIG_PATH?.trim() || env.CLAWDBOT_CONFIG_PATH?.trim();
+  const override =
+    env.SECURECLAW_CONFIG_PATH?.trim() ||
+    env.OPENCLAW_CONFIG_PATH?.trim() ||
+    env.CLAWDBOT_CONFIG_PATH?.trim();
   if (override) {
     return resolveUserPath(override, env, envHomedir(env));
   }
@@ -192,13 +200,19 @@ export function resolveDefaultConfigCandidates(
   homedir: () => string = envHomedir(env),
 ): string[] {
   const effectiveHomedir = () => resolveRequiredHomeDir(env, homedir);
-  const explicit = env.SECURECLAW_CONFIG_PATH?.trim() || env.OPENCLAW_CONFIG_PATH?.trim() || env.CLAWDBOT_CONFIG_PATH?.trim();
+  const explicit =
+    env.SECURECLAW_CONFIG_PATH?.trim() ||
+    env.OPENCLAW_CONFIG_PATH?.trim() ||
+    env.CLAWDBOT_CONFIG_PATH?.trim();
   if (explicit) {
     return [resolveUserPath(explicit, env, effectiveHomedir)];
   }
 
   const candidates: string[] = [];
-  const stateDirOverride = env.SECURECLAW_STATE_DIR?.trim() || env.OPENCLAW_STATE_DIR?.trim() || env.CLAWDBOT_STATE_DIR?.trim();
+  const stateDirOverride =
+    env.SECURECLAW_STATE_DIR?.trim() ||
+    env.OPENCLAW_STATE_DIR?.trim() ||
+    env.CLAWDBOT_STATE_DIR?.trim();
   if (stateDirOverride) {
     const resolved = resolveUserPath(stateDirOverride, env, effectiveHomedir);
     candidates.push(path.join(resolved, CONFIG_FILENAME));
@@ -213,7 +227,9 @@ export function resolveDefaultConfigCandidates(
   return candidates;
 }
 
-export const DEFAULT_GATEWAY_PORT = 18789;
+import { GATEWAY_DEFAULTS } from "./defaults.unified.js";
+
+export const DEFAULT_GATEWAY_PORT = GATEWAY_DEFAULTS.PORT;
 
 /**
  * Gateway lock directory (ephemeral).
@@ -257,7 +273,10 @@ export function resolveGatewayPort(
   cfg?: SecureClawConfig,
   env: NodeJS.ProcessEnv = process.env,
 ): number {
-  const envRaw = env.SECURECLAW_GATEWAY_PORT?.trim() || env.OPENCLAW_GATEWAY_PORT?.trim() || env.CLAWDBOT_GATEWAY_PORT?.trim();
+  const envRaw =
+    env.SECURECLAW_GATEWAY_PORT?.trim() ||
+    env.OPENCLAW_GATEWAY_PORT?.trim() ||
+    env.CLAWDBOT_GATEWAY_PORT?.trim();
   if (envRaw) {
     const parsed = Number.parseInt(envRaw, 10);
     if (Number.isFinite(parsed) && parsed > 0) {

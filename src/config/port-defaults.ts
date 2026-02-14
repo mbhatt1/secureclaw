@@ -1,3 +1,6 @@
+// NOTE: Now sourced from unified config. Import from config/defaults.unified.ts instead.
+import { GATEWAY_DEFAULTS } from "./defaults.unified.js";
+
 export type PortRange = { start: number; end: number };
 
 function isValidPort(port: number): boolean {
@@ -12,11 +15,11 @@ function derivePort(base: number, offset: number, fallback: number): number {
   return clampPort(base + offset, fallback);
 }
 
-export const DEFAULT_BRIDGE_PORT = 18790;
-export const DEFAULT_BROWSER_CONTROL_PORT = 18791;
-export const DEFAULT_CANVAS_HOST_PORT = 18793;
-export const DEFAULT_BROWSER_CDP_PORT_RANGE_START = 18800;
-export const DEFAULT_BROWSER_CDP_PORT_RANGE_END = 18899;
+export const DEFAULT_BRIDGE_PORT = GATEWAY_DEFAULTS.BRIDGE_PORT;
+export const DEFAULT_BROWSER_CONTROL_PORT = GATEWAY_DEFAULTS.BROWSER_CONTROL_PORT;
+export const DEFAULT_CANVAS_HOST_PORT = GATEWAY_DEFAULTS.CANVAS_HOST_PORT;
+export const DEFAULT_BROWSER_CDP_PORT_RANGE_START = GATEWAY_DEFAULTS.BROWSER_CDP_PORT_RANGE_START;
+export const DEFAULT_BROWSER_CDP_PORT_RANGE_END = GATEWAY_DEFAULTS.BROWSER_CDP_PORT_RANGE_END;
 
 export function deriveDefaultBridgePort(gatewayPort: number): number {
   return derivePort(gatewayPort, 1, DEFAULT_BRIDGE_PORT);

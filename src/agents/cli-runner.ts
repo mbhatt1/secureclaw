@@ -24,7 +24,7 @@ import {
   resolveSessionIdToSend,
   resolveSystemPromptUsage,
   writeCliImages,
-} from "./cli-runner/helpers.js";
+} from "./cli-runner-helpers.js";
 import { resolveSecureClawDocsPath } from "./docs-path.js";
 import { FailoverError, resolveFailoverStatus } from "./failover-error.js";
 import { classifyFailoverReason, isFailoverErrorMessage } from "./pi-embedded-helpers.js";

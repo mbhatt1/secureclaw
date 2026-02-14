@@ -1,5 +1,6 @@
 import os from "node:os";
 import path from "node:path";
+import { ValidationError } from "../../infra/errors.js";
 import { expandHomePrefix, resolveRequiredHomeDir } from "../../infra/home-dir.js";
 import { DEFAULT_AGENT_ID, normalizeAgentId } from "../../routing/session-key.js";
 import { resolveStateDir } from "../paths.js";
@@ -58,7 +59,10 @@ export const SAFE_SESSION_ID_RE = /^[a-z0-9][a-z0-9._-]{0,127}$/i;
 export function validateSessionId(sessionId: string): string {
   const trimmed = sessionId.trim();
   if (!SAFE_SESSION_ID_RE.test(trimmed)) {
-    throw new Error(`Invalid session ID: ${sessionId}`);
+    throw new ValidationError("Invalid session ID", {
+      field: "sessionId",
+      value: sessionId,
+    });
   }
   return trimmed;
 }
@@ -74,13 +78,21 @@ function resolveSessionsDir(opts?: SessionFilePathOptions): string {
 function resolvePathWithinSessionsDir(sessionsDir: string, candidate: string): string {
   const trimmed = candidate.trim();
   if (!trimmed) {
-    throw new Error("Session file path must not be empty");
+    throw new ValidationError("Session file path must not be empty", {
+      field: "sessionFilePath",
+    });
   }
   const resolvedBase = path.resolve(sessionsDir);
   const resolvedCandidate = path.resolve(resolvedBase, trimmed);
   const relative = path.relative(resolvedBase, resolvedCandidate);
   if (relative.startsWith("..") || path.isAbsolute(relative)) {
-    throw new Error("Session file path must be within sessions directory");
+    throw new ValidationError("Session file path must be within sessions directory", {
+      field: "sessionFilePath",
+      metadata: {
+        filePath: candidate,
+        sessionsDir: resolvedBase,
+      },
+    });
   }
   return resolvedCandidate;
 }

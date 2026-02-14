@@ -148,16 +148,29 @@ class LazyInputText {
 
   get blob(): string {
     if (this._blob === undefined) {
+      // OPTIMIZATION: Avoid expensive JSON.stringify for params
+      // Instead, extract key string values directly
+      let paramsStr = "";
+      if (this.input.params && typeof this.input.params === "object") {
+        const keys = Object.keys(this.input.params);
+        if (keys.length > 0) {
+          // Only extract string/number values (skip nested objects)
+          for (const key of keys) {
+            const val = this.input.params[key];
+            if (typeof val === "string" || typeof val === "number") {
+              paramsStr += `${key}=${val}\n`;
+            }
+          }
+        }
+      }
+
       const raw = [
         this.input.toolName ?? "",
         this.input.command ?? "",
         this.input.content ?? "",
         this.input.url ?? "",
         this.input.filePath ?? "",
-        // Only stringify params if non-empty (optimization)
-        this.input.params && Object.keys(this.input.params).length > 0
-          ? JSON.stringify(this.input.params)
-          : "",
+        paramsStr,
       ].join("\n");
       this._blob = raw.length > 50_000 ? raw.slice(0, 50_000) : raw;
     }
