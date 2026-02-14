@@ -308,6 +308,7 @@ export function generateCorsHeaders(
   // Security headers
   headers["X-Content-Type-Options"] = "nosniff";
   headers["X-Frame-Options"] = "DENY";
+  headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
 
   return headers;
 }

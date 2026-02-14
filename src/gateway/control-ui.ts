@@ -70,6 +70,9 @@ function applyControlUiSecurityHeaders(res: ServerResponse) {
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("Content-Security-Policy", "frame-ancestors 'none'");
   res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  // Note: HSTS should be set at reverse proxy level for HTTPS deployments
+  // res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
 }
 
 function sendJson(res: ServerResponse, status: number, body: unknown) {
