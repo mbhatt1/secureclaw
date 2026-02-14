@@ -11,8 +11,7 @@
 // 4. Repeats until terminated
 // ---------------------------------------------------------------------------
 
-import { parentPort, workerData } from "node:worker_threads";
-import type { ThreatMatchInput } from "./patterns.js";
+import { parentPort } from "node:worker_threads";
 import type { WorkerTask, WorkerResult } from "./worker-pool.js";
 import { matchThreats } from "./patterns.js";
 

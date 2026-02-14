@@ -1,0 +1,14 @@
+{
+  "entryPoints": ["src/plugin-sdk/index.ts"],
+  "out": "docs/api",
+  "exclude": ["**/*.test.ts", "**/test-*.ts"],
+  "excludePrivate": true,
+  "excludeProtected": false,
+  "plugin": ["typedoc-plugin-markdown"],
+  "readme": "none",
+  "skipErrorChecking": true,
+  "compilerOptions": {
+    "skipLibCheck": true,
+    "noEmit": true
+  }
+}

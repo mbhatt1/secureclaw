@@ -309,7 +309,7 @@ function loadDotenvFiles(options: LoadConfigOptions): { sources: string[]; error
         dotenvConfig({ path, override: false });
         sources.push(path);
       } catch (err) {
-        errors.push(`Failed to load ${path}: ${err}`);
+        errors.push(`Failed to load ${path}: ${String(err)}`);
       }
     }
   }
@@ -336,7 +336,7 @@ function loadProfile(profileName: string): { source?: string; error?: string } {
     dotenvConfig({ path: profilePath, override: false });
     return { source: profilePath };
   } catch (err) {
-    return { error: `Failed to load profile ${profileName}: ${err}` };
+    return { error: `Failed to load profile ${profileName}: ${String(err)}` };
   }
 }
 
