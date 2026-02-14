@@ -374,8 +374,8 @@ secureclaw pairing list feishu
 
 ## Gateway management commands
 
-| Command                    | Description                   |
-| -------------------------- | ----------------------------- |
+| Command                      | Description                   |
+| ---------------------------- | ----------------------------- |
 | `secureclaw gateway status`  | Show gateway status           |
 | `secureclaw gateway install` | Install/start gateway service |
 | `secureclaw gateway stop`    | Stop gateway service          |

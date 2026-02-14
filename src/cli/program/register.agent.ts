@@ -155,8 +155,14 @@ ${theme.muted("Docs:")} ${formatDocsLink("/cli/agent", "docs.secureclaw.app/cli/
         `
 ${theme.heading("Examples:")}
 ${formatHelpExamples([
-  ['secureclaw agents set-identity --agent main --name "SecureClaw" --emoji "🦞"', "Set name + emoji."],
-  ["secureclaw agents set-identity --agent main --avatar avatars/secureclaw.png", "Set avatar path."],
+  [
+    'secureclaw agents set-identity --agent main --name "SecureClaw" --emoji "🦞"',
+    "Set name + emoji.",
+  ],
+  [
+    "secureclaw agents set-identity --agent main --avatar avatars/secureclaw.png",
+    "Set avatar path.",
+  ],
   [
     "secureclaw agents set-identity --workspace ~/.secureclaw/workspace --from-identity",
     "Load from IDENTITY.md.",

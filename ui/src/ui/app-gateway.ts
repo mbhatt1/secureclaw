@@ -54,7 +54,12 @@ type GatewayHost = {
   refreshSessionsAfterChat: Set<string>;
   execApprovalQueue: ExecApprovalRequest[];
   execApprovalError: string | null;
-  securityCoachAlerts: Array<{ id: string; level: string; expiresAtMs: number; [k: string]: unknown }>;
+  securityCoachAlerts: Array<{
+    id: string;
+    level: string;
+    expiresAtMs: number;
+    [k: string]: unknown;
+  }>;
   securityCoachCharacterState: string;
   securityCoachSpeech: { message: string; style: string; autoDismissMs: number } | null;
 };
@@ -262,18 +267,20 @@ function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
   // ── Security Coach events ───────────────────────────────────────────
 
   if (evt.event === "security.coach.alert.requested") {
-    const payload = evt.payload as {
-      id?: string;
-      level?: string;
-      title?: string;
-      coachMessage?: string;
-      recommendation?: string;
-      requiresDecision?: boolean;
-      createdAtMs?: number;
-      expiresAtMs?: number;
-      threats?: unknown[];
-      context?: unknown;
-    } | undefined;
+    const payload = evt.payload as
+      | {
+          id?: string;
+          level?: string;
+          title?: string;
+          coachMessage?: string;
+          recommendation?: string;
+          requiresDecision?: boolean;
+          createdAtMs?: number;
+          expiresAtMs?: number;
+          threats?: unknown[];
+          context?: unknown;
+        }
+      | undefined;
 
     if (payload?.id && payload.title) {
       const alert = {
@@ -333,10 +340,12 @@ function handleGatewayEventUnsafe(host: GatewayHost, evt: GatewayEventFrame) {
   }
 
   if (evt.event === "security.coach.tip") {
-    const payload = evt.payload as {
-      message?: string;
-      autoDismissMs?: number;
-    } | undefined;
+    const payload = evt.payload as
+      | {
+          message?: string;
+          autoDismissMs?: number;
+        }
+      | undefined;
     if (payload?.message) {
       host.securityCoachSpeech = {
         message: payload.message,

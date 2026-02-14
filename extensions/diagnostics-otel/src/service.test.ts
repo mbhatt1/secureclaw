@@ -97,7 +97,8 @@ vi.mock("@opentelemetry/semantic-conventions", () => ({
 }));
 
 vi.mock("secureclaw/plugin-sdk", async () => {
-  const actual = await vi.importActual<typeof import("secureclaw/plugin-sdk")>("secureclaw/plugin-sdk");
+  const actual =
+    await vi.importActual<typeof import("secureclaw/plugin-sdk")>("secureclaw/plugin-sdk");
   return {
     ...actual,
     registerLogTransport: registerLogTransportMock,

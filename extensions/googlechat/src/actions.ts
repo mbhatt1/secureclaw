@@ -29,7 +29,10 @@ function listEnabledAccounts(cfg: SecureClawConfig) {
   );
 }
 
-function isReactionsEnabled(accounts: ReturnType<typeof listEnabledAccounts>, cfg: SecureClawConfig) {
+function isReactionsEnabled(
+  accounts: ReturnType<typeof listEnabledAccounts>,
+  cfg: SecureClawConfig,
+) {
   for (const account of accounts) {
     const gate = createActionGate(
       (account.config.actions ??

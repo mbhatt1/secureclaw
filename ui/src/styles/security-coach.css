@@ -211,8 +211,7 @@
 
 /* State: Alert - bounce + red glow */
 .coach-character--alert {
-  animation:
-    coach-bounce 0.8s var(--ease-spring) infinite;
+  animation: coach-bounce 0.8s var(--ease-spring) infinite;
   border-color: var(--danger);
   box-shadow:
     var(--shadow-lg),

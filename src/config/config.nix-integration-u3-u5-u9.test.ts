@@ -88,10 +88,13 @@ describe("Nix integration (U3, U5, U9)", () => {
     });
 
     it("CONFIG_PATH respects SECURECLAW_CONFIG_PATH override", async () => {
-      await withEnvOverride({ SECURECLAW_CONFIG_PATH: "/nix/store/abc/secureclaw.json" }, async () => {
-        const { CONFIG_PATH } = await import("./config.js");
-        expect(CONFIG_PATH).toBe(path.resolve("/nix/store/abc/secureclaw.json"));
-      });
+      await withEnvOverride(
+        { SECURECLAW_CONFIG_PATH: "/nix/store/abc/secureclaw.json" },
+        async () => {
+          const { CONFIG_PATH } = await import("./config.js");
+          expect(CONFIG_PATH).toBe(path.resolve("/nix/store/abc/secureclaw.json"));
+        },
+      );
     });
 
     it("CONFIG_PATH expands ~ in SECURECLAW_CONFIG_PATH override", async () => {

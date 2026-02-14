@@ -35,7 +35,11 @@ export type ParsedHookFrontmatter = Record<string, string>;
 export type Hook = {
   name: string;
   description: string;
-  source: "secureclaw-bundled" | "secureclaw-managed" | "secureclaw-workspace" | "secureclaw-plugin";
+  source:
+    | "secureclaw-bundled"
+    | "secureclaw-managed"
+    | "secureclaw-workspace"
+    | "secureclaw-plugin";
   pluginId?: string;
   filePath: string; // Path to HOOK.md
   baseDir: string; // Directory containing hook

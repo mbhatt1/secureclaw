@@ -22,7 +22,9 @@ describe("argv helpers", () => {
   it("extracts command path ignoring flags and terminator", () => {
     expect(getCommandPath(["node", "secureclaw", "status", "--json"], 2)).toEqual(["status"]);
     expect(getCommandPath(["node", "secureclaw", "agents", "list"], 2)).toEqual(["agents", "list"]);
-    expect(getCommandPath(["node", "secureclaw", "status", "--", "ignored"], 2)).toEqual(["status"]);
+    expect(getCommandPath(["node", "secureclaw", "status", "--", "ignored"], 2)).toEqual([
+      "status",
+    ]);
   });
 
   it("returns primary command", () => {
@@ -52,9 +54,9 @@ describe("argv helpers", () => {
   it("parses verbose flags", () => {
     expect(getVerboseFlag(["node", "secureclaw", "status", "--verbose"])).toBe(true);
     expect(getVerboseFlag(["node", "secureclaw", "status", "--debug"])).toBe(false);
-    expect(getVerboseFlag(["node", "secureclaw", "status", "--debug"], { includeDebug: true })).toBe(
-      true,
-    );
+    expect(
+      getVerboseFlag(["node", "secureclaw", "status", "--debug"], { includeDebug: true }),
+    ).toBe(true);
   });
 
   it("parses positive integer flag values", () => {
@@ -117,7 +119,13 @@ describe("argv helpers", () => {
       programName: "secureclaw",
       rawArgs: ["node-dev", "secureclaw", "status"],
     });
-    expect(nonVersionedNodeArgv).toEqual(["node", "secureclaw", "node-dev", "secureclaw", "status"]);
+    expect(nonVersionedNodeArgv).toEqual([
+      "node",
+      "secureclaw",
+      "node-dev",
+      "secureclaw",
+      "status",
+    ]);
 
     const directArgv = buildParseArgv({
       programName: "secureclaw",

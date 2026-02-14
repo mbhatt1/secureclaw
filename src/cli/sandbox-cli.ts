@@ -29,7 +29,10 @@ const SANDBOX_EXAMPLES = {
   recreate: [
     ["secureclaw sandbox recreate --all", "Recreate all containers."],
     ["secureclaw sandbox recreate --session main", "Recreate a specific session."],
-    ["secureclaw sandbox recreate --agent mybot", "Recreate a specific agent (includes sub-agents)."],
+    [
+      "secureclaw sandbox recreate --agent mybot",
+      "Recreate a specific agent (includes sub-agents).",
+    ],
     ["secureclaw sandbox recreate --browser --all", "Recreate only browser containers."],
     ["secureclaw sandbox recreate --all --force", "Skip confirmation."],
   ],

@@ -15,7 +15,8 @@ import { ensureSecureClawModelsJson } from "./models-config.js";
 import { isRateLimitErrorMessage } from "./pi-embedded-helpers/errors.js";
 import { discoverAuthStorage, discoverModels } from "./pi-model-discovery.js";
 
-const LIVE = isTruthyEnvValue(process.env.LIVE) || isTruthyEnvValue(process.env.SECURECLAW_LIVE_TEST);
+const LIVE =
+  isTruthyEnvValue(process.env.LIVE) || isTruthyEnvValue(process.env.SECURECLAW_LIVE_TEST);
 const DIRECT_ENABLED = Boolean(process.env.SECURECLAW_LIVE_MODELS?.trim());
 const REQUIRE_PROFILE_KEYS = isTruthyEnvValue(process.env.SECURECLAW_LIVE_REQUIRE_PROFILE_KEYS);
 

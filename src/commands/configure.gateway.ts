@@ -144,9 +144,11 @@ export async function promptGatewayConfig(
   let tailscaleResetOnExit = false;
   if (tailscaleMode !== "off") {
     note(
-      ["Docs:", "https://docs.secureclaw.app/gateway/tailscale", "https://docs.secureclaw.app/web"].join(
-        "\n",
-      ),
+      [
+        "Docs:",
+        "https://docs.secureclaw.app/gateway/tailscale",
+        "https://docs.secureclaw.app/web",
+      ].join("\n"),
       "Tailscale",
     );
     tailscaleResetOnExit = Boolean(

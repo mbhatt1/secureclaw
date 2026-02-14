@@ -2,7 +2,10 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import type { SecureClawPluginApi, SecureClawPluginToolContext } from "../../../src/plugins/types.js";
+import type {
+  SecureClawPluginApi,
+  SecureClawPluginToolContext,
+} from "../../../src/plugins/types.js";
 import { createLobsterTool } from "./lobster-tool.js";
 
 async function writeFakeLobsterScript(scriptBody: string, prefix = "secureclaw-lobster-plugin-") {
@@ -57,7 +60,9 @@ function fakeApi(overrides: Partial<SecureClawPluginApi> = {}): SecureClawPlugin
   };
 }
 
-function fakeCtx(overrides: Partial<SecureClawPluginToolContext> = {}): SecureClawPluginToolContext {
+function fakeCtx(
+  overrides: Partial<SecureClawPluginToolContext> = {},
+): SecureClawPluginToolContext {
   return {
     config: {},
     workspaceDir: "/tmp",

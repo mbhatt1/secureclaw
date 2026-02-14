@@ -11,6 +11,7 @@
 Optimized all performance-critical paths in SecureClaw focusing on hot paths that consume >10% CPU time. Key optimizations targeted Security Coach pattern matching, gateway message routing, and WebSocket message processing.
 
 **Key Results**:
+
 - **Security Coach (benign input)**: ~20,000 ops/sec (~0.05ms avg)
 - **Security Coach (suspicious input)**: ~10,000-28,000 ops/sec
 - **Security Coach (critical threat)**: ~22,000 ops/sec (~0.04ms avg)
@@ -28,6 +29,7 @@ Created comprehensive benchmark suite at `/scripts/perf-benchmark.ts`:
 - **Object operation benchmarks**: Spread vs Object.assign vs structuredClone
 
 **Platform**:
+
 - Node.js: v22.22.0
 - Platform: darwin x64
 - CPU cores: 12
@@ -42,12 +44,14 @@ Created comprehensive benchmark suite at `/scripts/perf-benchmark.ts`:
 **Optimization**: Removed expensive `JSON.stringify()` for params in LazyInputText.
 
 **Before**:
+
 ```typescript
 // Params were JSON.stringified on every evaluation
-JSON.stringify(this.input.params)
+JSON.stringify(this.input.params);
 ```
 
 **After**:
+
 ```typescript
 // Skip params entirely - they rarely contain security threats
 // Focus on command, content, url, filePath (where threats actually appear)
@@ -69,6 +73,7 @@ const parts = [
 **Optimization**: Removed unnecessary object spreading in `getConfig()`.
 
 **Before**:
+
 ```typescript
 getConfig(): CoachConfig {
   return { ...this.config };
@@ -76,6 +81,7 @@ getConfig(): CoachConfig {
 ```
 
 **After**:
+
 ```typescript
 getConfig(): CoachConfig {
   // Return direct reference (read-only access pattern)
@@ -93,6 +99,7 @@ getConfig(): CoachConfig {
 **Optimization**: Simplified JSON frame type extraction logic.
 
 **Before**:
+
 ```typescript
 const frameType =
   parsed && typeof parsed === "object" && "type" in parsed
@@ -104,6 +111,7 @@ const frameType =
 ```
 
 **After**:
+
 ```typescript
 // Simplified type extraction (avoid multiple typeof checks)
 const frameType = parsed?.type;
@@ -115,7 +123,7 @@ if (isValidFrame && (frameType || frameMethod || frameId)) {
   setLastFrameMeta({
     type: typeof frameType === "string" ? frameType : undefined,
     method: typeof frameMethod === "string" ? frameMethod : undefined,
-    id: typeof frameId === "string" ? frameId : undefined
+    id: typeof frameId === "string" ? frameId : undefined,
   });
 }
 ```
@@ -143,6 +151,7 @@ for (const c of clientSet) {
 **Optimization**: Pre-construct broadcast payloads to avoid inline object literals.
 
 **Before**:
+
 ```typescript
 context.broadcast(
   SECURITY_COACH_EVENTS.ALERT_RESOLVED,
@@ -152,19 +161,16 @@ context.broadcast(
 ```
 
 **After**:
+
 ```typescript
 // Pre-construct payload to avoid object spread overhead
 const resolvePayload = {
   id,
   decision,
   resolvedBy: resolvedBy ?? null,
-  ts: Date.now()
+  ts: Date.now(),
 };
-context.broadcast(
-  SECURITY_COACH_EVENTS.ALERT_RESOLVED,
-  resolvePayload,
-  { dropIfSlow: true },
-);
+context.broadcast(SECURITY_COACH_EVENTS.ALERT_RESOLVED, resolvePayload, { dropIfSlow: true });
 ```
 
 **Impact**: Reduced object allocation overhead in broadcast path.
@@ -175,36 +181,37 @@ context.broadcast(
 
 ### Security Coach Engine
 
-| Input Type | Ops/sec | Avg (ms) | P95 (ms) | P99 (ms) |
-|------------|---------|----------|----------|----------|
-| Benign (no threats) | 19,579 | 0.05 | 0.05 | 0.61 |
-| Suspicious (curl pipe bash) | 9,852 | 0.10 | 0.07 | 3.58 |
-| Critical (rm -rf /) | 22,543 | 0.04 | 0.02 | 0.77 |
-| Large (10KB) | 976 | 1.02 | 4.75 | 11.13 |
+| Input Type                  | Ops/sec | Avg (ms) | P95 (ms) | P99 (ms) |
+| --------------------------- | ------- | -------- | -------- | -------- |
+| Benign (no threats)         | 19,579  | 0.05     | 0.05     | 0.61     |
+| Suspicious (curl pipe bash) | 9,852   | 0.10     | 0.07     | 3.58     |
+| Critical (rm -rf /)         | 22,543  | 0.04     | 0.02     | 0.77     |
+| Large (10KB)                | 976     | 1.02     | 4.75     | 11.13    |
 
 **Analysis**:
+
 - Benign inputs: Sub-millisecond performance (~20k ops/sec)
 - Critical threats: Fast detection (<0.05ms)
 - Large inputs: Acceptable for security checks (<2ms avg)
 
 ### JSON Serialization
 
-| Operation | Ops/sec | Avg (ms) |
-|-----------|---------|----------|
-| JSON.parse (small) | 208,426 | <0.01 |
-| JSON.stringify (small) | 350,571 | <0.01 |
-| JSON.parse (large 100 items) | 2,836 | 0.35 |
-| JSON.stringify (large 100 items) | 4,860 | 0.21 |
+| Operation                        | Ops/sec | Avg (ms) |
+| -------------------------------- | ------- | -------- |
+| JSON.parse (small)               | 208,426 | <0.01    |
+| JSON.stringify (small)           | 350,571 | <0.01    |
+| JSON.parse (large 100 items)     | 2,836   | 0.35     |
+| JSON.stringify (large 100 items) | 4,860   | 0.21     |
 
 **Takeaway**: Small object JSON operations are extremely fast. Large objects (>100 items) should be avoided in hot paths.
 
 ### Object Operations
 
-| Operation | Ops/sec | Speedup vs Spread |
-|-----------|---------|-------------------|
-| Object spread ({ ...obj }) | 2,116,346 | 1.0x (baseline) |
-| Object.assign({}, obj) | 2,441,334 | **1.15x faster** |
-| structuredClone(obj) | 215,128 | 10x slower |
+| Operation                  | Ops/sec   | Speedup vs Spread |
+| -------------------------- | --------- | ----------------- |
+| Object spread ({ ...obj }) | 2,116,346 | 1.0x (baseline)   |
+| Object.assign({}, obj)     | 2,441,334 | **1.15x faster**  |
+| structuredClone(obj)       | 215,128   | 10x slower        |
 
 **Recommendation**: Use `Object.assign()` instead of spread operator for shallow clones in hot paths. Avoid `structuredClone()` for performance-sensitive code.
 
@@ -225,6 +232,7 @@ context.broadcast(
 ### Functionality Preserved
 
 All optimizations maintain exact functional behavior:
+
 - Security Coach threat detection logic unchanged
 - WebSocket message routing logic unchanged
 - Gateway broadcast behavior unchanged

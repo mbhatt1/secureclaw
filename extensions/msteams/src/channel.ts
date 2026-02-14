@@ -1,4 +1,8 @@
-import type { ChannelMessageActionName, ChannelPlugin, SecureClawConfig } from "secureclaw/plugin-sdk";
+import type {
+  ChannelMessageActionName,
+  ChannelPlugin,
+  SecureClawConfig,
+} from "secureclaw/plugin-sdk";
 import {
   buildChannelConfigSchema,
   DEFAULT_ACCOUNT_ID,

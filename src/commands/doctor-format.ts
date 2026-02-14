@@ -85,7 +85,9 @@ export function buildGatewayRuntimeHints(
     hints.push(`Then reinstall: ${formatCliCommand("secureclaw gateway install", env)}`);
   }
   if (runtime.missingUnit) {
-    hints.push(`Service not installed. Run: ${formatCliCommand("secureclaw gateway install", env)}`);
+    hints.push(
+      `Service not installed. Run: ${formatCliCommand("secureclaw gateway install", env)}`,
+    );
     if (fileLog) {
       hints.push(`File logs: ${fileLog}`);
     }

@@ -153,9 +153,9 @@ describe("shortenHomePath", () => {
     vi.stubEnv("SECURECLAW_HOME", "/srv/secureclaw-home");
     vi.stubEnv("HOME", "/home/other");
 
-    expect(shortenHomePath(`${path.resolve("/srv/secureclaw-home")}/.secureclaw/secureclaw.json`)).toBe(
-      "$SECURECLAW_HOME/.secureclaw/secureclaw.json",
-    );
+    expect(
+      shortenHomePath(`${path.resolve("/srv/secureclaw-home")}/.secureclaw/secureclaw.json`),
+    ).toBe("$SECURECLAW_HOME/.secureclaw/secureclaw.json");
 
     vi.unstubAllEnvs();
   });
@@ -167,7 +167,9 @@ describe("shortenHomeInString", () => {
     vi.stubEnv("HOME", "/home/other");
 
     expect(
-      shortenHomeInString(`config: ${path.resolve("/srv/secureclaw-home")}/.secureclaw/secureclaw.json`),
+      shortenHomeInString(
+        `config: ${path.resolve("/srv/secureclaw-home")}/.secureclaw/secureclaw.json`,
+      ),
     ).toBe("config: $SECURECLAW_HOME/.secureclaw/secureclaw.json");
 
     vi.unstubAllEnvs();
@@ -209,7 +211,9 @@ describe("resolveUserPath", () => {
     vi.stubEnv("SECURECLAW_HOME", "/srv/secureclaw-home");
     vi.stubEnv("HOME", "/home/other");
 
-    expect(resolveUserPath("~/secureclaw")).toBe(path.resolve("/srv/secureclaw-home", "secureclaw"));
+    expect(resolveUserPath("~/secureclaw")).toBe(
+      path.resolve("/srv/secureclaw-home", "secureclaw"),
+    );
 
     vi.unstubAllEnvs();
   });

@@ -9,6 +9,7 @@ SecureClaw's configuration system has been unified into a single, consistent sys
 ### Before: Scattered Configuration
 
 Previously, configuration was scattered across:
+
 - Multiple `.env` files in different locations
 - Hardcoded constants in various source files
 - Duplicate default values across modules
@@ -18,6 +19,7 @@ Previously, configuration was scattered across:
 ### After: Unified Configuration
 
 Now, configuration is:
+
 - **Centralized**: Single source of truth for all defaults
 - **Validated**: Zod schemas ensure type safety
 - **Consistent**: Standardized environment variable names
@@ -29,11 +31,13 @@ Now, configuration is:
 ### 1. Unified Defaults
 
 All default configuration values are now in:
+
 ```typescript
-src/config/defaults.unified.ts
+src / config / defaults.unified.ts;
 ```
 
 Example:
+
 ```typescript
 // Before (scattered across files)
 export const DEFAULT_GATEWAY_PORT = 18789;
@@ -41,23 +45,25 @@ export const MAX_CONCURRENT_AGENTS = 4;
 export const MAX_IMAGE_BYTES = 6 * 1024 * 1024;
 
 // After (unified)
-import { GATEWAY_DEFAULTS, AGENT_DEFAULTS, MEDIA_DEFAULTS } from './config/defaults.unified.js';
+import { GATEWAY_DEFAULTS, AGENT_DEFAULTS, MEDIA_DEFAULTS } from "./config/defaults.unified.js";
 
-GATEWAY_DEFAULTS.PORT // 18789
-AGENT_DEFAULTS.MAX_CONCURRENT // 4
-MEDIA_DEFAULTS.MAX_IMAGE_BYTES // 6291456
+GATEWAY_DEFAULTS.PORT; // 18789
+AGENT_DEFAULTS.MAX_CONCURRENT; // 4
+MEDIA_DEFAULTS.MAX_IMAGE_BYTES; // 6291456
 ```
 
 ### 2. Unified Config Loader
 
 Configuration loading is now handled by a single loader:
+
 ```typescript
-src/config/loader.unified.ts
+src / config / loader.unified.ts;
 ```
 
 Usage:
+
 ```typescript
-import { getUnifiedConfig } from './config/config.js';
+import { getUnifiedConfig } from "./config/config.js";
 
 const { config, sources, errors } = getUnifiedConfig();
 
@@ -69,13 +75,15 @@ const maxConcurrent = config.agent?.maxConcurrent ?? AGENT_DEFAULTS.MAX_CONCURRE
 ### 3. Zod Schema Validation
 
 All config values are now validated:
+
 ```typescript
-src/config/schema.unified.ts
+src / config / schema.unified.ts;
 ```
 
 Example:
+
 ```typescript
-import { UnifiedConfigSchema } from './config/schema.unified.js';
+import { UnifiedConfigSchema } from "./config/schema.unified.js";
 
 const validated = UnifiedConfigSchema.parse(rawConfig);
 // Throws if validation fails
@@ -85,10 +93,10 @@ const validated = UnifiedConfigSchema.parse(rawConfig);
 
 All environment variables now use the `SECURECLAW_` prefix with consistent naming:
 
-| Old | New |
-|-----|-----|
-| `GATEWAY_PORT` | `SECURECLAW_GATEWAY_PORT` |
-| `MAX_AGENTS` | `SECURECLAW_AGENT_MAX_CONCURRENT` |
+| Old                 | New                                   |
+| ------------------- | ------------------------------------- |
+| `GATEWAY_PORT`      | `SECURECLAW_GATEWAY_PORT`             |
+| `MAX_AGENTS`        | `SECURECLAW_AGENT_MAX_CONCURRENT`     |
 | `MEMORY_CACHE_SIZE` | `SECURECLAW_MEMORY_CACHE_MAX_ENTRIES` |
 
 **Note**: Legacy prefixes (`OPENCLAW_`, `CLAWDBOT_`) are still supported for backwards compatibility.
@@ -117,11 +125,11 @@ If you were importing constants directly:
 
 ```typescript
 // Before
-import { DEFAULT_GATEWAY_PORT } from './gateway/constants.js';
-import { MAX_IMAGE_BYTES } from './media/constants.js';
+import { DEFAULT_GATEWAY_PORT } from "./gateway/constants.js";
+import { MAX_IMAGE_BYTES } from "./media/constants.js";
 
 // After
-import { GATEWAY_DEFAULTS, MEDIA_DEFAULTS } from './config/defaults.unified.js';
+import { GATEWAY_DEFAULTS, MEDIA_DEFAULTS } from "./config/defaults.unified.js";
 
 const port = GATEWAY_DEFAULTS.PORT;
 const maxSize = MEDIA_DEFAULTS.MAX_IMAGE_BYTES;
@@ -133,12 +141,10 @@ Replace manual config loading:
 
 ```typescript
 // Before
-const port = process.env.GATEWAY_PORT
-  ? parseInt(process.env.GATEWAY_PORT)
-  : DEFAULT_GATEWAY_PORT;
+const port = process.env.GATEWAY_PORT ? parseInt(process.env.GATEWAY_PORT) : DEFAULT_GATEWAY_PORT;
 
 // After
-import { getUnifiedConfig, GATEWAY_DEFAULTS } from './config/config.js';
+import { getUnifiedConfig, GATEWAY_DEFAULTS } from "./config/config.js";
 
 const { config } = getUnifiedConfig();
 const port = config.gateway?.port ?? GATEWAY_DEFAULTS.PORT;
@@ -152,17 +158,17 @@ If you were manually loading profiles:
 // Before
 if (process.env.RASPBERRY_PI) {
   // manually load .env.pi
-  dotenv.config({ path: '.env.pi' });
+  dotenv.config({ path: ".env.pi" });
 }
 
 // After
-import { getUnifiedConfig } from './config/config.js';
+import { getUnifiedConfig } from "./config/config.js";
 
 // Automatically loads profile based on SECURECLAW_PROFILE env var
 const { config } = getUnifiedConfig();
 
 // Or explicitly specify profile
-const { config } = getUnifiedConfig({ profile: 'raspberry-pi-4-4gb' });
+const { config } = getUnifiedConfig({ profile: "raspberry-pi-4-4gb" });
 ```
 
 ### Step 5: Validate Config
@@ -170,11 +176,11 @@ const { config } = getUnifiedConfig({ profile: 'raspberry-pi-4-4gb' });
 Add config validation to your startup:
 
 ```typescript
-import { validateUnifiedConfig } from './config/config.js';
+import { validateUnifiedConfig } from "./config/config.js";
 
 const result = validateUnifiedConfig(rawConfig);
 if (!result.success) {
-  console.error('Config validation failed:', result.error);
+  console.error("Config validation failed:", result.error);
   process.exit(1);
 }
 ```
@@ -215,6 +221,7 @@ SECURECLAW_PROFILE=raspberry-pi-4-4gb
 ```
 
 Available profiles:
+
 - `raspberry-pi-4-2gb` - Ultra-lightweight for 2GB Pi
 - `raspberry-pi-4-4gb` - Balanced for 4GB Pi (most common)
 - `raspberry-pi-4-8gb` - Full features for 8GB Pi
@@ -225,10 +232,10 @@ Available profiles:
 Runtime validation catches config errors early:
 
 ```typescript
-import { validateUnifiedConfig } from './config/config.js';
+import { validateUnifiedConfig } from "./config/config.js";
 
 const result = validateUnifiedConfig({
-  gateway: { port: 99999 } // Invalid port!
+  gateway: { port: 99999 }, // Invalid port!
 });
 
 if (!result.success) {
@@ -241,7 +248,7 @@ if (!result.success) {
 Full TypeScript support:
 
 ```typescript
-import type { UnifiedConfig } from './config/config.js';
+import type { UnifiedConfig } from "./config/config.js";
 
 function configureGateway(config: UnifiedConfig) {
   // config.gateway is fully typed
@@ -254,7 +261,7 @@ function configureGateway(config: UnifiedConfig) {
 Config is loaded once and cached:
 
 ```typescript
-import { getUnifiedConfig, reloadUnifiedConfig, clearConfigCache } from './config/config.js';
+import { getUnifiedConfig, reloadUnifiedConfig, clearConfigCache } from "./config/config.js";
 
 // First call loads from files
 const { config } = getUnifiedConfig();
@@ -275,16 +282,12 @@ clearConfigCache();
 
 ```typescript
 // gateway/server.ts
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 dotenv.config();
 
-const GATEWAY_PORT = process.env.GATEWAY_PORT
-  ? parseInt(process.env.GATEWAY_PORT)
-  : 18789;
+const GATEWAY_PORT = process.env.GATEWAY_PORT ? parseInt(process.env.GATEWAY_PORT) : 18789;
 
-const MAX_AGENTS = process.env.MAX_AGENTS
-  ? parseInt(process.env.MAX_AGENTS)
-  : 4;
+const MAX_AGENTS = process.env.MAX_AGENTS ? parseInt(process.env.MAX_AGENTS) : 4;
 
 // No validation!
 startServer(GATEWAY_PORT, MAX_AGENTS);
@@ -294,13 +297,13 @@ startServer(GATEWAY_PORT, MAX_AGENTS);
 
 ```typescript
 // gateway/server.ts
-import { getUnifiedConfig, GATEWAY_DEFAULTS, AGENT_DEFAULTS } from './config/config.js';
+import { getUnifiedConfig, GATEWAY_DEFAULTS, AGENT_DEFAULTS } from "./config/config.js";
 
 const { config, errors } = getUnifiedConfig();
 
 // Check for errors
 if (errors.length > 0) {
-  console.warn('Config warnings:', errors);
+  console.warn("Config warnings:", errors);
 }
 
 // Type-safe with defaults
@@ -316,13 +319,13 @@ startServer(port, maxAgents);
 ### Test Config Override
 
 ```typescript
-import { getUnifiedConfig, clearConfigCache } from './config/config.js';
+import { getUnifiedConfig, clearConfigCache } from "./config/config.js";
 
 // Override for tests
 const { config } = getUnifiedConfig({
   env: {
-    SECURECLAW_GATEWAY_PORT: '9999',
-    SECURECLAW_AGENT_MAX_CONCURRENT: '1',
+    SECURECLAW_GATEWAY_PORT: "9999",
+    SECURECLAW_AGENT_MAX_CONCURRENT: "1",
   },
   skipDotenv: true,
 });
@@ -334,11 +337,11 @@ clearConfigCache();
 ### Test Profiles
 
 ```typescript
-import { getUnifiedConfig } from './config/config.js';
+import { getUnifiedConfig } from "./config/config.js";
 
 // Test with Pi profile
 const { config } = getUnifiedConfig({
-  profile: 'raspberry-pi-4-4gb',
+  profile: "raspberry-pi-4-4gb",
 });
 
 expect(config.agent?.maxConcurrent).toBeLessThanOrEqual(4);
@@ -351,14 +354,15 @@ expect(config.agent?.maxConcurrent).toBeLessThanOrEqual(4);
 **Problem**: Config values are not being applied.
 
 **Solution**: Check config loading order:
+
 1. Check `sources` in `LoadConfigResult`
 2. Verify env var names use `SECURECLAW_` prefix
 3. Check .env file locations (`./.env`, `~/.secureclaw/.env`)
 
 ```typescript
 const { config, sources, errors } = getUnifiedConfig();
-console.log('Loaded from:', sources);
-console.log('Errors:', errors);
+console.log("Loaded from:", sources);
+console.log("Errors:", errors);
 ```
 
 ### Validation Errors
@@ -368,11 +372,11 @@ console.log('Errors:', errors);
 **Solution**: Check the Zod error for details:
 
 ```typescript
-import { validateUnifiedConfig } from './config/config.js';
+import { validateUnifiedConfig } from "./config/config.js";
 
 const result = validateUnifiedConfig(rawConfig);
 if (!result.success) {
-  console.error('Validation failed:');
+  console.error("Validation failed:");
   console.error(result.error.format());
 }
 ```
@@ -384,16 +388,17 @@ if (!result.success) {
 **Solution**: Check profile exists:
 
 ```typescript
-import { hasProfile, getAvailableProfiles } from './config/config.js';
+import { hasProfile, getAvailableProfiles } from "./config/config.js";
 
-if (!hasProfile('raspberry-pi-4-4gb')) {
-  console.log('Available profiles:', getAvailableProfiles());
+if (!hasProfile("raspberry-pi-4-4gb")) {
+  console.log("Available profiles:", getAvailableProfiles());
 }
 ```
 
 ## Support
 
 For issues or questions:
+
 1. Check [Environment Variables Reference](./config-env-vars.md)
 2. Review [Configuration Guide](./configuration.md)
 3. Open an issue on GitHub

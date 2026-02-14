@@ -368,38 +368,43 @@ describe("onboard (non-interactive): provider auth", () => {
   }, 60_000);
 
   it("infers Cloudflare auth choice from API key flags", async () => {
-    await withOnboardEnv("secureclaw-onboard-cf-gateway-infer-", async ({ configPath, runtime }) => {
-      await runNonInteractive(
-        {
-          nonInteractive: true,
-          cloudflareAiGatewayAccountId: "cf-account-id",
-          cloudflareAiGatewayGatewayId: "cf-gateway-id",
-          cloudflareAiGatewayApiKey: "cf-gateway-test-key",
-          skipHealth: true,
-          skipChannels: true,
-          skipSkills: true,
-          json: true,
-        },
-        runtime,
-      );
+    await withOnboardEnv(
+      "secureclaw-onboard-cf-gateway-infer-",
+      async ({ configPath, runtime }) => {
+        await runNonInteractive(
+          {
+            nonInteractive: true,
+            cloudflareAiGatewayAccountId: "cf-account-id",
+            cloudflareAiGatewayGatewayId: "cf-gateway-id",
+            cloudflareAiGatewayApiKey: "cf-gateway-test-key",
+            skipHealth: true,
+            skipChannels: true,
+            skipSkills: true,
+            json: true,
+          },
+          runtime,
+        );
 
-      const cfg = await readJsonFile<{
-        auth?: { profiles?: Record<string, { provider?: string; mode?: string }> };
-        agents?: { defaults?: { model?: { primary?: string } } };
-      }>(configPath);
+        const cfg = await readJsonFile<{
+          auth?: { profiles?: Record<string, { provider?: string; mode?: string }> };
+          agents?: { defaults?: { model?: { primary?: string } } };
+        }>(configPath);
 
-      expect(cfg.auth?.profiles?.["cloudflare-ai-gateway:default"]?.provider).toBe(
-        "cloudflare-ai-gateway",
-      );
-      expect(cfg.auth?.profiles?.["cloudflare-ai-gateway:default"]?.mode).toBe("api_key");
-      expect(cfg.agents?.defaults?.model?.primary).toBe("cloudflare-ai-gateway/claude-sonnet-4-5");
-      await expectApiKeyProfile({
-        profileId: "cloudflare-ai-gateway:default",
-        provider: "cloudflare-ai-gateway",
-        key: "cf-gateway-test-key",
-        metadata: { accountId: "cf-account-id", gatewayId: "cf-gateway-id" },
-      });
-    });
+        expect(cfg.auth?.profiles?.["cloudflare-ai-gateway:default"]?.provider).toBe(
+          "cloudflare-ai-gateway",
+        );
+        expect(cfg.auth?.profiles?.["cloudflare-ai-gateway:default"]?.mode).toBe("api_key");
+        expect(cfg.agents?.defaults?.model?.primary).toBe(
+          "cloudflare-ai-gateway/claude-sonnet-4-5",
+        );
+        await expectApiKeyProfile({
+          profileId: "cloudflare-ai-gateway:default",
+          provider: "cloudflare-ai-gateway",
+          key: "cf-gateway-test-key",
+          metadata: { accountId: "cf-account-id", gatewayId: "cf-gateway-id" },
+        });
+      },
+    );
   }, 60_000);
 
   it("configures a custom provider from non-interactive flags", async () => {

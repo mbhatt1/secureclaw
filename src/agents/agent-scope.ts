@@ -71,7 +71,10 @@ export function resolveDefaultAgentId(cfg: SecureClawConfig): string {
   return normalizeAgentId(chosen || DEFAULT_AGENT_ID);
 }
 
-export function resolveSessionAgentIds(params: { sessionKey?: string; config?: SecureClawConfig }): {
+export function resolveSessionAgentIds(params: {
+  sessionKey?: string;
+  config?: SecureClawConfig;
+}): {
   defaultAgentId: string;
   sessionAgentId: string;
 } {
@@ -136,7 +139,10 @@ export function resolveAgentSkillsFilter(
   return normalized.length > 0 ? normalized : [];
 }
 
-export function resolveAgentModelPrimary(cfg: SecureClawConfig, agentId: string): string | undefined {
+export function resolveAgentModelPrimary(
+  cfg: SecureClawConfig,
+  agentId: string,
+): string | undefined {
   const raw = resolveAgentConfig(cfg, agentId)?.model;
   if (!raw) {
     return undefined;

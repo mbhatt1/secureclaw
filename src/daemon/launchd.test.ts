@@ -176,7 +176,11 @@ describe("launchd install", () => {
         );
       } else {
         const shPath = path.join(binDir, "launchctl");
-        await fs.writeFile(shPath, `#!/bin/sh\nnode "$(dirname "$0")/launchctl.mjs" "$@"\n`, "utf8");
+        await fs.writeFile(
+          shPath,
+          `#!/bin/sh\nnode "$(dirname "$0")/launchctl.mjs" "$@"\n`,
+          "utf8",
+        );
         await fs.chmod(shPath, 0o755);
       }
 

@@ -47,7 +47,10 @@ type NodeDaemonStatusOptions = {
 };
 
 function renderNodeServiceStartHints(): string[] {
-  const base = [formatCliCommand("secureclaw node install"), formatCliCommand("secureclaw node start")];
+  const base = [
+    formatCliCommand("secureclaw node install"),
+    formatCliCommand("secureclaw node start"),
+  ];
   switch (process.platform) {
     case "darwin":
       return [

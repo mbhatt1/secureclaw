@@ -7,7 +7,11 @@ import { parseConfigCommand } from "./config-commands.js";
 import { parseDebugCommand } from "./debug-commands.js";
 import { parseInlineDirectives } from "./directive-handling.js";
 
-function buildParams(commandBody: string, cfg: SecureClawConfig, ctxOverrides?: Partial<MsgContext>) {
+function buildParams(
+  commandBody: string,
+  cfg: SecureClawConfig,
+  ctxOverrides?: Partial<MsgContext>,
+) {
   const ctx = {
     Body: commandBody,
     CommandBody: commandBody,

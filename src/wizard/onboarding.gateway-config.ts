@@ -161,9 +161,11 @@ export async function configureGatewayForOnboarding(
   let tailscaleResetOnExit = flow === "quickstart" ? quickstartGateway.tailscaleResetOnExit : false;
   if (tailscaleMode !== "off" && flow !== "quickstart") {
     await prompter.note(
-      ["Docs:", "https://docs.secureclaw.app/gateway/tailscale", "https://docs.secureclaw.app/web"].join(
-        "\n",
-      ),
+      [
+        "Docs:",
+        "https://docs.secureclaw.app/gateway/tailscale",
+        "https://docs.secureclaw.app/web",
+      ].join("\n"),
       "Tailscale",
     );
     tailscaleResetOnExit = Boolean(

@@ -1,7 +1,6 @@
 import type { GatewayRequestHandlers } from "./types.js";
 import { loadConfig } from "../../config/config.js";
 import { listDevicePairing } from "../../infra/device-pairing.js";
-import { getGlobalSecurityCoachHooks } from "../../security-coach/global.js";
 import {
   approveNodePairing,
   listNodePairing,
@@ -10,6 +9,7 @@ import {
   requestNodePairing,
   verifyNodeToken,
 } from "../../infra/node-pairing.js";
+import { getGlobalSecurityCoachHooks } from "../../security-coach/global.js";
 import { isNodeCommandAllowed, resolveNodeCommandAllowlist } from "../node-command-policy.js";
 import {
   ErrorCodes,
@@ -425,17 +425,31 @@ export const nodeHandlers: GatewayRequestHandlers = {
         try {
           const coachResult = await coachHooks.beforeToolCall({
             toolName: `node.${command}`,
-            params: (typeof p.params === "object" && p.params !== null ? p.params : {}) as Record<string, unknown>,
+            params: (typeof p.params === "object" && p.params !== null ? p.params : {}) as Record<
+              string,
+              unknown
+            >,
             agentId: nodeId,
             sessionKey: `node-invoke-${nodeId}`,
           });
           if (coachResult && coachResult.block) {
-            respond(false, undefined, errorShape(ErrorCodes.INVALID_REQUEST, coachResult.blockReason ?? "Blocked by security coach"));
+            respond(
+              false,
+              undefined,
+              errorShape(
+                ErrorCodes.INVALID_REQUEST,
+                coachResult.blockReason ?? "Blocked by security coach",
+              ),
+            );
             return;
           }
         } catch {
           // Fail closed for node commands
-          respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, "Security coach unavailable — node command blocked"));
+          respond(
+            false,
+            undefined,
+            errorShape(ErrorCodes.UNAVAILABLE, "Security coach unavailable — node command blocked"),
+          );
           return;
         }
       }

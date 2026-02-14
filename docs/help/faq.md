@@ -1265,9 +1265,9 @@ Related: [Agent workspace](/concepts/agent-workspace), [Memory](/concepts/memory
 
 Everything lives under `$SECURECLAW_STATE_DIR` (default: `~/.secureclaw`):
 
-| Path                                                            | Purpose                                                      |
-| --------------------------------------------------------------- | ------------------------------------------------------------ |
-| `$SECURECLAW_STATE_DIR/secureclaw.json`                             | Main config (JSON5)                                          |
+| Path                                                              | Purpose                                                      |
+| ----------------------------------------------------------------- | ------------------------------------------------------------ |
+| `$SECURECLAW_STATE_DIR/secureclaw.json`                           | Main config (JSON5)                                          |
 | `$SECURECLAW_STATE_DIR/credentials/oauth.json`                    | Legacy OAuth import (copied into auth profiles on first use) |
 | `$SECURECLAW_STATE_DIR/agents/<agentId>/agent/auth-profiles.json` | Auth profiles (OAuth + API keys)                             |
 | `$SECURECLAW_STATE_DIR/agents/<agentId>/agent/auth.json`          | Runtime auth cache (managed automatically)                   |

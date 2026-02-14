@@ -4,7 +4,6 @@ import type { EventLogEntry } from "./app-events.ts";
 import type { AppViewState } from "./app-view-state.ts";
 import type { DevicePairingList } from "./controllers/devices.ts";
 import type { ExecApprovalRequest } from "./controllers/exec-approval.ts";
-import type { SecurityCoachAlertUI } from "./views/security-coach.ts";
 import type { ExecApprovalsFile, ExecApprovalsSnapshot } from "./controllers/exec-approvals.ts";
 import type { SkillMessage } from "./controllers/skills.ts";
 import type { GatewayBrowserClient, GatewayHelloOk } from "./gateway.ts";
@@ -30,6 +29,7 @@ import type {
   NostrProfile,
 } from "./types.ts";
 import type { NostrProfileFormState } from "./views/channels.nostr-profile-form.ts";
+import type { SecurityCoachAlertUI } from "./views/security-coach.ts";
 import {
   handleChannelConfigReload as handleChannelConfigReloadInternal,
   handleChannelConfigSave as handleChannelConfigSaveInternal,
@@ -165,9 +165,14 @@ export class SecureClawApp extends LitElement {
   @state() securityCoachBusy = false;
   @state() securityCoachError: string | null = null;
   @state() securityCoachCharacterState = "idle";
-  @state() securityCoachSpeech: { message: string; style: string; autoDismissMs: number } | null = null;
+  @state() securityCoachSpeech: { message: string; style: string; autoDismissMs: number } | null =
+    null;
   @state() securityCoachMinimized = false;
-  @state() securityCoachStats: { alertsBlocked: number; alertsAllowed: number; rulesCount: number } | null = null;
+  @state() securityCoachStats: {
+    alertsBlocked: number;
+    alertsAllowed: number;
+    rulesCount: number;
+  } | null = null;
   @state() pendingGatewayUrl: string | null = null;
 
   @state() configLoading = false;

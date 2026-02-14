@@ -144,9 +144,9 @@ describe("formatCliCommand", () => {
   });
 
   it("trims whitespace from profile", () => {
-    expect(formatCliCommand("secureclaw doctor --fix", { SECURECLAW_PROFILE: "  jbsecureclaw  " })).toBe(
-      "secureclaw --profile jbsecureclaw doctor --fix",
-    );
+    expect(
+      formatCliCommand("secureclaw doctor --fix", { SECURECLAW_PROFILE: "  jbsecureclaw  " }),
+    ).toBe("secureclaw --profile jbsecureclaw doctor --fix");
   });
 
   it("handles command with no args after secureclaw", () => {

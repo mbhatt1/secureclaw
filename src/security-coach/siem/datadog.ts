@@ -8,12 +8,7 @@
 // ---------------------------------------------------------------------------
 
 import { hostname } from "node:os";
-
-import type {
-  SiemAdapter,
-  SiemEvent,
-  SiemDestination,
-} from "./dispatcher.js";
+import type { SiemAdapter, SiemEvent, SiemDestination } from "./dispatcher.js";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -61,11 +56,7 @@ function mapSeverityToStatus(severity: string): string {
  * Result is a comma-separated `key:value` string per the Datadog convention.
  */
 function buildDdTags(event: SiemEvent): string {
-  const tags: string[] = [
-    "env:production",
-    "service:secureclaw",
-    "security_coach:true",
-  ];
+  const tags: string[] = ["env:production", "service:secureclaw", "security_coach:true"];
 
   if (event.severity) {
     tags.push(`severity:${event.severity}`);

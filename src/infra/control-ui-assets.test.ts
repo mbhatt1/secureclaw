@@ -156,7 +156,10 @@ describe("control UI assets helpers", () => {
       await fs.mkdir(binDir, { recursive: true });
       await fs.mkdir(path.join(pkgRoot, "dist", "control-ui"), { recursive: true });
       await fs.writeFile(path.join(binDir, "secureclaw"), "#!/usr/bin/env node\n");
-      await fs.writeFile(path.join(pkgRoot, "package.json"), JSON.stringify({ name: "secureclaw" }));
+      await fs.writeFile(
+        path.join(pkgRoot, "package.json"),
+        JSON.stringify({ name: "secureclaw" }),
+      );
       await fs.writeFile(path.join(pkgRoot, "dist", "control-ui", "index.html"), "<html></html>\n");
 
       expect(await resolveControlUiDistIndexPath(path.join(binDir, "secureclaw"))).toBe(
@@ -248,7 +251,10 @@ describe("control UI assets helpers", () => {
       const bin = path.join(tmp, "bin");
       await fs.mkdir(realPkg, { recursive: true });
       await fs.mkdir(bin, { recursive: true });
-      await fs.writeFile(path.join(realPkg, "package.json"), JSON.stringify({ name: "secureclaw" }));
+      await fs.writeFile(
+        path.join(realPkg, "package.json"),
+        JSON.stringify({ name: "secureclaw" }),
+      );
       await fs.writeFile(path.join(realPkg, "secureclaw.mjs"), "export {};\n");
       await fs.mkdir(path.join(realPkg, "dist", "control-ui"), { recursive: true });
       await fs.writeFile(path.join(realPkg, "dist", "control-ui", "index.html"), "<html></html>\n");
@@ -277,7 +283,10 @@ describe("control UI assets helpers", () => {
       const bin = path.join(tmp, "bin");
       await fs.mkdir(realPkg, { recursive: true });
       await fs.mkdir(bin, { recursive: true });
-      await fs.writeFile(path.join(realPkg, "package.json"), JSON.stringify({ name: "secureclaw" }));
+      await fs.writeFile(
+        path.join(realPkg, "package.json"),
+        JSON.stringify({ name: "secureclaw" }),
+      );
       await fs.writeFile(path.join(realPkg, "secureclaw.mjs"), "export {};\n");
       await fs.mkdir(path.join(realPkg, "dist", "control-ui"), { recursive: true });
       await fs.writeFile(path.join(realPkg, "dist", "control-ui", "index.html"), "<html></html>\n");
@@ -289,7 +298,9 @@ describe("control UI assets helpers", () => {
         return; // symlinks not supported (Windows CI)
       }
 
-      const packageRoot = await resolveSecureClawPackageRoot({ argv1: path.join(bin, "secureclaw") });
+      const packageRoot = await resolveSecureClawPackageRoot({
+        argv1: path.join(bin, "secureclaw"),
+      });
       expect(packageRoot).not.toBeNull();
       expect(await canonicalPath(packageRoot ?? "")).toBe(await canonicalPath(realPkg));
     } finally {
@@ -304,7 +315,10 @@ describe("control UI assets helpers", () => {
       const bin = path.join(tmp, "bin");
       await fs.mkdir(realPkg, { recursive: true });
       await fs.mkdir(bin, { recursive: true });
-      await fs.writeFile(path.join(realPkg, "package.json"), JSON.stringify({ name: "secureclaw" }));
+      await fs.writeFile(
+        path.join(realPkg, "package.json"),
+        JSON.stringify({ name: "secureclaw" }),
+      );
       await fs.writeFile(path.join(realPkg, "secureclaw.mjs"), "export {};\n");
       await fs.mkdir(path.join(realPkg, "dist", "control-ui"), { recursive: true });
       await fs.writeFile(path.join(realPkg, "dist", "control-ui", "index.html"), "<html></html>\n");

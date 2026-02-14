@@ -1,11 +1,11 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { createSecureClawTools } from "../agents/secureclaw-tools.js";
 import {
   filterToolsByPolicy,
   resolveEffectiveToolPolicy,
   resolveGroupToolPolicy,
   resolveSubagentToolPolicy,
 } from "../agents/pi-tools.policy.js";
+import { createSecureClawTools } from "../agents/secureclaw-tools.js";
 import {
   buildPluginToolGroups,
   collectExplicitAllowlist,
@@ -20,8 +20,8 @@ import { logWarn } from "../logger.js";
 import { isTestDefaultMemorySlotDisabled } from "../plugins/config-state.js";
 import { getPluginToolMeta } from "../plugins/tools.js";
 import { isSubagentSessionKey } from "../routing/session-key.js";
-import { normalizeMessageChannel } from "../utils/message-channel.js";
 import { getGlobalSecurityCoachHooks } from "../security-coach/global.js";
+import { normalizeMessageChannel } from "../utils/message-channel.js";
 import { authorizeGatewayConnect, type ResolvedGatewayAuth } from "./auth.js";
 import {
   readJsonBodyOrError,
@@ -318,7 +318,10 @@ export async function handleToolsInvokeHttpRequest(
         sessionKey: "http-invoke",
       });
       if (coachResult && coachResult.block) {
-        sendJson(res, 403, { ok: false, error: coachResult.blockReason ?? "Blocked by security coach" });
+        sendJson(res, 403, {
+          ok: false,
+          error: coachResult.blockReason ?? "Blocked by security coach",
+        });
         return true;
       }
     } catch (err) {

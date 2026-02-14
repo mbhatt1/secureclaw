@@ -213,9 +213,7 @@ export async function dispatchReplyFromConfig(params: {
 
     if (content) {
       try {
-        const { getGlobalSecurityCoachHooks } = await import(
-          "../../security-coach/global.js"
-        );
+        const { getGlobalSecurityCoachHooks } = await import("../../security-coach/global.js");
         const hooks = getGlobalSecurityCoachHooks();
         if (hooks?.onInboundChannelMessage) {
           const result = await hooks.onInboundChannelMessage({
@@ -227,7 +225,9 @@ export async function dispatchReplyFromConfig(params: {
             accountId: ctx.AccountId ?? undefined,
           });
           if (result?.cancel) {
-            logVerbose(`dispatch-from-config: security coach blocked inbound message: ${result.reason}`);
+            logVerbose(
+              `dispatch-from-config: security coach blocked inbound message: ${result.reason}`,
+            );
             recordProcessed("skipped", { reason: "security_coach_blocked" });
             return { queuedFinal: false, counts: dispatcher.getQueuedCounts() };
           }

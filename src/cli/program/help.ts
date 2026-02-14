@@ -17,7 +17,10 @@ const EXAMPLES = [
     "Send via your web session and print JSON result.",
   ],
   ["secureclaw gateway --port 18789", "Run the WebSocket Gateway locally."],
-  ["secureclaw --dev gateway", "Run a dev Gateway (isolated state/config) on ws://127.0.0.1:19001."],
+  [
+    "secureclaw --dev gateway",
+    "Run a dev Gateway (isolated state/config) on ws://127.0.0.1:19001.",
+  ],
   ["secureclaw gateway --force", "Kill anything bound to the default gateway port, then start it."],
   ["secureclaw gateway ...", "Gateway control via WebSocket."],
   [

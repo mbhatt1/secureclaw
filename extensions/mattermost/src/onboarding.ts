@@ -1,4 +1,8 @@
-import type { ChannelOnboardingAdapter, SecureClawConfig, WizardPrompter } from "secureclaw/plugin-sdk";
+import type {
+  ChannelOnboardingAdapter,
+  SecureClawConfig,
+  WizardPrompter,
+} from "secureclaw/plugin-sdk";
 import { DEFAULT_ACCOUNT_ID, normalizeAccountId } from "secureclaw/plugin-sdk";
 import {
   listMattermostAccountIds,

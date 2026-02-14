@@ -76,10 +76,10 @@ See [Configuration: Env var substitution](/gateway/configuration#env-var-substit
 
 ## Path-related env vars
 
-| Variable               | Purpose                                                                                                                                                                          |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Variable                 | Purpose                                                                                                                                                                              |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `SECURECLAW_HOME`        | Override the home directory used for all internal path resolution (`~/.secureclaw/`, agent dirs, sessions, credentials). Useful when running SecureClaw as a dedicated service user. |
-| `SECURECLAW_STATE_DIR`   | Override the state directory (default `~/.secureclaw`).                                                                                                                            |
+| `SECURECLAW_STATE_DIR`   | Override the state directory (default `~/.secureclaw`).                                                                                                                              |
 | `SECURECLAW_CONFIG_PATH` | Override the config file path (default `~/.secureclaw/secureclaw.json`).                                                                                                             |
 
 ### `SECURECLAW_HOME`

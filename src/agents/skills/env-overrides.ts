@@ -3,7 +3,10 @@ import type { SkillEntry, SkillSnapshot } from "./types.js";
 import { resolveSkillConfig } from "./config.js";
 import { resolveSkillKey } from "./frontmatter.js";
 
-export function applySkillEnvOverrides(params: { skills: SkillEntry[]; config?: SecureClawConfig }) {
+export function applySkillEnvOverrides(params: {
+  skills: SkillEntry[];
+  config?: SecureClawConfig;
+}) {
   const { skills, config } = params;
   const updates: Array<{ key: string; prev: string | undefined }> = [];
 

@@ -115,9 +115,7 @@ function renderMinimizedCoach(state: CoachState, alertCount: number) {
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
         </svg>
       </div>
-      ${alertCount > 0
-        ? html`<span class="coach-badge">${alertCount}</span>`
-        : nothing}
+      ${alertCount > 0 ? html`<span class="coach-badge">${alertCount}</span>` : nothing}
     </div>
   `;
 }
@@ -178,16 +176,9 @@ function renderAlertContext(context: SecurityCoachAlertUI["context"]) {
   `;
 }
 
-function renderBlockingAlert(
-  state: CoachState,
-  alert: SecurityCoachAlertUI,
-  queueCount: number,
-) {
+function renderBlockingAlert(state: CoachState, alert: SecurityCoachAlertUI, queueCount: number) {
   const remainingMs = alert.expiresAtMs - Date.now();
-  const remaining =
-    remainingMs > 0
-      ? `expires in ${formatRemaining(remainingMs)}`
-      : "expired";
+  const remaining = remainingMs > 0 ? `expires in ${formatRemaining(remainingMs)}` : "expired";
   const busy = state.securityCoachBusy ?? false;
 
   return html`
@@ -218,9 +209,11 @@ function renderBlockingAlert(
             </div>
             <div class="coach-alert-sub">${remaining}</div>
           </div>
-          ${queueCount > 1
-            ? html`<div class="coach-queue-indicator">${queueCount} pending</div>`
-            : nothing}
+          ${
+            queueCount > 1
+              ? html`<div class="coach-queue-indicator">${queueCount} pending</div>`
+              : nothing
+          }
         </div>
 
         <div class="coach-message">${alert.coachMessage}</div>
@@ -231,40 +224,38 @@ function renderBlockingAlert(
 
         ${renderThreatDetails(alert.threats)}
 
-        ${state.securityCoachError
-          ? html`<div class="coach-error">${state.securityCoachError}</div>`
-          : nothing}
+        ${
+          state.securityCoachError
+            ? html`<div class="coach-error">${state.securityCoachError}</div>`
+            : nothing
+        }
 
         <div class="coach-actions">
           <button
             class="btn primary"
             ?disabled=${busy}
-            @click=${() =>
-              state.handleSecurityCoachDecision?.(alert.id, "allow-once")}
+            @click=${() => state.handleSecurityCoachDecision?.(alert.id, "allow-once")}
           >
             Allow Once
           </button>
           <button
             class="btn"
             ?disabled=${busy}
-            @click=${() =>
-              state.handleSecurityCoachDecision?.(alert.id, "allow-always")}
+            @click=${() => state.handleSecurityCoachDecision?.(alert.id, "allow-always")}
           >
             Always Allow
           </button>
           <button
             class="btn danger"
             ?disabled=${busy}
-            @click=${() =>
-              state.handleSecurityCoachDecision?.(alert.id, "deny")}
+            @click=${() => state.handleSecurityCoachDecision?.(alert.id, "deny")}
           >
             Deny
           </button>
           <button
             class="btn"
             ?disabled=${busy}
-            @click=${() =>
-              state.handleSecurityCoachDecision?.(alert.id, "learn-more")}
+            @click=${() => state.handleSecurityCoachDecision?.(alert.id, "learn-more")}
           >
             Learn More
           </button>
@@ -274,9 +265,7 @@ function renderBlockingAlert(
   `;
 }
 
-function renderSpeechBubble(
-  speech: NonNullable<SecurityCoachViewState["securityCoachSpeech"]>,
-) {
+function renderSpeechBubble(speech: NonNullable<SecurityCoachViewState["securityCoachSpeech"]>) {
   return html`
     <div class="coach-bubble coach-bubble--${speech.style}">
       <span class="coach-bubble-text">${speech.message}</span>
@@ -305,42 +294,43 @@ function renderWarnInformCard(state: CoachState, alert: SecurityCoachAlertUI) {
 
       ${renderThreatDetails(alert.threats)}
 
-      ${state.securityCoachError
-        ? html`<div class="coach-error">${state.securityCoachError}</div>`
-        : nothing}
+      ${
+        state.securityCoachError
+          ? html`<div class="coach-error">${state.securityCoachError}</div>`
+          : nothing
+      }
 
-      ${alert.requiresDecision
-        ? html`
+      ${
+        alert.requiresDecision
+          ? html`
             <div class="coach-actions">
               <button
                 class="btn primary"
                 ?disabled=${busy}
-                @click=${() =>
-                  state.handleSecurityCoachDecision?.(alert.id, "allow-once")}
+                @click=${() => state.handleSecurityCoachDecision?.(alert.id, "allow-once")}
               >
                 Allow Once
               </button>
               <button
                 class="btn danger"
                 ?disabled=${busy}
-                @click=${() =>
-                  state.handleSecurityCoachDecision?.(alert.id, "deny")}
+                @click=${() => state.handleSecurityCoachDecision?.(alert.id, "deny")}
               >
                 Deny
               </button>
             </div>
           `
-        : html`
+          : html`
             <div class="coach-actions">
               <button
                 class="btn"
-                @click=${() =>
-                  state.handleSecurityCoachDismiss?.(alert.id)}
+                @click=${() => state.handleSecurityCoachDismiss?.(alert.id)}
               >
                 Dismiss
               </button>
             </div>
-          `}
+          `
+      }
     </div>
   `;
 }
@@ -353,9 +343,7 @@ function renderFloatingCoach(
   const speech = state.securityCoachSpeech ?? null;
   return html`
     <div class="security-coach">
-      ${currentAlert
-        ? renderWarnInformCard(state, currentAlert)
-        : nothing}
+      ${currentAlert ? renderWarnInformCard(state, currentAlert) : nothing}
 
       ${speech && !currentAlert ? renderSpeechBubble(speech) : nothing}
 
@@ -388,9 +376,7 @@ function renderFloatingCoach(
 // Main render entry-point
 // ---------------------------------------------------------------------------
 
-export function renderSecurityCoach(
-  state: AppViewState & Partial<SecurityCoachViewState>,
-) {
+export function renderSecurityCoach(state: AppViewState & Partial<SecurityCoachViewState>) {
   // If coach is disabled, render nothing
   if (!state.securityCoachEnabled) {
     return nothing;

@@ -22,10 +22,14 @@ export function ensureMatrixSdkLoggingConfigured(): void {
   matrixSdkLoggingConfigured = true;
 
   LogService.setLogger({
-    trace: (module: any, ...messageOrObject: any[]) => matrixSdkBaseLogger.trace(module, ...messageOrObject),
-    debug: (module: any, ...messageOrObject: any[]) => matrixSdkBaseLogger.debug(module, ...messageOrObject),
-    info: (module: any, ...messageOrObject: any[]) => matrixSdkBaseLogger.info(module, ...messageOrObject),
-    warn: (module: any, ...messageOrObject: any[]) => matrixSdkBaseLogger.warn(module, ...messageOrObject),
+    trace: (module: any, ...messageOrObject: any[]) =>
+      matrixSdkBaseLogger.trace(module, ...messageOrObject),
+    debug: (module: any, ...messageOrObject: any[]) =>
+      matrixSdkBaseLogger.debug(module, ...messageOrObject),
+    info: (module: any, ...messageOrObject: any[]) =>
+      matrixSdkBaseLogger.info(module, ...messageOrObject),
+    warn: (module: any, ...messageOrObject: any[]) =>
+      matrixSdkBaseLogger.warn(module, ...messageOrObject),
     error: (module: any, ...messageOrObject: any[]) => {
       if (shouldSuppressMatrixHttpNotFound(module, messageOrObject)) {
         return;

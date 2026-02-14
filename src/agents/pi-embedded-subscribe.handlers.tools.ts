@@ -281,7 +281,10 @@ export async function handleToolExecutionEnd(
   // Run security coach after_tool_call hook (fire-and-forget, educational tips)
   const coachHooks = getGlobalSecurityCoachHooks();
   if (coachHooks) {
-    const coachParams = (toolArgs && typeof toolArgs === "object" ? toolArgs : {}) as Record<string, unknown>;
+    const coachParams = (toolArgs && typeof toolArgs === "object" ? toolArgs : {}) as Record<
+      string,
+      unknown
+    >;
     void coachHooks
       .afterToolCall({
         toolName,
@@ -291,7 +294,9 @@ export async function handleToolExecutionEnd(
         durationMs,
       })
       .catch((err) => {
-        ctx.log.debug(`security coach after_tool_call failed: tool=${toolName} error=${String(err)}`);
+        ctx.log.debug(
+          `security coach after_tool_call failed: tool=${toolName} error=${String(err)}`,
+        );
       });
   }
 }

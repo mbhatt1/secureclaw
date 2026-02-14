@@ -1,6 +1,9 @@
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { POSIX_SECURECLAW_TMP_DIR, resolvePreferredSecureClawTmpDir } from "./tmp-secureclaw-dir.js";
+import {
+  POSIX_SECURECLAW_TMP_DIR,
+  resolvePreferredSecureClawTmpDir,
+} from "./tmp-secureclaw-dir.js";
 
 describe("resolvePreferredSecureClawTmpDir", () => {
   it("prefers /tmp/secureclaw when it already exists and is writable", () => {

@@ -136,7 +136,8 @@ const makeOpenAiConfig = (modelIds: string[]) =>
     },
   }) satisfies SecureClawConfig;
 
-const ensureModels = (cfg: SecureClawConfig) => ensureSecureClawModelsJson(cfg, agentDir) as unknown;
+const ensureModels = (cfg: SecureClawConfig) =>
+  ensureSecureClawModelsJson(cfg, agentDir) as unknown;
 
 const nextSessionFile = () => {
   sessionCounter += 1;

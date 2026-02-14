@@ -206,7 +206,9 @@ export type SecureClawPluginCliContext = {
   logger: PluginLogger;
 };
 
-export type SecureClawPluginCliRegistrar = (ctx: SecureClawPluginCliContext) => void | Promise<void>;
+export type SecureClawPluginCliRegistrar = (
+  ctx: SecureClawPluginCliContext,
+) => void | Promise<void>;
 
 export type SecureClawPluginServiceContext = {
   config: SecureClawConfig;

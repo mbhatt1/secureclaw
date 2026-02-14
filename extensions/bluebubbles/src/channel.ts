@@ -1,4 +1,8 @@
-import type { ChannelAccountSnapshot, ChannelPlugin, SecureClawConfig } from "secureclaw/plugin-sdk";
+import type {
+  ChannelAccountSnapshot,
+  ChannelPlugin,
+  SecureClawConfig,
+} from "secureclaw/plugin-sdk";
 import {
   applyAccountNameToChannelSection,
   buildChannelConfigSchema,

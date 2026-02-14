@@ -29,7 +29,11 @@ const isLocalBaseUrl = (baseUrl: string) => {
   }
 };
 
-const hasAuthForProvider = (provider: string, cfg: SecureClawConfig, authStore: AuthProfileStore) => {
+const hasAuthForProvider = (
+  provider: string,
+  cfg: SecureClawConfig,
+  authStore: AuthProfileStore,
+) => {
   if (listProfilesForProvider(authStore, provider).length > 0) {
     return true;
   }
