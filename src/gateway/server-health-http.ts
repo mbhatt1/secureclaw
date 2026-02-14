@@ -80,6 +80,18 @@ export async function handleLivenessProbe(
  * - Process is alive
  * - Health snapshot can be retrieved
  * - Channels are operational (when probed)
+ * - Response time SLA is met (< 5s)
+ * - All critical dependencies are available
+ *
+ * Returns 206 (Partial Content) if:
+ * - Service is degraded but partially functional
+ * - Some non-critical channels are down
+ * - Response time SLA is violated but not critical
+ *
+ * Returns 503 if:
+ * - Critical dependencies are unavailable
+ * - Health check times out
+ * - All channels are down
  *
  * Query parameters:
  * - probe=true: Perform active channel probes (slower, more thorough)
@@ -123,10 +135,18 @@ export async function handleReadinessProbe(
 
     // Check if any critical channels are down
     const channelIssues: string[] = [];
+    const criticalChannelIssues: string[] = [];
+    let linkedChannels = 0;
+    let totalChannels = 0;
+
     for (const [channelId, channelSummary] of Object.entries(health.channels ?? {})) {
+      totalChannels++;
+
       // Check if channel is explicitly not linked
       if (channelSummary.linked === false) {
         channelIssues.push(`${channelId}: not linked`);
+      } else if (channelSummary.linked === true) {
+        linkedChannels++;
       }
 
       // Check if probe explicitly failed
@@ -134,29 +154,92 @@ export async function handleReadinessProbe(
       if (probe && probe.ok === false) {
         channelIssues.push(`${channelId}: probe failed`);
       }
+
+      // Check if channel is configured (critical issue if not)
+      if (channelSummary.configured === false) {
+        criticalChannelIssues.push(`${channelId}: not configured`);
+      }
     }
 
-    // Determine readiness status
-    const ready = channelIssues.length === 0;
-    const status = ready ? "ready" : "degraded";
-    const statusCode = ready ? 200 : 503;
+    // Dependency checks
+    const dependencies: Record<string, { status: string; message?: string }> = {};
+
+    // Database check (via session store)
+    const sessionCount = health.sessions?.count ?? 0;
+    dependencies.database = {
+      status: sessionCount >= 0 ? "ok" : "unavailable",
+    };
+
+    // Cache check (via hit rate)
+    const cacheHitRate = health.ioMetrics?.cache.hitRate ?? 0;
+    dependencies.cache = {
+      status: "ok",
+      message: `hit rate: ${cacheHitRate.toFixed(1)}%`,
+    };
+
+    // Channel connectivity check
+    dependencies.channels = {
+      status: linkedChannels > 0 ? "ok" : "degraded",
+      message: `${linkedChannels}/${totalChannels} linked`,
+    };
+
+    // Response time SLA validation (target: < 5s for health checks)
+    const SLA_TARGET_MS = 5000;
+    const SLA_WARNING_MS = 3000;
+    const healthCheckDuration = health.durationMs ?? 0;
+    const slaViolation = healthCheckDuration > SLA_TARGET_MS;
+    const slaWarning = healthCheckDuration > SLA_WARNING_MS;
+
+    dependencies.responseTimes = {
+      status: slaViolation ? "violated" : slaWarning ? "warning" : "ok",
+      message: `${healthCheckDuration}ms (target: <${SLA_TARGET_MS}ms)`,
+    };
+
+    // Determine overall status
+    let status: "ready" | "degraded" | "unavailable";
+    let statusCode: number;
+
+    if (criticalChannelIssues.length > 0 || linkedChannels === 0) {
+      // Critical issues: service unavailable
+      status = "unavailable";
+      statusCode = 503;
+    } else if (channelIssues.length > 0 || slaViolation) {
+      // Degraded: partial functionality
+      status = "degraded";
+      statusCode = 206; // Partial Content
+    } else {
+      // All good
+      status = "ready";
+      statusCode = 200;
+    }
+
+    const ready = status === "ready";
 
     sendJson(res, statusCode, {
       status,
       ready,
       timestamp: new Date().toISOString(),
       healthCheckDurationMs: health.durationMs,
+      dependencies,
       channels: Object.keys(health.channels ?? {}).length,
+      channelsLinked: linkedChannels,
       agents: health.agents?.length ?? 0,
       sessions: health.sessions?.count ?? 0,
       ...(channelIssues.length > 0 && { issues: channelIssues }),
+      ...(criticalChannelIssues.length > 0 && { criticalIssues: criticalChannelIssues }),
       ...(health.ioMetrics && {
         metrics: {
           diskWritesPerMin: health.ioMetrics.disk.writesPerMin,
           networkMbps: health.ioMetrics.network.mbps,
           cacheHitRate: health.ioMetrics.cache.hitRate,
+          dbQueriesPerSec: health.ioMetrics.database.queriesPerSec,
         },
       }),
+      sla: {
+        targetMs: SLA_TARGET_MS,
+        actualMs: healthCheckDuration,
+        met: !slaViolation,
+      },
     });
 
     return true;

@@ -1,0 +1,526 @@
+# Prometheus Alert Rules for SecureClaw Gateway
+# Based on thresholds from docs/gateway/alerting-thresholds.md
+
+groups:
+  # ========================================================================
+  # CRITICAL ALERTS - Immediate Response Required (< 5 min)
+  # ========================================================================
+  - name: secureclaw_critical
+    interval: 30s
+    rules:
+      # Process Down
+      - alert: SecureClawGatewayDown
+        expr: up{job="secureclaw"} == 0
+        for: 90s
+        labels:
+          severity: critical
+          component: gateway
+        annotations:
+          summary: "SecureClaw gateway is down"
+          description: "Gateway instance {{ $labels.instance }} has been down for 90 seconds"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/gateway-down"
+
+      # Critical Error Rate
+      - alert: SecureClawCriticalErrorRate
+        expr: |
+          rate(secureclaw_errors_total[5m]) /
+          rate(secureclaw_requests_total[5m]) > 0.10
+        for: 5m
+        labels:
+          severity: critical
+          component: gateway
+        annotations:
+          summary: "Critical error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/high-error-rate"
+
+      # Critical Memory Usage
+      - alert: SecureClawCriticalMemoryUsage
+        expr: |
+          (process_resident_memory_bytes{job="secureclaw"} /
+           node_memory_MemTotal_bytes) > 0.90
+        for: 2m
+        labels:
+          severity: critical
+          component: gateway
+        annotations:
+          summary: "Critical memory usage detected"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/high-memory"
+
+      # All Channels Down
+      - alert: SecureClawAllChannelsDown
+        expr: |
+          sum(secureclaw_channel_linked{job="secureclaw"}) == 0
+        for: 5m
+        labels:
+          severity: critical
+          component: channels
+        annotations:
+          summary: "All channels are disconnected"
+          description: "No channels are linked on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/channels-down"
+
+  # ========================================================================
+  # HIGH ALERTS - Urgent Response Required (< 15 min)
+  # ========================================================================
+  - name: secureclaw_high
+    interval: 1m
+    rules:
+      # Gateway Not Ready
+      - alert: SecureClawGatewayNotReady
+        expr: probe_success{job="secureclaw_health"} == 0
+        for: 2m
+        labels:
+          severity: high
+          component: gateway
+        annotations:
+          summary: "Gateway readiness probe failing"
+          description: "Health probe /health/ready returning 503 for {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/gateway-not-ready"
+
+      # High Error Rate
+      - alert: SecureClawHighErrorRate
+        expr: |
+          rate(secureclaw_errors_total[5m]) /
+          rate(secureclaw_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: high
+          component: gateway
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/high-error-rate"
+
+      # Very Slow Responses
+      - alert: SecureClawVerySlowResponses
+        expr: |
+          histogram_quantile(0.95,
+            rate(secureclaw_message_duration_ms_bucket[5m])
+          ) > 10000
+        for: 5m
+        labels:
+          severity: high
+          component: gateway
+        annotations:
+          summary: "Very slow response times detected"
+          description: "P95 latency is {{ $value | humanizeDuration }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/slow-responses"
+
+      # Critical Queue Depth
+      - alert: SecureClawCriticalQueueDepth
+        expr: secureclaw_queue_depth{job="secureclaw"} > 500
+        for: 1m
+        labels:
+          severity: high
+          component: queue
+        annotations:
+          summary: "Critical queue depth detected"
+          description: "Queue depth is {{ $value }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/high-queue-depth"
+
+      # High CPU Usage
+      - alert: SecureClawSustainedHighCPU
+        expr: |
+          rate(process_cpu_seconds_total{job="secureclaw"}[5m]) > 0.95
+        for: 5m
+        labels:
+          severity: high
+          component: gateway
+        annotations:
+          summary: "Sustained high CPU usage detected"
+          description: "CPU usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/high-cpu"
+
+      # Disk Usage Critical
+      - alert: SecureClawDiskUsageCritical
+        expr: |
+          (node_filesystem_avail_bytes{job="secureclaw"} /
+           node_filesystem_size_bytes) < 0.05
+        for: 1m
+        labels:
+          severity: high
+          component: storage
+        annotations:
+          summary: "Critical disk usage detected"
+          description: "Disk usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/disk-full"
+
+      # Channel Disconnected
+      - alert: SecureClawChannelDisconnected
+        expr: |
+          secureclaw_channel_linked{job="secureclaw"} == 0
+        for: 5m
+        labels:
+          severity: high
+          component: channels
+        annotations:
+          summary: "Channel disconnected"
+          description: "Channel {{ $labels.channel }} is not linked on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/channel-disconnected"
+
+      # Model API Errors
+      - alert: SecureClawModelAPIErrors
+        expr: |
+          rate(secureclaw_model_errors_total[5m]) /
+          rate(secureclaw_model_requests_total[5m]) > 0.10
+        for: 5m
+        labels:
+          severity: high
+          component: model
+        annotations:
+          summary: "High model API error rate"
+          description: "Model API error rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/model-api-errors"
+
+      # Multiple Stuck Sessions
+      - alert: SecureClawMultipleStuckSessions
+        expr: |
+          sum(secureclaw_session_stuck_total{job="secureclaw"}) > 5
+        for: 5m
+        labels:
+          severity: high
+          component: sessions
+        annotations:
+          summary: "Multiple sessions stuck"
+          description: "{{ $value }} sessions stuck in processing state on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/stuck-sessions"
+
+      # Connection Pool Exhaustion
+      - alert: SecureClawConnectionPoolExhausted
+        expr: |
+          secureclaw_active_connections{job="secureclaw"} /
+          secureclaw_connection_pool_size > 0.90
+        for: 5m
+        labels:
+          severity: high
+          component: gateway
+        annotations:
+          summary: "Connection pool near exhaustion"
+          description: "Connection pool utilization is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/connection-pool"
+
+      # High Security Coach Alerts
+      - alert: SecureClawSecurityCoachCriticalAlerts
+        expr: |
+          rate(secureclaw_security_coach_alerts_total{severity="critical"}[10m]) > 5
+        for: 10m
+        labels:
+          severity: high
+          component: security-coach
+        annotations:
+          summary: "High rate of critical security alerts"
+          description: "{{ $value }} critical security alerts in last 10 minutes on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/security-alerts"
+
+  # ========================================================================
+  # MEDIUM ALERTS - Response Required (< 1 hour)
+  # ========================================================================
+  - name: secureclaw_medium
+    interval: 1m
+    rules:
+      # Frequent Restarts
+      - alert: SecureClawFrequentRestarts
+        expr: changes(process_uptime_seconds{job="secureclaw"}[1h]) > 3
+        for: 5m
+        labels:
+          severity: medium
+          component: gateway
+        annotations:
+          summary: "Frequent gateway restarts detected"
+          description: "Gateway on {{ $labels.instance }} has restarted {{ $value }} times in the last hour"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/frequent-restarts"
+
+      # Slow Responses
+      - alert: SecureClawSlowResponses
+        expr: |
+          histogram_quantile(0.95,
+            rate(secureclaw_message_duration_ms_bucket[10m])
+          ) > 5000
+        for: 10m
+        labels:
+          severity: medium
+          component: gateway
+        annotations:
+          summary: "Slow response times detected"
+          description: "P95 latency is {{ $value | humanizeDuration }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/slow-responses"
+
+      # Slow Agent Runs
+      - alert: SecureClawSlowAgentRuns
+        expr: |
+          histogram_quantile(0.95,
+            rate(secureclaw_run_duration_ms_bucket[15m])
+          ) > 30000
+        for: 15m
+        labels:
+          severity: medium
+          component: agent
+        annotations:
+          summary: "Slow agent execution detected"
+          description: "P95 agent run time is {{ $value | humanizeDuration }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/slow-agents"
+
+      # High Queue Depth
+      - alert: SecureClawHighQueueDepth
+        expr: secureclaw_queue_depth{job="secureclaw"} > 100
+        for: 2m
+        labels:
+          severity: medium
+          component: queue
+        annotations:
+          summary: "High queue depth detected"
+          description: "Queue depth is {{ $value }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/high-queue-depth"
+
+      # High Queue Wait Time
+      - alert: SecureClawHighQueueWait
+        expr: |
+          histogram_quantile(0.95,
+            rate(secureclaw_queue_wait_ms_bucket[10m])
+          ) > 60000
+        for: 10m
+        labels:
+          severity: medium
+          component: queue
+        annotations:
+          summary: "High queue wait times detected"
+          description: "P95 queue wait time is {{ $value | humanizeDuration }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/high-queue-wait"
+
+      # High Memory Usage
+      - alert: SecureClawHighMemoryUsage
+        expr: |
+          (process_resident_memory_bytes{job="secureclaw"} /
+           node_memory_MemTotal_bytes) > 0.80
+        for: 10m
+        labels:
+          severity: medium
+          component: gateway
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/high-memory"
+
+      # High CPU Usage
+      - alert: SecureClawHighCPUUsage
+        expr: |
+          rate(process_cpu_seconds_total{job="secureclaw"}[5m]) > 0.80
+        for: 15m
+        labels:
+          severity: medium
+          component: gateway
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/high-cpu"
+
+      # Disk Usage High
+      - alert: SecureClawDiskUsageHigh
+        expr: |
+          (node_filesystem_avail_bytes{job="secureclaw"} /
+           node_filesystem_size_bytes) < 0.15
+        for: 5m
+        labels:
+          severity: medium
+          component: storage
+        annotations:
+          summary: "High disk usage detected"
+          description: "Disk usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/disk-full"
+
+      # High Disk Writes
+      - alert: SecureClawHighDiskWrites
+        expr: |
+          rate(secureclaw_disk_write_bytes_total[30m]) > 104857600
+        for: 30m
+        labels:
+          severity: medium
+          component: storage
+        annotations:
+          summary: "High disk write activity detected"
+          description: "Disk writes exceed 100 MB/min on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/high-disk-writes"
+
+      # Channel Webhook Errors
+      - alert: SecureClawChannelWebhookErrors
+        expr: |
+          rate(secureclaw_webhook_error_total[10m]) /
+          rate(secureclaw_webhook_received_total[10m]) > 0.10
+        for: 10m
+        labels:
+          severity: medium
+          component: channels
+        annotations:
+          summary: "High webhook error rate"
+          description: "Webhook error rate is {{ $value | humanizePercentage }} for channel {{ $labels.channel }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/webhook-errors"
+
+      # Session Stuck
+      - alert: SecureClawSessionStuck
+        expr: |
+          secureclaw_session_stuck_age_ms{job="secureclaw"} > 300000
+        for: 5m
+        labels:
+          severity: medium
+          component: sessions
+        annotations:
+          summary: "Session stuck in processing"
+          description: "Session {{ $labels.session_key }} stuck for {{ $value | humanizeDuration }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/stuck-sessions"
+
+      # Cost Spike
+      - alert: SecureClawCostSpike
+        expr: |
+          rate(secureclaw_cost_usd_total[1h]) >
+          avg_over_time(secureclaw_cost_usd_total[24h]) * 2.0
+        for: 1h
+        labels:
+          severity: medium
+          component: billing
+        annotations:
+          summary: "Unusual cost spike detected"
+          description: "Cost rate is {{ $value | humanizePercentage }} above daily average on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/cost-spike"
+
+      # Channel Probe Failing
+      - alert: SecureClawChannelProbeFailing
+        expr: |
+          secureclaw_channel_probe_success{job="secureclaw"} == 0
+        for: 5m
+        labels:
+          severity: medium
+          component: channels
+        annotations:
+          summary: "Channel health probe failing"
+          description: "Channel {{ $labels.channel }} probe failing on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/channel-probe"
+
+      # Channel Auth Expiring
+      - alert: SecureClawChannelAuthExpiring
+        expr: |
+          secureclaw_channel_auth_age_seconds{job="secureclaw"} > 604800
+        for: 1h
+        labels:
+          severity: medium
+          component: channels
+        annotations:
+          summary: "Channel authentication expiring soon"
+          description: "Channel {{ $labels.channel }} auth age is {{ $value | humanizeDuration }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/channel-auth-expiring"
+
+      # Security Coach Blocked Commands
+      - alert: SecureClawSecurityCoachBlockedCommands
+        expr: |
+          rate(secureclaw_security_coach_blocked_total[1h]) > 20
+        for: 1h
+        labels:
+          severity: medium
+          component: security-coach
+        annotations:
+          summary: "High rate of blocked commands"
+          description: "{{ $value }} commands blocked per hour on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/blocked-commands"
+
+      # SIEM Delivery Failures
+      - alert: SecureClawSIEMDeliveryFailures
+        expr: |
+          rate(secureclaw_siem_batches_failed_total[15m]) /
+          rate(secureclaw_siem_batches_sent_total[15m]) > 0.10
+        for: 15m
+        labels:
+          severity: medium
+          component: security-coach
+        annotations:
+          summary: "SIEM delivery failures detected"
+          description: "SIEM batch failure rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/siem-failures"
+
+      # High Network Bandwidth
+      - alert: SecureClawHighNetworkBandwidth
+        expr: |
+          rate(secureclaw_network_bytes_total[30m]) * 8 > 100000000
+        for: 30m
+        labels:
+          severity: medium
+          component: network
+        annotations:
+          summary: "High network bandwidth usage"
+          description: "Network bandwidth exceeds 100 Mbps on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/high-bandwidth"
+
+      # High DB Query Rate
+      - alert: SecureClawHighDBQueryRate
+        expr: |
+          rate(secureclaw_database_queries_total[15m]) > 1000
+        for: 15m
+        labels:
+          severity: medium
+          component: database
+        annotations:
+          summary: "High database query rate"
+          description: "Database queries exceed 1000/sec on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/high-db-queries"
+
+  # ========================================================================
+  # LOW ALERTS - Informational (next business day)
+  # ========================================================================
+  - name: secureclaw_low
+    interval: 5m
+    rules:
+      # Low Message Throughput
+      - alert: SecureClawLowMessageThroughput
+        expr: |
+          rate(secureclaw_message_processed_total[5m]) <
+          rate(secureclaw_message_processed_total[1h] offset 1h) * 0.5
+        for: 15m
+        labels:
+          severity: low
+          component: gateway
+        annotations:
+          summary: "Message throughput dropped significantly"
+          description: "Throughput is {{ $value | humanizePercentage }} of normal on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/low-throughput"
+
+      # Low Cache Hit Rate
+      - alert: SecureClawLowCacheHitRate
+        expr: |
+          (rate(secureclaw_cache_hits_total[1h]) /
+           (rate(secureclaw_cache_hits_total[1h]) +
+            rate(secureclaw_cache_misses_total[1h]))) < 0.50
+        for: 1h
+        labels:
+          severity: low
+          component: cache
+        annotations:
+          summary: "Low cache hit rate detected"
+          description: "Cache hit rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/low-cache-hit-rate"
+
+      # Session Store Growing
+      - alert: SecureClawSessionStoreGrowing
+        expr: |
+          rate(secureclaw_sessions_total[1h]) > 0.20
+        for: 1h
+        labels:
+          severity: low
+          component: sessions
+        annotations:
+          summary: "Session count growing rapidly"
+          description: "Session count growing at {{ $value | humanizePercentage }}/hour on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/session-growth"
+
+      # Token Usage Spike
+      - alert: SecureClawTokenUsageSpike
+        expr: |
+          rate(secureclaw_tokens_total[5m]) >
+          rate(secureclaw_tokens_total[1h] offset 1h) * 2.0
+        for: 30m
+        labels:
+          severity: low
+          component: billing
+        annotations:
+          summary: "Token usage spike detected"
+          description: "Token usage is {{ $value | humanizePercentage }} above normal on {{ $labels.instance }}"
+          runbook_url: "https://docs.secureclaw.ai/runbooks/token-spike"
