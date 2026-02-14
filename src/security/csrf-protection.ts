@@ -112,7 +112,8 @@ export function validateOriginHeader(
 
     // Check same-origin if enabled
     if (options.allowSameOrigin && req.headers.host) {
-      const requestOrigin = `${req.socket.encrypted ? "https" : "http"}://${req.headers.host}`;
+      const isEncrypted = "encrypted" in req.socket && req.socket.encrypted;
+      const requestOrigin = `${isEncrypted ? "https" : "http"}://${req.headers.host}`;
       if (originString === requestOrigin) {
         return { valid: true, origin: originString };
       }

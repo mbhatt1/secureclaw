@@ -3,11 +3,12 @@ import type { createSubsystemLogger } from "../logging/subsystem.js";
 import type { ResolvedGatewayAuth } from "./auth.js";
 import type { GatewayRequestContext, GatewayRequestHandlers } from "./server-methods/types.js";
 import type { GatewayWsClient } from "./server/ws-types.js";
+import type { WSConnectionPool } from "./ws-connection-pool.js";
 import { attachGatewayWsConnectionHandler } from "./server/ws-connection.js";
 
 export function attachGatewayWsHandlers(params: {
   wss: WebSocketServer;
-  clients: Set<GatewayWsClient>;
+  clients: Set<GatewayWsClient> | WSConnectionPool;
   port: number;
   gatewayHost?: string;
   canvasHostEnabled: boolean;

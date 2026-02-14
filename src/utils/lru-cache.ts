@@ -83,6 +83,10 @@ export class LRUCache<K, V> {
     return Array.from(this.cache.entries()).map(([k, entry]) => [k, entry.value]);
   }
 
+  [Symbol.iterator](): Iterator<[K, V]> {
+    return this.entries()[Symbol.iterator]();
+  }
+
   private evictLRU(): void {
     if (this.accessOrder.length === 0) {
       return;

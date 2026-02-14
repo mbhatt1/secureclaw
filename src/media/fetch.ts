@@ -14,8 +14,8 @@ export type MediaFetchErrorCode = "max_bytes" | "http_error" | "fetch_failed";
 export class MediaFetchError extends Error {
   readonly code: MediaFetchErrorCode;
 
-  constructor(code: MediaFetchErrorCode, message: string) {
-    super(message);
+  constructor(code: MediaFetchErrorCode, message: string, options?: ErrorOptions) {
+    super(message, options);
     this.code = code;
     this.name = "MediaFetchError";
   }

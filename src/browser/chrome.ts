@@ -60,8 +60,8 @@ function resolveBrowserExecutable(resolved: ResolvedBrowserConfig): BrowserExecu
 }
 
 export function resolveSecureClawUserDataDir(
-  profileName = DEFAULT_SECURECLAW_BROWSER_PROFILE_NAME,
-) {
+  profileName: string = DEFAULT_SECURECLAW_BROWSER_PROFILE_NAME,
+): string {
   return path.join(CONFIG_DIR, "browser", profileName, "user-data");
 }
 

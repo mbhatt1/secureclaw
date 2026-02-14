@@ -41,7 +41,7 @@ export function mapErrorToShape(err: unknown): ErrorShape {
       retryable = false;
     } else if (isNetworkError(err)) {
       code = ErrorCodes.UNAVAILABLE;
-      retryable = err.isRecoverable;
+      retryable = true; // NetworkError is generally retryable
     }
 
     return {

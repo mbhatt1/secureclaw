@@ -71,7 +71,18 @@ export function resolveStartupOptimizations(
       },
 ): StartupOptimizations {
   const constraints = detectResourceConstraints();
-  const startupConfig = config.gateway?.startup;
+  const startupConfig = (
+    config.gateway as
+      | {
+          startup?: {
+            skipHealthCheck?: boolean;
+            parallelChannels?: boolean;
+            asyncMemory?: boolean;
+            lazyLoadModules?: boolean;
+          };
+        }
+      | undefined
+  )?.startup;
 
   return {
     // Lazy load heavy modules (Playwright, etc) on constrained systems
