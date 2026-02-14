@@ -6,6 +6,7 @@ import type { GatewayRequestContext, GatewayRequestHandlers } from "../server-me
 import type { WSConnectionPool } from "../ws-connection-pool.js";
 import type { GatewayWsClient } from "./ws-types.js";
 import { resolveCanvasHostUrl } from "../../infra/canvas-host-url.js";
+import { getCorrelationId } from "../../infra/correlation.js";
 import { listSystemPresence, upsertPresence } from "../../infra/system-presence.js";
 import { isWebchatClient } from "../../utils/message-channel.js";
 import { isLoopbackAddress } from "../net.js";
@@ -113,7 +114,12 @@ export function attachGatewayWsConnectionHandler(params: {
     // OPTIMIZATION: Inline JSON.stringify to reduce function call overhead
     const send = (obj: unknown) => {
       try {
-        socket.send(JSON.stringify(obj));
+        const correlationId = getCorrelationId();
+        const enrichedObj =
+          correlationId && typeof obj === "object" && obj !== null
+            ? { ...obj, correlationId }
+            : obj;
+        socket.send(JSON.stringify(enrichedObj));
       } catch {
         /* ignore */
       }

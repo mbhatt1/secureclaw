@@ -19,6 +19,11 @@ import {
   handleA2uiHttpRequest,
 } from "../canvas-host/a2ui.js";
 import { loadConfig } from "../config/config.js";
+import {
+  extractCorrelationIdFromHeaders,
+  generateCorrelationId,
+  withCorrelationId,
+} from "../infra/correlation.js";
 import { safeEqualSecret } from "../security/secret-equal.js";
 import { handleSlackHttpRequest } from "../slack/http/index.js";
 import { authorizeGatewayConnect, isLocalDirectRequest, type ResolvedGatewayAuth } from "./auth.js";
@@ -402,125 +407,134 @@ export function createGatewayHttpServer(opts: {
       });
 
   async function handleRequest(req: IncomingMessage, res: ServerResponse) {
-    // Don't interfere with WebSocket upgrades; ws handles the 'upgrade' event.
-    if (String(req.headers.upgrade ?? "").toLowerCase() === "websocket") {
-      return;
-    }
+    // Extract or generate correlation ID for this request
+    const correlationId = extractCorrelationIdFromHeaders(req.headers) ?? generateCorrelationId();
 
-    try {
-      const configSnapshot = loadConfig();
-      const trustedProxies = configSnapshot.gateway?.trustedProxies ?? [];
-      const requestPath = new URL(req.url ?? "/", "http://localhost").pathname;
+    // Set correlation ID response header for tracing
+    res.setHeader("X-Correlation-ID", correlationId);
 
-      // Health check endpoints (no auth required, unauthenticated by design)
-      if (await handleHealthHttpRequest(req, res)) {
+    // Execute entire request handler with correlation ID in context
+    await withCorrelationId(correlationId, async () => {
+      // Don't interfere with WebSocket upgrades; ws handles the 'upgrade' event.
+      if (String(req.headers.upgrade ?? "").toLowerCase() === "websocket") {
         return;
       }
 
-      if (await handleHooksRequest(req, res)) {
-        return;
-      }
-      if (
-        await handleToolsInvokeHttpRequest(req, res, {
-          auth: resolvedAuth,
-          trustedProxies,
-        })
-      ) {
-        return;
-      }
-      if (await handleSlackHttpRequest(req, res)) {
-        return;
-      }
-      if (handlePluginRequest) {
-        // Channel HTTP endpoints are gateway-auth protected by default.
-        // Non-channel plugin routes remain plugin-owned and must enforce
-        // their own auth when exposing sensitive functionality.
-        if (requestPath.startsWith("/api/channels/")) {
-          const token = getBearerToken(req);
-          const authResult = await authorizeGatewayConnect({
+      try {
+        const configSnapshot = loadConfig();
+        const trustedProxies = configSnapshot.gateway?.trustedProxies ?? [];
+        const requestPath = new URL(req.url ?? "/", "http://localhost").pathname;
+
+        // Health check endpoints (no auth required, unauthenticated by design)
+        if (await handleHealthHttpRequest(req, res)) {
+          return;
+        }
+
+        if (await handleHooksRequest(req, res)) {
+          return;
+        }
+        if (
+          await handleToolsInvokeHttpRequest(req, res, {
             auth: resolvedAuth,
-            connectAuth: token ? { token, password: token } : null,
-            req,
             trustedProxies,
-          });
-          if (!authResult.ok) {
-            sendUnauthorized(res);
+          })
+        ) {
+          return;
+        }
+        if (await handleSlackHttpRequest(req, res)) {
+          return;
+        }
+        if (handlePluginRequest) {
+          // Channel HTTP endpoints are gateway-auth protected by default.
+          // Non-channel plugin routes remain plugin-owned and must enforce
+          // their own auth when exposing sensitive functionality.
+          if (requestPath.startsWith("/api/channels/")) {
+            const token = getBearerToken(req);
+            const authResult = await authorizeGatewayConnect({
+              auth: resolvedAuth,
+              connectAuth: token ? { token, password: token } : null,
+              req,
+              trustedProxies,
+            });
+            if (!authResult.ok) {
+              sendUnauthorized(res);
+              return;
+            }
+          }
+          if (await handlePluginRequest(req, res)) {
             return;
           }
         }
-        if (await handlePluginRequest(req, res)) {
-          return;
-        }
-      }
-      if (openResponsesEnabled) {
-        if (
-          await handleOpenResponsesHttpRequest(req, res, {
-            auth: resolvedAuth,
-            config: openResponsesConfig,
-            trustedProxies,
-          })
-        ) {
-          return;
-        }
-      }
-      if (openAiChatCompletionsEnabled) {
-        if (
-          await handleOpenAiHttpRequest(req, res, {
-            auth: resolvedAuth,
-            trustedProxies,
-          })
-        ) {
-          return;
-        }
-      }
-      if (canvasHost) {
-        if (isCanvasPath(requestPath)) {
-          const ok = await authorizeCanvasRequest({
-            req,
-            auth: resolvedAuth,
-            trustedProxies,
-            clients,
-          });
-          if (!ok) {
-            sendUnauthorized(res);
+        if (openResponsesEnabled) {
+          if (
+            await handleOpenResponsesHttpRequest(req, res, {
+              auth: resolvedAuth,
+              config: openResponsesConfig,
+              trustedProxies,
+            })
+          ) {
             return;
           }
         }
-        if (await handleA2uiHttpRequest(req, res)) {
-          return;
+        if (openAiChatCompletionsEnabled) {
+          if (
+            await handleOpenAiHttpRequest(req, res, {
+              auth: resolvedAuth,
+              trustedProxies,
+            })
+          ) {
+            return;
+          }
         }
-        if (await canvasHost.handleHttpRequest(req, res)) {
-          return;
+        if (canvasHost) {
+          if (isCanvasPath(requestPath)) {
+            const ok = await authorizeCanvasRequest({
+              req,
+              auth: resolvedAuth,
+              trustedProxies,
+              clients,
+            });
+            if (!ok) {
+              sendUnauthorized(res);
+              return;
+            }
+          }
+          if (await handleA2uiHttpRequest(req, res)) {
+            return;
+          }
+          if (await canvasHost.handleHttpRequest(req, res)) {
+            return;
+          }
         }
-      }
-      if (controlUiEnabled) {
-        if (
-          handleControlUiAvatarRequest(req, res, {
-            basePath: controlUiBasePath,
-            resolveAvatar: (agentId) => resolveAgentAvatar(configSnapshot, agentId),
-          })
-        ) {
-          return;
+        if (controlUiEnabled) {
+          if (
+            handleControlUiAvatarRequest(req, res, {
+              basePath: controlUiBasePath,
+              resolveAvatar: (agentId) => resolveAgentAvatar(configSnapshot, agentId),
+            })
+          ) {
+            return;
+          }
+          if (
+            handleControlUiHttpRequest(req, res, {
+              basePath: controlUiBasePath,
+              config: configSnapshot,
+              root: controlUiRoot,
+            })
+          ) {
+            return;
+          }
         }
-        if (
-          handleControlUiHttpRequest(req, res, {
-            basePath: controlUiBasePath,
-            config: configSnapshot,
-            root: controlUiRoot,
-          })
-        ) {
-          return;
-        }
-      }
 
-      res.statusCode = 404;
-      res.setHeader("Content-Type", "text/plain; charset=utf-8");
-      res.end("Not Found");
-    } catch {
-      res.statusCode = 500;
-      res.setHeader("Content-Type", "text/plain; charset=utf-8");
-      res.end("Internal Server Error");
-    }
+        res.statusCode = 404;
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        res.end("Not Found");
+      } catch {
+        res.statusCode = 500;
+        res.setHeader("Content-Type", "text/plain; charset=utf-8");
+        res.end("Internal Server Error");
+      }
+    });
   }
 
   return httpServer;

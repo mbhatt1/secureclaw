@@ -2,6 +2,7 @@ import type { Logger as TsLogger } from "tslog";
 import { Chalk } from "chalk";
 import { CHAT_CHANNEL_ORDER } from "../channels/registry.js";
 import { isVerbose } from "../globals.js";
+import { getCorrelationId } from "../infra/correlation.js";
 import { defaultRuntime, type RuntimeEnv } from "../runtime.js";
 import { clearActiveProgressLine } from "../terminal/progress-line.js";
 import { getConsoleSettings, shouldLogSubsystemToConsole } from "./console.js";
@@ -152,14 +153,16 @@ function formatConsoleLine(opts: {
 }): string {
   const displaySubsystem =
     opts.style === "json" ? opts.subsystem : formatSubsystemForConsole(opts.subsystem);
+  const correlationId = getCorrelationId();
   if (opts.style === "json") {
-    return JSON.stringify({
+    const logEntry = {
       time: new Date().toISOString(),
       level: opts.level,
       subsystem: displaySubsystem,
       message: opts.message,
       ...opts.meta,
-    });
+    };
+    return JSON.stringify(correlationId ? { ...logEntry, correlationId } : logEntry);
   }
   const color = getColorForConsole();
   const prefix = `[${displaySubsystem}]`;

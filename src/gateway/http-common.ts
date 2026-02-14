@@ -1,10 +1,14 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { getCorrelationId } from "../infra/correlation.js";
 import { readJsonBody } from "./hooks.js";
 
 export function sendJson(res: ServerResponse, status: number, body: unknown) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
-  res.end(JSON.stringify(body));
+  const correlationId = getCorrelationId();
+  const enrichedBody =
+    correlationId && typeof body === "object" && body !== null ? { ...body, correlationId } : body;
+  res.end(JSON.stringify(enrichedBody));
 }
 
 export function sendText(res: ServerResponse, status: number, body: string) {

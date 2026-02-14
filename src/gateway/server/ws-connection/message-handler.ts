@@ -6,6 +6,7 @@ import type { ResolvedGatewayAuth } from "../../auth.js";
 import type { GatewayRequestContext, GatewayRequestHandlers } from "../../server-methods/types.js";
 import type { GatewayWsClient } from "../ws-types.js";
 import { loadConfig } from "../../../config/config.js";
+import { generateCorrelationId, withCorrelationId } from "../../../infra/correlation.js";
 import {
   deriveDeviceIdFromPublicKey,
   normalizeDevicePublicKeyBase64Url,
@@ -242,133 +243,84 @@ export function attachGatewayWsMessageHandler(params: {
       const frameType = parsed?.type;
       const frameMethod = parsed?.method;
       const frameId = parsed?.id;
+      const frameCorrelationId = parsed?.correlationId;
       const isValidFrame = parsed && typeof parsed === "object";
 
-      if (isValidFrame && (frameType || frameMethod || frameId)) {
-        setLastFrameMeta({
-          type: typeof frameType === "string" ? frameType : undefined,
-          method: typeof frameMethod === "string" ? frameMethod : undefined,
-          id: typeof frameId === "string" ? frameId : undefined,
-        });
-      }
+      // Extract or generate correlation ID for this message
+      const correlationId =
+        typeof frameCorrelationId === "string" && frameCorrelationId
+          ? frameCorrelationId
+          : generateCorrelationId();
 
-      const client = getClient();
-      if (!client) {
-        // Handshake must be a normal request:
-        // { type:"req", method:"connect", params: ConnectParams }.
-        const isRequestFrame = validateRequestFrame(parsed);
-        if (
-          !isRequestFrame ||
-          parsed.method !== "connect" ||
-          !validateConnectParams(parsed.params)
-        ) {
-          const handshakeError = isRequestFrame
-            ? parsed.method === "connect"
-              ? `invalid connect params: ${formatValidationErrors(validateConnectParams.errors)}`
-              : "invalid handshake: first request must be connect"
-            : "invalid request frame";
-          setHandshakeState("failed");
-          setCloseCause("invalid-handshake", {
-            frameType,
-            frameMethod,
-            frameId,
-            handshakeError,
+      // Process entire message handler with correlation ID in context
+      await withCorrelationId(correlationId, async () => {
+        if (isValidFrame && (frameType || frameMethod || frameId)) {
+          setLastFrameMeta({
+            type: typeof frameType === "string" ? frameType : undefined,
+            method: typeof frameMethod === "string" ? frameMethod : undefined,
+            id: typeof frameId === "string" ? frameId : undefined,
           });
-          if (isRequestFrame) {
-            const req = parsed;
-            send({
-              type: "res",
-              id: req.id,
-              ok: false,
-              error: errorShape(ErrorCodes.INVALID_REQUEST, handshakeError),
+        }
+
+        const client = getClient();
+        if (!client) {
+          // Handshake must be a normal request:
+          // { type:"req", method:"connect", params: ConnectParams }.
+          const isRequestFrame = validateRequestFrame(parsed);
+          if (
+            !isRequestFrame ||
+            parsed.method !== "connect" ||
+            !validateConnectParams(parsed.params)
+          ) {
+            const handshakeError = isRequestFrame
+              ? parsed.method === "connect"
+                ? `invalid connect params: ${formatValidationErrors(validateConnectParams.errors)}`
+                : "invalid handshake: first request must be connect"
+              : "invalid request frame";
+            setHandshakeState("failed");
+            setCloseCause("invalid-handshake", {
+              frameType,
+              frameMethod,
+              frameId,
+              handshakeError,
             });
-          } else {
+            if (isRequestFrame) {
+              const req = parsed;
+              send({
+                type: "res",
+                id: req.id,
+                ok: false,
+                error: errorShape(ErrorCodes.INVALID_REQUEST, handshakeError),
+              });
+            } else {
+              logWsControl.warn(
+                `invalid handshake conn=${connId} remote=${remoteAddr ?? "?"} fwd=${forwardedFor ?? "n/a"} origin=${requestOrigin ?? "n/a"} host=${requestHost ?? "n/a"} ua=${requestUserAgent ?? "n/a"}`,
+              );
+            }
+            const closeReason = truncateCloseReason(handshakeError || "invalid handshake");
+            if (isRequestFrame) {
+              queueMicrotask(() => close(1008, closeReason));
+            } else {
+              close(1008, closeReason);
+            }
+            return;
+          }
+
+          const frame = parsed;
+          const connectParams = frame.params as ConnectParams;
+          const clientLabel = connectParams.client.displayName ?? connectParams.client.id;
+
+          // protocol negotiation
+          const { minProtocol, maxProtocol } = connectParams;
+          if (maxProtocol < PROTOCOL_VERSION || minProtocol > PROTOCOL_VERSION) {
+            setHandshakeState("failed");
             logWsControl.warn(
-              `invalid handshake conn=${connId} remote=${remoteAddr ?? "?"} fwd=${forwardedFor ?? "n/a"} origin=${requestOrigin ?? "n/a"} host=${requestHost ?? "n/a"} ua=${requestUserAgent ?? "n/a"}`,
+              `protocol mismatch conn=${connId} remote=${remoteAddr ?? "?"} client=${clientLabel} ${connectParams.client.mode} v${connectParams.client.version}`,
             );
-          }
-          const closeReason = truncateCloseReason(handshakeError || "invalid handshake");
-          if (isRequestFrame) {
-            queueMicrotask(() => close(1008, closeReason));
-          } else {
-            close(1008, closeReason);
-          }
-          return;
-        }
-
-        const frame = parsed;
-        const connectParams = frame.params as ConnectParams;
-        const clientLabel = connectParams.client.displayName ?? connectParams.client.id;
-
-        // protocol negotiation
-        const { minProtocol, maxProtocol } = connectParams;
-        if (maxProtocol < PROTOCOL_VERSION || minProtocol > PROTOCOL_VERSION) {
-          setHandshakeState("failed");
-          logWsControl.warn(
-            `protocol mismatch conn=${connId} remote=${remoteAddr ?? "?"} client=${clientLabel} ${connectParams.client.mode} v${connectParams.client.version}`,
-          );
-          setCloseCause("protocol-mismatch", {
-            minProtocol,
-            maxProtocol,
-            expectedProtocol: PROTOCOL_VERSION,
-            client: connectParams.client.id,
-            clientDisplayName: connectParams.client.displayName,
-            mode: connectParams.client.mode,
-            version: connectParams.client.version,
-          });
-          send({
-            type: "res",
-            id: frame.id,
-            ok: false,
-            error: errorShape(ErrorCodes.INVALID_REQUEST, "protocol mismatch", {
-              details: { expectedProtocol: PROTOCOL_VERSION },
-            }),
-          });
-          close(1002, "protocol mismatch");
-          return;
-        }
-
-        const roleRaw = connectParams.role ?? "operator";
-        const role = roleRaw === "operator" || roleRaw === "node" ? roleRaw : null;
-        if (!role) {
-          setHandshakeState("failed");
-          setCloseCause("invalid-role", {
-            role: roleRaw,
-            client: connectParams.client.id,
-            clientDisplayName: connectParams.client.displayName,
-            mode: connectParams.client.mode,
-            version: connectParams.client.version,
-          });
-          send({
-            type: "res",
-            id: frame.id,
-            ok: false,
-            error: errorShape(ErrorCodes.INVALID_REQUEST, "invalid role"),
-          });
-          close(1008, "invalid role");
-          return;
-        }
-        // Default-deny: scopes must be explicit. Empty/missing scopes means no permissions.
-        const scopes = Array.isArray(connectParams.scopes) ? connectParams.scopes : [];
-        connectParams.role = role;
-        connectParams.scopes = scopes;
-
-        const isControlUi = connectParams.client.id === GATEWAY_CLIENT_IDS.CONTROL_UI;
-        const isWebchat = isWebchatConnect(connectParams);
-        if (isControlUi || isWebchat) {
-          const originCheck = checkBrowserOrigin({
-            requestHost,
-            origin: requestOrigin,
-            allowedOrigins: configSnapshot.gateway?.controlUi?.allowedOrigins,
-          });
-          if (!originCheck.ok) {
-            const errorMessage =
-              "origin not allowed (open the Control UI from the gateway host or allow it in gateway.controlUi.allowedOrigins)";
-            setHandshakeState("failed");
-            setCloseCause("origin-mismatch", {
-              origin: requestOrigin ?? "n/a",
-              host: requestHost ?? "n/a",
-              reason: originCheck.reason,
+            setCloseCause("protocol-mismatch", {
+              minProtocol,
+              maxProtocol,
+              expectedProtocol: PROTOCOL_VERSION,
               client: connectParams.client.id,
               clientDisplayName: connectParams.client.displayName,
               mode: connectParams.client.mode,
@@ -378,86 +330,20 @@ export function attachGatewayWsMessageHandler(params: {
               type: "res",
               id: frame.id,
               ok: false,
-              error: errorShape(ErrorCodes.INVALID_REQUEST, errorMessage),
+              error: errorShape(ErrorCodes.INVALID_REQUEST, "protocol mismatch", {
+                details: { expectedProtocol: PROTOCOL_VERSION },
+              }),
             });
-            close(1008, truncateCloseReason(errorMessage));
+            close(1002, "protocol mismatch");
             return;
           }
-        }
 
-        const deviceRaw = connectParams.device;
-        let devicePublicKey: string | null = null;
-        const hasTokenAuth = Boolean(connectParams.auth?.token);
-        const hasPasswordAuth = Boolean(connectParams.auth?.password);
-        const hasSharedAuth = hasTokenAuth || hasPasswordAuth;
-        const allowInsecureControlUi =
-          isControlUi && configSnapshot.gateway?.controlUi?.allowInsecureAuth === true;
-        const disableControlUiDeviceAuth =
-          isControlUi && configSnapshot.gateway?.controlUi?.dangerouslyDisableDeviceAuth === true;
-        const allowControlUiBypass = allowInsecureControlUi || disableControlUiDeviceAuth;
-        const device = disableControlUiDeviceAuth ? null : deviceRaw;
-
-        const authResult = await authorizeGatewayConnect({
-          auth: resolvedAuth,
-          connectAuth: connectParams.auth,
-          req: upgradeReq,
-          trustedProxies,
-        });
-        let authOk = authResult.ok;
-        let authMethod =
-          authResult.method ?? (resolvedAuth.mode === "password" ? "password" : "token");
-        const sharedAuthResult = hasSharedAuth
-          ? await authorizeGatewayConnect({
-              auth: { ...resolvedAuth, allowTailscale: false },
-              connectAuth: connectParams.auth,
-              req: upgradeReq,
-              trustedProxies,
-            })
-          : null;
-        const sharedAuthOk =
-          sharedAuthResult?.ok === true &&
-          (sharedAuthResult.method === "token" || sharedAuthResult.method === "password");
-        const rejectUnauthorized = () => {
-          setHandshakeState("failed");
-          logWsControl.warn(
-            `unauthorized conn=${connId} remote=${remoteAddr ?? "?"} client=${clientLabel} ${connectParams.client.mode} v${connectParams.client.version} reason=${authResult.reason ?? "unknown"}`,
-          );
-          const authProvided: AuthProvidedKind = connectParams.auth?.token
-            ? "token"
-            : connectParams.auth?.password
-              ? "password"
-              : "none";
-          const authMessage = formatGatewayAuthFailureMessage({
-            authMode: resolvedAuth.mode,
-            authProvided,
-            reason: authResult.reason,
-            client: connectParams.client,
-          });
-          setCloseCause("unauthorized", {
-            authMode: resolvedAuth.mode,
-            authProvided,
-            authReason: authResult.reason,
-            allowTailscale: resolvedAuth.allowTailscale,
-            client: connectParams.client.id,
-            clientDisplayName: connectParams.client.displayName,
-            mode: connectParams.client.mode,
-            version: connectParams.client.version,
-          });
-          send({
-            type: "res",
-            id: frame.id,
-            ok: false,
-            error: errorShape(ErrorCodes.INVALID_REQUEST, authMessage),
-          });
-          close(1008, truncateCloseReason(authMessage));
-        };
-        if (!device) {
-          const canSkipDevice = sharedAuthOk;
-
-          if (isControlUi && !allowControlUiBypass) {
-            const errorMessage = "control ui requires HTTPS or localhost (secure context)";
+          const roleRaw = connectParams.role ?? "operator";
+          const role = roleRaw === "operator" || roleRaw === "node" ? roleRaw : null;
+          if (!role) {
             setHandshakeState("failed");
-            setCloseCause("control-ui-insecure-auth", {
+            setCloseCause("invalid-role", {
+              role: roleRaw,
               client: connectParams.client.id,
               clientDisplayName: connectParams.client.displayName,
               mode: connectParams.client.mode,
@@ -467,20 +353,101 @@ export function attachGatewayWsMessageHandler(params: {
               type: "res",
               id: frame.id,
               ok: false,
-              error: errorShape(ErrorCodes.INVALID_REQUEST, errorMessage),
+              error: errorShape(ErrorCodes.INVALID_REQUEST, "invalid role"),
             });
-            close(1008, errorMessage);
+            close(1008, "invalid role");
             return;
           }
+          // Default-deny: scopes must be explicit. Empty/missing scopes means no permissions.
+          const scopes = Array.isArray(connectParams.scopes) ? connectParams.scopes : [];
+          connectParams.role = role;
+          connectParams.scopes = scopes;
 
-          // Allow shared-secret authenticated connections (e.g., control-ui) to skip device identity
-          if (!canSkipDevice) {
-            if (!authOk && hasSharedAuth) {
-              rejectUnauthorized();
+          const isControlUi = connectParams.client.id === GATEWAY_CLIENT_IDS.CONTROL_UI;
+          const isWebchat = isWebchatConnect(connectParams);
+          if (isControlUi || isWebchat) {
+            const originCheck = checkBrowserOrigin({
+              requestHost,
+              origin: requestOrigin,
+              allowedOrigins: configSnapshot.gateway?.controlUi?.allowedOrigins,
+            });
+            if (!originCheck.ok) {
+              const errorMessage =
+                "origin not allowed (open the Control UI from the gateway host or allow it in gateway.controlUi.allowedOrigins)";
+              setHandshakeState("failed");
+              setCloseCause("origin-mismatch", {
+                origin: requestOrigin ?? "n/a",
+                host: requestHost ?? "n/a",
+                reason: originCheck.reason,
+                client: connectParams.client.id,
+                clientDisplayName: connectParams.client.displayName,
+                mode: connectParams.client.mode,
+                version: connectParams.client.version,
+              });
+              send({
+                type: "res",
+                id: frame.id,
+                ok: false,
+                error: errorShape(ErrorCodes.INVALID_REQUEST, errorMessage),
+              });
+              close(1008, truncateCloseReason(errorMessage));
               return;
             }
+          }
+
+          const deviceRaw = connectParams.device;
+          let devicePublicKey: string | null = null;
+          const hasTokenAuth = Boolean(connectParams.auth?.token);
+          const hasPasswordAuth = Boolean(connectParams.auth?.password);
+          const hasSharedAuth = hasTokenAuth || hasPasswordAuth;
+          const allowInsecureControlUi =
+            isControlUi && configSnapshot.gateway?.controlUi?.allowInsecureAuth === true;
+          const disableControlUiDeviceAuth =
+            isControlUi && configSnapshot.gateway?.controlUi?.dangerouslyDisableDeviceAuth === true;
+          const allowControlUiBypass = allowInsecureControlUi || disableControlUiDeviceAuth;
+          const device = disableControlUiDeviceAuth ? null : deviceRaw;
+
+          const authResult = await authorizeGatewayConnect({
+            auth: resolvedAuth,
+            connectAuth: connectParams.auth,
+            req: upgradeReq,
+            trustedProxies,
+          });
+          let authOk = authResult.ok;
+          let authMethod =
+            authResult.method ?? (resolvedAuth.mode === "password" ? "password" : "token");
+          const sharedAuthResult = hasSharedAuth
+            ? await authorizeGatewayConnect({
+                auth: { ...resolvedAuth, allowTailscale: false },
+                connectAuth: connectParams.auth,
+                req: upgradeReq,
+                trustedProxies,
+              })
+            : null;
+          const sharedAuthOk =
+            sharedAuthResult?.ok === true &&
+            (sharedAuthResult.method === "token" || sharedAuthResult.method === "password");
+          const rejectUnauthorized = () => {
             setHandshakeState("failed");
-            setCloseCause("device-required", {
+            logWsControl.warn(
+              `unauthorized conn=${connId} remote=${remoteAddr ?? "?"} client=${clientLabel} ${connectParams.client.mode} v${connectParams.client.version} reason=${authResult.reason ?? "unknown"}`,
+            );
+            const authProvided: AuthProvidedKind = connectParams.auth?.token
+              ? "token"
+              : connectParams.auth?.password
+                ? "password"
+                : "none";
+            const authMessage = formatGatewayAuthFailureMessage({
+              authMode: resolvedAuth.mode,
+              authProvided,
+              reason: authResult.reason,
+              client: connectParams.client,
+            });
+            setCloseCause("unauthorized", {
+              authMode: resolvedAuth.mode,
+              authProvided,
+              authReason: authResult.reason,
+              allowTailscale: resolvedAuth.allowTailscale,
               client: connectParams.client.id,
               clientDisplayName: connectParams.client.displayName,
               mode: connectParams.client.mode,
@@ -490,99 +457,128 @@ export function attachGatewayWsMessageHandler(params: {
               type: "res",
               id: frame.id,
               ok: false,
-              error: errorShape(ErrorCodes.NOT_PAIRED, "device identity required"),
+              error: errorShape(ErrorCodes.INVALID_REQUEST, authMessage),
             });
-            close(1008, "device identity required");
-            return;
+            close(1008, truncateCloseReason(authMessage));
+          };
+          if (!device) {
+            const canSkipDevice = sharedAuthOk;
+
+            if (isControlUi && !allowControlUiBypass) {
+              const errorMessage = "control ui requires HTTPS or localhost (secure context)";
+              setHandshakeState("failed");
+              setCloseCause("control-ui-insecure-auth", {
+                client: connectParams.client.id,
+                clientDisplayName: connectParams.client.displayName,
+                mode: connectParams.client.mode,
+                version: connectParams.client.version,
+              });
+              send({
+                type: "res",
+                id: frame.id,
+                ok: false,
+                error: errorShape(ErrorCodes.INVALID_REQUEST, errorMessage),
+              });
+              close(1008, errorMessage);
+              return;
+            }
+
+            // Allow shared-secret authenticated connections (e.g., control-ui) to skip device identity
+            if (!canSkipDevice) {
+              if (!authOk && hasSharedAuth) {
+                rejectUnauthorized();
+                return;
+              }
+              setHandshakeState("failed");
+              setCloseCause("device-required", {
+                client: connectParams.client.id,
+                clientDisplayName: connectParams.client.displayName,
+                mode: connectParams.client.mode,
+                version: connectParams.client.version,
+              });
+              send({
+                type: "res",
+                id: frame.id,
+                ok: false,
+                error: errorShape(ErrorCodes.NOT_PAIRED, "device identity required"),
+              });
+              close(1008, "device identity required");
+              return;
+            }
           }
-        }
-        if (device) {
-          const derivedId = deriveDeviceIdFromPublicKey(device.publicKey);
-          if (!derivedId || derivedId !== device.id) {
-            setHandshakeState("failed");
-            setCloseCause("device-auth-invalid", {
-              reason: "device-id-mismatch",
-              client: connectParams.client.id,
-              deviceId: device.id,
-            });
-            send({
-              type: "res",
-              id: frame.id,
-              ok: false,
-              error: errorShape(ErrorCodes.INVALID_REQUEST, "device identity mismatch"),
-            });
-            close(1008, "device identity mismatch");
-            return;
-          }
-          const signedAt = device.signedAt;
-          if (
-            typeof signedAt !== "number" ||
-            Math.abs(Date.now() - signedAt) > DEVICE_SIGNATURE_SKEW_MS
-          ) {
-            setHandshakeState("failed");
-            setCloseCause("device-auth-invalid", {
-              reason: "device-signature-stale",
-              client: connectParams.client.id,
-              deviceId: device.id,
-            });
-            send({
-              type: "res",
-              id: frame.id,
-              ok: false,
-              error: errorShape(ErrorCodes.INVALID_REQUEST, "device signature expired"),
-            });
-            close(1008, "device signature expired");
-            return;
-          }
-          const nonceRequired = !isLocalClient;
-          const providedNonce = typeof device.nonce === "string" ? device.nonce.trim() : "";
-          if (nonceRequired && !providedNonce) {
-            setHandshakeState("failed");
-            setCloseCause("device-auth-invalid", {
-              reason: "device-nonce-missing",
-              client: connectParams.client.id,
-              deviceId: device.id,
-            });
-            send({
-              type: "res",
-              id: frame.id,
-              ok: false,
-              error: errorShape(ErrorCodes.INVALID_REQUEST, "device nonce required"),
-            });
-            close(1008, "device nonce required");
-            return;
-          }
-          if (providedNonce && providedNonce !== connectNonce) {
-            setHandshakeState("failed");
-            setCloseCause("device-auth-invalid", {
-              reason: "device-nonce-mismatch",
-              client: connectParams.client.id,
-              deviceId: device.id,
-            });
-            send({
-              type: "res",
-              id: frame.id,
-              ok: false,
-              error: errorShape(ErrorCodes.INVALID_REQUEST, "device nonce mismatch"),
-            });
-            close(1008, "device nonce mismatch");
-            return;
-          }
-          const payload = buildDeviceAuthPayload({
-            deviceId: device.id,
-            clientId: connectParams.client.id,
-            clientMode: connectParams.client.mode,
-            role,
-            scopes,
-            signedAtMs: signedAt,
-            token: connectParams.auth?.token ?? null,
-            nonce: providedNonce || undefined,
-            version: providedNonce ? "v2" : "v1",
-          });
-          const signatureOk = verifyDeviceSignature(device.publicKey, payload, device.signature);
-          const allowLegacy = !nonceRequired && !providedNonce;
-          if (!signatureOk && allowLegacy) {
-            const legacyPayload = buildDeviceAuthPayload({
+          if (device) {
+            const derivedId = deriveDeviceIdFromPublicKey(device.publicKey);
+            if (!derivedId || derivedId !== device.id) {
+              setHandshakeState("failed");
+              setCloseCause("device-auth-invalid", {
+                reason: "device-id-mismatch",
+                client: connectParams.client.id,
+                deviceId: device.id,
+              });
+              send({
+                type: "res",
+                id: frame.id,
+                ok: false,
+                error: errorShape(ErrorCodes.INVALID_REQUEST, "device identity mismatch"),
+              });
+              close(1008, "device identity mismatch");
+              return;
+            }
+            const signedAt = device.signedAt;
+            if (
+              typeof signedAt !== "number" ||
+              Math.abs(Date.now() - signedAt) > DEVICE_SIGNATURE_SKEW_MS
+            ) {
+              setHandshakeState("failed");
+              setCloseCause("device-auth-invalid", {
+                reason: "device-signature-stale",
+                client: connectParams.client.id,
+                deviceId: device.id,
+              });
+              send({
+                type: "res",
+                id: frame.id,
+                ok: false,
+                error: errorShape(ErrorCodes.INVALID_REQUEST, "device signature expired"),
+              });
+              close(1008, "device signature expired");
+              return;
+            }
+            const nonceRequired = !isLocalClient;
+            const providedNonce = typeof device.nonce === "string" ? device.nonce.trim() : "";
+            if (nonceRequired && !providedNonce) {
+              setHandshakeState("failed");
+              setCloseCause("device-auth-invalid", {
+                reason: "device-nonce-missing",
+                client: connectParams.client.id,
+                deviceId: device.id,
+              });
+              send({
+                type: "res",
+                id: frame.id,
+                ok: false,
+                error: errorShape(ErrorCodes.INVALID_REQUEST, "device nonce required"),
+              });
+              close(1008, "device nonce required");
+              return;
+            }
+            if (providedNonce && providedNonce !== connectNonce) {
+              setHandshakeState("failed");
+              setCloseCause("device-auth-invalid", {
+                reason: "device-nonce-mismatch",
+                client: connectParams.client.id,
+                deviceId: device.id,
+              });
+              send({
+                type: "res",
+                id: frame.id,
+                ok: false,
+                error: errorShape(ErrorCodes.INVALID_REQUEST, "device nonce mismatch"),
+              });
+              close(1008, "device nonce mismatch");
+              return;
+            }
+            const payload = buildDeviceAuthPayload({
               deviceId: device.id,
               clientId: connectParams.client.id,
               clientMode: connectParams.client.mode,
@@ -590,11 +586,41 @@ export function attachGatewayWsMessageHandler(params: {
               scopes,
               signedAtMs: signedAt,
               token: connectParams.auth?.token ?? null,
-              version: "v1",
+              nonce: providedNonce || undefined,
+              version: providedNonce ? "v2" : "v1",
             });
-            if (verifyDeviceSignature(device.publicKey, legacyPayload, device.signature)) {
-              // accepted legacy loopback signature
-            } else {
+            const signatureOk = verifyDeviceSignature(device.publicKey, payload, device.signature);
+            const allowLegacy = !nonceRequired && !providedNonce;
+            if (!signatureOk && allowLegacy) {
+              const legacyPayload = buildDeviceAuthPayload({
+                deviceId: device.id,
+                clientId: connectParams.client.id,
+                clientMode: connectParams.client.mode,
+                role,
+                scopes,
+                signedAtMs: signedAt,
+                token: connectParams.auth?.token ?? null,
+                version: "v1",
+              });
+              if (verifyDeviceSignature(device.publicKey, legacyPayload, device.signature)) {
+                // accepted legacy loopback signature
+              } else {
+                setHandshakeState("failed");
+                setCloseCause("device-auth-invalid", {
+                  reason: "device-signature",
+                  client: connectParams.client.id,
+                  deviceId: device.id,
+                });
+                send({
+                  type: "res",
+                  id: frame.id,
+                  ok: false,
+                  error: errorShape(ErrorCodes.INVALID_REQUEST, "device signature invalid"),
+                });
+                close(1008, "device signature invalid");
+                return;
+              }
+            } else if (!signatureOk) {
               setHandshakeState("failed");
               setCloseCause("device-auth-invalid", {
                 reason: "device-signature",
@@ -610,380 +636,369 @@ export function attachGatewayWsMessageHandler(params: {
               close(1008, "device signature invalid");
               return;
             }
-          } else if (!signatureOk) {
-            setHandshakeState("failed");
-            setCloseCause("device-auth-invalid", {
-              reason: "device-signature",
-              client: connectParams.client.id,
-              deviceId: device.id,
-            });
-            send({
-              type: "res",
-              id: frame.id,
-              ok: false,
-              error: errorShape(ErrorCodes.INVALID_REQUEST, "device signature invalid"),
-            });
-            close(1008, "device signature invalid");
-            return;
-          }
-          devicePublicKey = normalizeDevicePublicKeyBase64Url(device.publicKey);
-          if (!devicePublicKey) {
-            setHandshakeState("failed");
-            setCloseCause("device-auth-invalid", {
-              reason: "device-public-key",
-              client: connectParams.client.id,
-              deviceId: device.id,
-            });
-            send({
-              type: "res",
-              id: frame.id,
-              ok: false,
-              error: errorShape(ErrorCodes.INVALID_REQUEST, "device public key invalid"),
-            });
-            close(1008, "device public key invalid");
-            return;
-          }
-        }
-
-        if (!authOk && connectParams.auth?.token && device) {
-          const tokenCheck = await verifyDeviceToken({
-            deviceId: device.id,
-            token: connectParams.auth.token,
-            role,
-            scopes,
-          });
-          if (tokenCheck.ok) {
-            authOk = true;
-            authMethod = "device-token";
-          }
-        }
-        if (!authOk) {
-          rejectUnauthorized();
-          return;
-        }
-
-        const skipPairing = allowControlUiBypass && sharedAuthOk;
-        if (device && devicePublicKey && !skipPairing) {
-          const requirePairing = async (reason: string, _paired?: { deviceId: string }) => {
-            const pairing = await requestDevicePairing({
-              deviceId: device.id,
-              publicKey: devicePublicKey,
-              displayName: connectParams.client.displayName,
-              platform: connectParams.client.platform,
-              clientId: connectParams.client.id,
-              clientMode: connectParams.client.mode,
-              role,
-              scopes,
-              remoteIp: reportedClientIp,
-              silent: isLocalClient,
-            });
-            const context = buildRequestContext();
-            if (pairing.request.silent === true) {
-              const approved = await approveDevicePairing(pairing.request.requestId);
-              if (approved) {
-                logGateway.info(
-                  `device pairing auto-approved device=${approved.device.deviceId} role=${approved.device.role ?? "unknown"}`,
-                );
-                context.broadcast(
-                  "device.pair.resolved",
-                  {
-                    requestId: pairing.request.requestId,
-                    deviceId: approved.device.deviceId,
-                    decision: "approved",
-                    ts: Date.now(),
-                  },
-                  { dropIfSlow: true },
-                );
-              }
-            } else if (pairing.created) {
-              context.broadcast("device.pair.requested", pairing.request, { dropIfSlow: true });
-            }
-            if (pairing.request.silent !== true) {
+            devicePublicKey = normalizeDevicePublicKeyBase64Url(device.publicKey);
+            if (!devicePublicKey) {
               setHandshakeState("failed");
-              setCloseCause("pairing-required", {
+              setCloseCause("device-auth-invalid", {
+                reason: "device-public-key",
+                client: connectParams.client.id,
                 deviceId: device.id,
-                requestId: pairing.request.requestId,
-                reason,
               });
               send({
                 type: "res",
                 id: frame.id,
                 ok: false,
-                error: errorShape(ErrorCodes.NOT_PAIRED, "pairing required", {
-                  details: { requestId: pairing.request.requestId },
-                }),
+                error: errorShape(ErrorCodes.INVALID_REQUEST, "device public key invalid"),
               });
-              close(1008, "pairing required");
-              return false;
-            }
-            return true;
-          };
-
-          const paired = await getPairedDevice(device.id);
-          const isPaired = paired?.publicKey === devicePublicKey;
-          if (!isPaired) {
-            const ok = await requirePairing("not-paired");
-            if (!ok) {
+              close(1008, "device public key invalid");
               return;
             }
-          } else {
-            const allowedRoles = new Set(
-              Array.isArray(paired.roles) ? paired.roles : paired.role ? [paired.role] : [],
-            );
-            if (allowedRoles.size === 0) {
-              const ok = await requirePairing("role-upgrade", paired);
-              if (!ok) {
-                return;
-              }
-            } else if (!allowedRoles.has(role)) {
-              const ok = await requirePairing("role-upgrade", paired);
-              if (!ok) {
-                return;
-              }
-            }
+          }
 
-            const pairedScopes = Array.isArray(paired.scopes) ? paired.scopes : [];
-            if (scopes.length > 0) {
-              if (pairedScopes.length === 0) {
-                const ok = await requirePairing("scope-upgrade", paired);
+          if (!authOk && connectParams.auth?.token && device) {
+            const tokenCheck = await verifyDeviceToken({
+              deviceId: device.id,
+              token: connectParams.auth.token,
+              role,
+              scopes,
+            });
+            if (tokenCheck.ok) {
+              authOk = true;
+              authMethod = "device-token";
+            }
+          }
+          if (!authOk) {
+            rejectUnauthorized();
+            return;
+          }
+
+          const skipPairing = allowControlUiBypass && sharedAuthOk;
+          if (device && devicePublicKey && !skipPairing) {
+            const requirePairing = async (reason: string, _paired?: { deviceId: string }) => {
+              const pairing = await requestDevicePairing({
+                deviceId: device.id,
+                publicKey: devicePublicKey,
+                displayName: connectParams.client.displayName,
+                platform: connectParams.client.platform,
+                clientId: connectParams.client.id,
+                clientMode: connectParams.client.mode,
+                role,
+                scopes,
+                remoteIp: reportedClientIp,
+                silent: isLocalClient,
+              });
+              const context = buildRequestContext();
+              if (pairing.request.silent === true) {
+                const approved = await approveDevicePairing(pairing.request.requestId);
+                if (approved) {
+                  logGateway.info(
+                    `device pairing auto-approved device=${approved.device.deviceId} role=${approved.device.role ?? "unknown"}`,
+                  );
+                  context.broadcast(
+                    "device.pair.resolved",
+                    {
+                      requestId: pairing.request.requestId,
+                      deviceId: approved.device.deviceId,
+                      decision: "approved",
+                      ts: Date.now(),
+                    },
+                    { dropIfSlow: true },
+                  );
+                }
+              } else if (pairing.created) {
+                context.broadcast("device.pair.requested", pairing.request, { dropIfSlow: true });
+              }
+              if (pairing.request.silent !== true) {
+                setHandshakeState("failed");
+                setCloseCause("pairing-required", {
+                  deviceId: device.id,
+                  requestId: pairing.request.requestId,
+                  reason,
+                });
+                send({
+                  type: "res",
+                  id: frame.id,
+                  ok: false,
+                  error: errorShape(ErrorCodes.NOT_PAIRED, "pairing required", {
+                    details: { requestId: pairing.request.requestId },
+                  }),
+                });
+                close(1008, "pairing required");
+                return false;
+              }
+              return true;
+            };
+
+            const paired = await getPairedDevice(device.id);
+            const isPaired = paired?.publicKey === devicePublicKey;
+            if (!isPaired) {
+              const ok = await requirePairing("not-paired");
+              if (!ok) {
+                return;
+              }
+            } else {
+              const allowedRoles = new Set(
+                Array.isArray(paired.roles) ? paired.roles : paired.role ? [paired.role] : [],
+              );
+              if (allowedRoles.size === 0) {
+                const ok = await requirePairing("role-upgrade", paired);
                 if (!ok) {
                   return;
                 }
-              } else {
-                const allowedScopes = new Set(pairedScopes);
-                const missingScope = scopes.find((scope) => !allowedScopes.has(scope));
-                if (missingScope) {
+              } else if (!allowedRoles.has(role)) {
+                const ok = await requirePairing("role-upgrade", paired);
+                if (!ok) {
+                  return;
+                }
+              }
+
+              const pairedScopes = Array.isArray(paired.scopes) ? paired.scopes : [];
+              if (scopes.length > 0) {
+                if (pairedScopes.length === 0) {
                   const ok = await requirePairing("scope-upgrade", paired);
                   if (!ok) {
                     return;
                   }
+                } else {
+                  const allowedScopes = new Set(pairedScopes);
+                  const missingScope = scopes.find((scope) => !allowedScopes.has(scope));
+                  if (missingScope) {
+                    const ok = await requirePairing("scope-upgrade", paired);
+                    if (!ok) {
+                      return;
+                    }
+                  }
                 }
               }
-            }
 
-            await updatePairedDeviceMetadata(device.id, {
-              displayName: connectParams.client.displayName,
+              await updatePairedDeviceMetadata(device.id, {
+                displayName: connectParams.client.displayName,
+                platform: connectParams.client.platform,
+                clientId: connectParams.client.id,
+                clientMode: connectParams.client.mode,
+                role,
+                scopes,
+                remoteIp: reportedClientIp,
+              });
+            }
+          }
+
+          const deviceToken = device
+            ? await ensureDeviceToken({ deviceId: device.id, role, scopes })
+            : null;
+
+          if (role === "node") {
+            const cfg = loadConfig();
+            const allowlist = resolveNodeCommandAllowlist(cfg, {
               platform: connectParams.client.platform,
-              clientId: connectParams.client.id,
-              clientMode: connectParams.client.mode,
-              role,
+              deviceFamily: connectParams.client.deviceFamily,
+            });
+            const declared = Array.isArray(connectParams.commands) ? connectParams.commands : [];
+            const filtered = declared
+              .map((cmd) => cmd.trim())
+              .filter((cmd) => cmd.length > 0 && allowlist.has(cmd));
+            connectParams.commands = filtered;
+          }
+
+          const shouldTrackPresence = !isGatewayCliClient(connectParams.client);
+          const clientId = connectParams.client.id;
+          const instanceId = connectParams.client.instanceId;
+          const presenceKey = shouldTrackPresence
+            ? (device?.id ?? instanceId ?? connId)
+            : undefined;
+
+          logWs("in", "connect", {
+            connId,
+            client: connectParams.client.id,
+            clientDisplayName: connectParams.client.displayName,
+            version: connectParams.client.version,
+            mode: connectParams.client.mode,
+            clientId,
+            platform: connectParams.client.platform,
+            auth: authMethod,
+          });
+
+          if (isWebchatConnect(connectParams)) {
+            logWsControl.info(
+              `webchat connected conn=${connId} remote=${remoteAddr ?? "?"} client=${clientLabel} ${connectParams.client.mode} v${connectParams.client.version}`,
+            );
+          }
+
+          if (presenceKey) {
+            upsertPresence(presenceKey, {
+              host: connectParams.client.displayName ?? connectParams.client.id ?? os.hostname(),
+              ip: isLocalClient ? undefined : reportedClientIp,
+              version: connectParams.client.version,
+              platform: connectParams.client.platform,
+              deviceFamily: connectParams.client.deviceFamily,
+              modelIdentifier: connectParams.client.modelIdentifier,
+              mode: connectParams.client.mode,
+              deviceId: device?.id,
+              roles: [role],
               scopes,
+              instanceId: device?.id ?? instanceId,
+              reason: "connect",
+            });
+            incrementPresenceVersion();
+          }
+
+          const snapshot = buildGatewaySnapshot();
+          const cachedHealth = getHealthCache();
+          if (cachedHealth) {
+            snapshot.health = cachedHealth;
+            snapshot.stateVersion.health = getHealthVersion();
+          }
+          const helloOk = {
+            type: "hello-ok",
+            protocol: PROTOCOL_VERSION,
+            server: {
+              version: process.env.SECURECLAW_VERSION ?? process.env.npm_package_version ?? "dev",
+              commit: process.env.GIT_COMMIT,
+              host: os.hostname(),
+              connId,
+            },
+            features: { methods: gatewayMethods, events },
+            snapshot,
+            canvasHostUrl,
+            auth: deviceToken
+              ? {
+                  deviceToken: deviceToken.token,
+                  role: deviceToken.role,
+                  scopes: deviceToken.scopes,
+                  issuedAtMs: deviceToken.rotatedAtMs ?? deviceToken.createdAtMs,
+                }
+              : undefined,
+            policy: {
+              maxPayload: MAX_PAYLOAD_BYTES,
+              maxBufferedBytes: MAX_BUFFERED_BYTES,
+              tickIntervalMs: TICK_INTERVAL_MS,
+            },
+          };
+
+          clearHandshakeTimer();
+          const nextClient: GatewayWsClient = {
+            socket,
+            connect: connectParams,
+            connId,
+            presenceKey,
+            clientIp: reportedClientIp,
+          };
+          setClient(nextClient);
+          setHandshakeState("connected");
+          if (role === "node") {
+            const context = buildRequestContext();
+            const nodeSession = context.nodeRegistry.register(nextClient, {
               remoteIp: reportedClientIp,
             });
-          }
-        }
-
-        const deviceToken = device
-          ? await ensureDeviceToken({ deviceId: device.id, role, scopes })
-          : null;
-
-        if (role === "node") {
-          const cfg = loadConfig();
-          const allowlist = resolveNodeCommandAllowlist(cfg, {
-            platform: connectParams.client.platform,
-            deviceFamily: connectParams.client.deviceFamily,
-          });
-          const declared = Array.isArray(connectParams.commands) ? connectParams.commands : [];
-          const filtered = declared
-            .map((cmd) => cmd.trim())
-            .filter((cmd) => cmd.length > 0 && allowlist.has(cmd));
-          connectParams.commands = filtered;
-        }
-
-        const shouldTrackPresence = !isGatewayCliClient(connectParams.client);
-        const clientId = connectParams.client.id;
-        const instanceId = connectParams.client.instanceId;
-        const presenceKey = shouldTrackPresence ? (device?.id ?? instanceId ?? connId) : undefined;
-
-        logWs("in", "connect", {
-          connId,
-          client: connectParams.client.id,
-          clientDisplayName: connectParams.client.displayName,
-          version: connectParams.client.version,
-          mode: connectParams.client.mode,
-          clientId,
-          platform: connectParams.client.platform,
-          auth: authMethod,
-        });
-
-        if (isWebchatConnect(connectParams)) {
-          logWsControl.info(
-            `webchat connected conn=${connId} remote=${remoteAddr ?? "?"} client=${clientLabel} ${connectParams.client.mode} v${connectParams.client.version}`,
-          );
-        }
-
-        if (presenceKey) {
-          upsertPresence(presenceKey, {
-            host: connectParams.client.displayName ?? connectParams.client.id ?? os.hostname(),
-            ip: isLocalClient ? undefined : reportedClientIp,
-            version: connectParams.client.version,
-            platform: connectParams.client.platform,
-            deviceFamily: connectParams.client.deviceFamily,
-            modelIdentifier: connectParams.client.modelIdentifier,
-            mode: connectParams.client.mode,
-            deviceId: device?.id,
-            roles: [role],
-            scopes,
-            instanceId: device?.id ?? instanceId,
-            reason: "connect",
-          });
-          incrementPresenceVersion();
-        }
-
-        const snapshot = buildGatewaySnapshot();
-        const cachedHealth = getHealthCache();
-        if (cachedHealth) {
-          snapshot.health = cachedHealth;
-          snapshot.stateVersion.health = getHealthVersion();
-        }
-        const helloOk = {
-          type: "hello-ok",
-          protocol: PROTOCOL_VERSION,
-          server: {
-            version: process.env.SECURECLAW_VERSION ?? process.env.npm_package_version ?? "dev",
-            commit: process.env.GIT_COMMIT,
-            host: os.hostname(),
-            connId,
-          },
-          features: { methods: gatewayMethods, events },
-          snapshot,
-          canvasHostUrl,
-          auth: deviceToken
-            ? {
-                deviceToken: deviceToken.token,
-                role: deviceToken.role,
-                scopes: deviceToken.scopes,
-                issuedAtMs: deviceToken.rotatedAtMs ?? deviceToken.createdAtMs,
-              }
-            : undefined,
-          policy: {
-            maxPayload: MAX_PAYLOAD_BYTES,
-            maxBufferedBytes: MAX_BUFFERED_BYTES,
-            tickIntervalMs: TICK_INTERVAL_MS,
-          },
-        };
-
-        clearHandshakeTimer();
-        const nextClient: GatewayWsClient = {
-          socket,
-          connect: connectParams,
-          connId,
-          presenceKey,
-          clientIp: reportedClientIp,
-        };
-        setClient(nextClient);
-        setHandshakeState("connected");
-        if (role === "node") {
-          const context = buildRequestContext();
-          const nodeSession = context.nodeRegistry.register(nextClient, {
-            remoteIp: reportedClientIp,
-          });
-          const instanceIdRaw = connectParams.client.instanceId;
-          const instanceId = typeof instanceIdRaw === "string" ? instanceIdRaw.trim() : "";
-          const nodeIdsForPairing = new Set<string>([nodeSession.nodeId]);
-          if (instanceId) {
-            nodeIdsForPairing.add(instanceId);
-          }
-          for (const nodeId of nodeIdsForPairing) {
-            void updatePairedNodeMetadata(nodeId, {
-              lastConnectedAtMs: nodeSession.connectedAtMs,
+            const instanceIdRaw = connectParams.client.instanceId;
+            const instanceId = typeof instanceIdRaw === "string" ? instanceIdRaw.trim() : "";
+            const nodeIdsForPairing = new Set<string>([nodeSession.nodeId]);
+            if (instanceId) {
+              nodeIdsForPairing.add(instanceId);
+            }
+            for (const nodeId of nodeIdsForPairing) {
+              void updatePairedNodeMetadata(nodeId, {
+                lastConnectedAtMs: nodeSession.connectedAtMs,
+              }).catch((err) =>
+                logGateway.warn(
+                  `failed to record last connect for ${nodeId}: ${formatForLog(err)}`,
+                ),
+              );
+            }
+            recordRemoteNodeInfo({
+              nodeId: nodeSession.nodeId,
+              displayName: nodeSession.displayName,
+              platform: nodeSession.platform,
+              deviceFamily: nodeSession.deviceFamily,
+              commands: nodeSession.commands,
+              remoteIp: nodeSession.remoteIp,
+            });
+            void refreshRemoteNodeBins({
+              nodeId: nodeSession.nodeId,
+              platform: nodeSession.platform,
+              deviceFamily: nodeSession.deviceFamily,
+              commands: nodeSession.commands,
+              cfg: loadConfig(),
             }).catch((err) =>
-              logGateway.warn(`failed to record last connect for ${nodeId}: ${formatForLog(err)}`),
-            );
-          }
-          recordRemoteNodeInfo({
-            nodeId: nodeSession.nodeId,
-            displayName: nodeSession.displayName,
-            platform: nodeSession.platform,
-            deviceFamily: nodeSession.deviceFamily,
-            commands: nodeSession.commands,
-            remoteIp: nodeSession.remoteIp,
-          });
-          void refreshRemoteNodeBins({
-            nodeId: nodeSession.nodeId,
-            platform: nodeSession.platform,
-            deviceFamily: nodeSession.deviceFamily,
-            commands: nodeSession.commands,
-            cfg: loadConfig(),
-          }).catch((err) =>
-            logGateway.warn(
-              `remote bin probe failed for ${nodeSession.nodeId}: ${formatForLog(err)}`,
-            ),
-          );
-          void loadVoiceWakeConfig()
-            .then((cfg) => {
-              context.nodeRegistry.sendEvent(nodeSession.nodeId, "voicewake.changed", {
-                triggers: cfg.triggers,
-              });
-            })
-            .catch((err) =>
               logGateway.warn(
-                `voicewake snapshot failed for ${nodeSession.nodeId}: ${formatForLog(err)}`,
+                `remote bin probe failed for ${nodeSession.nodeId}: ${formatForLog(err)}`,
               ),
             );
+            void loadVoiceWakeConfig()
+              .then((cfg) => {
+                context.nodeRegistry.sendEvent(nodeSession.nodeId, "voicewake.changed", {
+                  triggers: cfg.triggers,
+                });
+              })
+              .catch((err) =>
+                logGateway.warn(
+                  `voicewake snapshot failed for ${nodeSession.nodeId}: ${formatForLog(err)}`,
+                ),
+              );
+          }
+
+          logWs("out", "hello-ok", {
+            connId,
+            methods: gatewayMethods.length,
+            events: events.length,
+            presence: snapshot.presence.length,
+            stateVersion: snapshot.stateVersion.presence,
+          });
+
+          send({ type: "res", id: frame.id, ok: true, payload: helloOk });
+          void refreshGatewayHealthSnapshot({ probe: true }).catch((err) =>
+            logHealth.error(`post-connect health refresh failed: ${formatError(err)}`),
+          );
+          return;
         }
 
-        logWs("out", "hello-ok", {
-          connId,
-          methods: gatewayMethods.length,
-          events: events.length,
-          presence: snapshot.presence.length,
-          stateVersion: snapshot.stateVersion.presence,
-        });
+        // After handshake, accept only req frames
+        if (!validateRequestFrame(parsed)) {
+          send({
+            type: "res",
+            id: (parsed as { id?: unknown })?.id ?? "invalid",
+            ok: false,
+            error: errorShape(
+              ErrorCodes.INVALID_REQUEST,
+              `invalid request frame: ${formatValidationErrors(validateRequestFrame.errors)}`,
+            ),
+          });
+          return;
+        }
+        const req = parsed;
+        logWs("in", "req", { connId, id: req.id, method: req.method });
+        const respond = (
+          ok: boolean,
+          payload?: unknown,
+          error?: ErrorShape,
+          meta?: Record<string, unknown>,
+        ) => {
+          send({ type: "res", id: req.id, ok, payload, error });
+          logWs("out", "res", {
+            connId,
+            id: req.id,
+            ok,
+            method: req.method,
+            errorCode: error?.code,
+            errorMessage: error?.message,
+            ...meta,
+          });
+        };
 
-        send({ type: "res", id: frame.id, ok: true, payload: helloOk });
-        void refreshGatewayHealthSnapshot({ probe: true }).catch((err) =>
-          logHealth.error(`post-connect health refresh failed: ${formatError(err)}`),
-        );
-        return;
-      }
-
-      // After handshake, accept only req frames
-      if (!validateRequestFrame(parsed)) {
-        send({
-          type: "res",
-          id: (parsed as { id?: unknown })?.id ?? "invalid",
-          ok: false,
-          error: errorShape(
-            ErrorCodes.INVALID_REQUEST,
-            `invalid request frame: ${formatValidationErrors(validateRequestFrame.errors)}`,
-          ),
+        void (async () => {
+          await handleGatewayRequest({
+            req,
+            respond,
+            client,
+            isWebchatConnect,
+            extraHandlers,
+            context: buildRequestContext(),
+          });
+        })().catch((err) => {
+          logGateway.error(`request handler failed: ${formatForLog(err)}`);
+          respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, formatForLog(err)));
         });
-        return;
-      }
-      const req = parsed;
-      logWs("in", "req", { connId, id: req.id, method: req.method });
-      const respond = (
-        ok: boolean,
-        payload?: unknown,
-        error?: ErrorShape,
-        meta?: Record<string, unknown>,
-      ) => {
-        send({ type: "res", id: req.id, ok, payload, error });
-        logWs("out", "res", {
-          connId,
-          id: req.id,
-          ok,
-          method: req.method,
-          errorCode: error?.code,
-          errorMessage: error?.message,
-          ...meta,
-        });
-      };
-
-      void (async () => {
-        await handleGatewayRequest({
-          req,
-          respond,
-          client,
-          isWebchatConnect,
-          extraHandlers,
-          context: buildRequestContext(),
-        });
-      })().catch((err) => {
-        logGateway.error(`request handler failed: ${formatForLog(err)}`);
-        respond(false, undefined, errorShape(ErrorCodes.UNAVAILABLE, formatForLog(err)));
-      });
+      }); // Close withCorrelationId context
     } catch (err) {
       logGateway.error(`parse/handle error: ${String(err)}`);
       logWs("out", "parse-error", { connId, error: formatForLog(err) });

@@ -342,9 +342,96 @@ Queues + sessions:
   to OTLP logs.
 - High-volume installs should prefer OTLP collector sampling/filtering.
 
+## Correlation IDs for Request Tracing
+
+SecureClaw automatically tracks correlation IDs throughout the request lifecycle to enable distributed tracing and debugging.
+
+### What are Correlation IDs?
+
+Correlation IDs are unique identifiers that are attached to every request, allowing you to trace a single request through multiple services, logs, and systems. They help answer questions like:
+
+- Which log entries relate to a specific user request?
+- What happened during a failed API call?
+- How did a request flow through the system?
+
+### How Correlation IDs Work
+
+1. **HTTP Requests**: Correlation IDs are extracted from incoming request headers (`X-Correlation-ID`, `X-Request-ID`, or `X-Trace-ID`). If no correlation ID is provided, one is automatically generated.
+
+2. **HTTP Responses**: All HTTP responses include an `X-Correlation-ID` header for client-side tracing.
+
+3. **WebSocket Messages**: Correlation IDs are included in all WebSocket messages as a `correlationId` field. Clients can provide their own correlation ID in requests, or one will be generated automatically.
+
+4. **Log Entries**: All log entries (both file logs and console output) automatically include the `correlationId` field when available.
+
+5. **OpenTelemetry Integration**: When OpenTelemetry tracing is enabled, correlation IDs are extracted from trace context when available.
+
+### Using Correlation IDs
+
+#### HTTP Clients
+
+Send a correlation ID in your requests:
+
+```bash
+curl -H "X-Correlation-ID: my-trace-123" https://gateway/api/endpoint
+```
+
+The response will include the same correlation ID:
+
+```
+X-Correlation-ID: my-trace-123
+```
+
+#### WebSocket Clients
+
+Include `correlationId` in your request frames:
+
+```json
+{
+  "type": "req",
+  "id": "request-1",
+  "method": "agent.chat",
+  "params": { "message": "Hello" },
+  "correlationId": "my-trace-123"
+}
+```
+
+Responses will include the correlation ID:
+
+```json
+{
+  "type": "res",
+  "id": "request-1",
+  "ok": true,
+  "payload": { ... },
+  "correlationId": "my-trace-123"
+}
+```
+
+#### Searching Logs by Correlation ID
+
+With JSON-formatted logs, filter by correlation ID:
+
+```bash
+# File logs
+grep '"correlationId":"my-trace-123"' /tmp/secureclaw/secureclaw-*.log
+
+# Live tail with jq
+secureclaw logs --follow --json | jq 'select(.correlationId == "my-trace-123")'
+```
+
+### Benefits
+
+- **Request Tracing**: Follow a single request through multiple components
+- **Error Debugging**: Find all log entries related to a failed request
+- **Performance Analysis**: Track request timing across services
+- **Distributed Systems**: Correlate logs across multiple services
+- **Support**: Share correlation IDs when reporting issues
+
 ## Troubleshooting tips
 
 - **Gateway not reachable?** Run `secureclaw doctor` first.
 - **Logs empty?** Check that the Gateway is running and writing to the file path
   in `logging.file`.
 - **Need more detail?** Set `logging.level` to `debug` or `trace` and retry.
+- **Tracing a specific request?** Use correlation IDs to filter logs and responses.

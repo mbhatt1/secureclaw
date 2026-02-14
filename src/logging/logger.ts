@@ -5,6 +5,7 @@ import { Logger as TsLogger } from "tslog";
 import type { SecureClawConfig } from "../config/types.js";
 import type { ConsoleStyle } from "./console.js";
 import { createBufferedLogger, type BufferedFileLogger } from "../infra/buffered-logger.js";
+import { getCorrelationId } from "../infra/correlation.js";
 import { resolvePreferredSecureClawTmpDir } from "../infra/tmp-secureclaw-dir.js";
 import { readLoggingConfig } from "./config.js";
 import { type LogLevel, levelToMinLevel, normalizeLogLevel } from "./levels.js";
@@ -113,7 +114,9 @@ function buildLogger(settings: ResolvedSettings): TsLogger<LogObj> {
   logger.attachTransport((logObj: LogObj) => {
     try {
       const time = logObj.date?.toISOString?.() ?? new Date().toISOString();
-      const line = JSON.stringify({ ...logObj, time });
+      const correlationId = getCorrelationId();
+      const enrichedLog = correlationId ? { ...logObj, time, correlationId } : { ...logObj, time };
+      const line = JSON.stringify(enrichedLog);
       bufferedLogger?.append(line);
     } catch {
       // never block on logging failures
