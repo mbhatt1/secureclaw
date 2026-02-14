@@ -107,8 +107,8 @@ export class SecurityCoachEngine {
   private pendingAlerts: Map<string, PendingEntry> = new Map();
   private pendingPerSession: Map<string, number> = new Map();
   private llmJudge: LLMJudge | null = null;
-  private cache: any = null; // PatternMatchCache (lazy loaded)
-  private workerPool: any = null; // SecurityCoachWorkerPool (lazy loaded)
+  private cache: import("./cache-optimized.js").PatternMatchCache | null = null;
+  private workerPool: import("./worker-pool.js").SecurityCoachWorkerPool | null = null;
 
   constructor(config?: Partial<CoachConfig>, rules?: SecurityCoachRuleStore, stateDir?: string) {
     this.config = { ...DEFAULT_COACH_CONFIG, ...config };
@@ -476,12 +476,14 @@ export class SecurityCoachEngine {
   }
 
   /** Get cache statistics (if cache is enabled). */
-  getCacheStats(): any {
+  getCacheStats(): ReturnType<import("./cache-optimized.js").PatternMatchCache["getStats"]> | null {
     return this.cache?.getStats() ?? null;
   }
 
   /** Get worker pool statistics (if workers are enabled). */
-  getWorkerStats(): any {
+  getWorkerStats(): ReturnType<
+    import("./worker-pool.js").SecurityCoachWorkerPool["getStats"]
+  > | null {
     return this.workerPool?.getStats() ?? null;
   }
 
