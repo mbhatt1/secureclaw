@@ -1,7 +1,7 @@
 import { lookup as dnsLookupCb, type LookupAddress } from "node:dns";
 import { lookup as dnsLookup } from "node:dns/promises";
 import { Agent, type Dispatcher } from "undici";
-import { parseIntSafe, tryParseInt } from "../../utils/safe-parse.js";
+import { parseIntSafe } from "../../utils/safe-parse.js";
 
 type LookupCallback = (
   err: NodeJS.ErrnoException | null,

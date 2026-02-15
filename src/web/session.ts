@@ -1,4 +1,4 @@
-import type { DisconnectReason, WASocket } from "@whiskeysockets/baileys";
+import type { WASocket } from "@whiskeysockets/baileys";
 import { randomUUID } from "node:crypto";
 
 // Lazy-load @whiskeysockets/baileys to make it optional

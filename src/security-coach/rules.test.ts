@@ -6,7 +6,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { SecurityCoachRuleStore, type SecurityCoachRule } from "./rules.js";
+import { SecurityCoachRuleStore } from "./rules.js";
 
 describe("rules.ts", () => {
   let tempDir: string;
@@ -334,7 +334,7 @@ describe("rules.ts", () => {
     });
 
     it("should record hit on matched rule", () => {
-      const rule = store.addRule({ patternId: "test-pattern", decision: "allow", expiresAt: 0 });
+      store.addRule({ patternId: "test-pattern", decision: "allow", expiresAt: 0 });
 
       store.lookup("test-pattern");
 

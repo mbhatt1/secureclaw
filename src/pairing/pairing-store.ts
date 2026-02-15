@@ -134,7 +134,7 @@ async function withFileLock<T>(
     if (release) {
       try {
         await release();
-      } catch (err) {
+      } catch {
         // Ignore unlock errors - lock will expire automatically via stale timeout
       }
     }
