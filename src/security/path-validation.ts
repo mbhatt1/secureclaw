@@ -225,13 +225,20 @@ export function sanitizeFilename(filename: string): string {
   }
 
   // Remove null bytes and control characters
+  // eslint-disable-next-line no-control-regex -- intentionally removing control characters
   let sanitized = filename.replace(/[\0-\x1F\x7F]/g, "");
 
   // Remove path separators
   sanitized = sanitized.replace(/[/\\]/g, "-");
 
-  // Remove leading/trailing whitespace and dots
-  sanitized = sanitized.trim().replace(/^\.+|\.+$/g, "");
+  // Remove leading/trailing whitespace
+  sanitized = sanitized.trim();
+
+  // Remove leading dots and dashes (from ../ or // patterns)
+  sanitized = sanitized.replace(/^[.-]+/, "");
+
+  // Remove trailing dots (but not trailing extension dots)
+  sanitized = sanitized.replace(/\.+$/, "");
 
   // If empty after sanitization, return a default name
   if (!sanitized) {

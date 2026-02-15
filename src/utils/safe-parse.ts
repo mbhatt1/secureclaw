@@ -39,6 +39,18 @@ export function parseIntSafe(value: string, radix = 10, min?: number, max?: numb
     throw new Error(`Invalid integer: "${value}"`);
   }
 
+  // Validate that the entire string represents a valid integer
+  // parseInt stops at the first invalid character, so "12.34" would parse as 12
+  // We need to ensure the string only contains valid integer characters
+  const trimmed = value.trim();
+  const isNegative = trimmed.startsWith("-");
+  const digits = isNegative ? trimmed.slice(1) : trimmed;
+
+  // Check if it contains non-digit characters (for base 10)
+  if (radix === 10 && (!/^\d+$/.test(digits) || digits.includes("."))) {
+    throw new Error(`Invalid integer: "${value}"`);
+  }
+
   // Check for overflow beyond JavaScript safe integer range
   if (Math.abs(parsed) > Number.MAX_SAFE_INTEGER) {
     throw new Error(`Integer overflow: ${value} exceeds MAX_SAFE_INTEGER`);

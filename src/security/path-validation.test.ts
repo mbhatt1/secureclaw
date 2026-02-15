@@ -77,7 +77,8 @@ describe("containsDangerousPathPatterns", () => {
 
 describe("sanitizeFilename", () => {
   it("should remove path separators", () => {
-    expect(sanitizeFilename("../../etc/passwd")).toBe("..-..-etc-passwd");
+    // Leading dots are removed for security (prevents ../ traversal attempts)
+    expect(sanitizeFilename("../../etc/passwd")).toBe("etc-passwd");
     expect(sanitizeFilename("dir/file.txt")).toBe("dir-file.txt");
     expect(sanitizeFilename("dir\\file.txt")).toBe("dir-file.txt");
   });
