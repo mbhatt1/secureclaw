@@ -393,9 +393,9 @@ When writing new code, verify:
 
 ## References
 
-- Main Report: `/Users/mbhatt/openclaw/EDGE-CASE-VALIDATION-REPORT.md`
-- Safe Parse: `/Users/mbhatt/openclaw/src/utils/safe-parse.ts`
-- Safe JSON: `/Users/mbhatt/openclaw/src/utils/safe-json.ts`
-- Path Validation: `/Users/mbhatt/openclaw/src/security/path-validation.ts`
-- SSRF Protection: `/Users/mbhatt/openclaw/src/infra/net/ssrf.ts`
-- Config Defaults: `/Users/mbhatt/openclaw/src/config/defaults.unified.ts`
+- Main Report: `/Users/mbhatt/secureclaw/EDGE-CASE-VALIDATION-REPORT.md`
+- Safe Parse: `/Users/mbhatt/secureclaw/src/utils/safe-parse.ts`
+- Safe JSON: `/Users/mbhatt/secureclaw/src/utils/safe-json.ts`
+- Path Validation: `/Users/mbhatt/secureclaw/src/security/path-validation.ts`
+- SSRF Protection: `/Users/mbhatt/secureclaw/src/infra/net/ssrf.ts`
+- Config Defaults: `/Users/mbhatt/secureclaw/src/config/defaults.unified.ts`

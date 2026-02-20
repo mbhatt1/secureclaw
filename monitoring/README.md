@@ -434,6 +434,6 @@ Edit `prometheus-alerts.yaml` and adjust the `expr` values:
 
 For issues or questions:
 
-- GitHub Issues: https://github.com/secureclaw/openclaw/issues
+- GitHub Issues: https://github.com/secureclaw/secureclaw/issues
 - Documentation: https://docs.secureclaw.ai
 - Community: https://discord.gg/secureclaw

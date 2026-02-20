@@ -59,9 +59,9 @@ SecureClaw has completed a comprehensive production hardening cycle spanning Feb
 
 **Key Files:**
 
-- `/Users/mbhatt/openclaw/src/errors/` - Typed error classes
-- `/Users/mbhatt/openclaw/src/logging/` - Structured logging
-- `/Users/mbhatt/openclaw/docs/error-handling.md` - Error handling guide
+- `/Users/mbhatt/secureclaw/src/errors/` - Typed error classes
+- `/Users/mbhatt/secureclaw/src/logging/` - Structured logging
+- `/Users/mbhatt/secureclaw/docs/error-handling.md` - Error handling guide
 
 ---
 
@@ -232,10 +232,10 @@ pnpm format
 
 **Key Documentation:**
 
-- `/Users/mbhatt/openclaw/README.md` - Project overview
-- `/Users/mbhatt/openclaw/docs/` - Comprehensive docs
-- `/Users/mbhatt/openclaw/docs/audits/` - Audit reports
-- `/Users/mbhatt/openclaw/docs/api/openapi.yaml` - API spec
+- `/Users/mbhatt/secureclaw/README.md` - Project overview
+- `/Users/mbhatt/secureclaw/docs/` - Comprehensive docs
+- `/Users/mbhatt/secureclaw/docs/audits/` - Audit reports
+- `/Users/mbhatt/secureclaw/docs/api/openapi.yaml` - API spec
 
 ---
 
@@ -302,7 +302,7 @@ pnpm start
 
 #### 3. Raspberry Pi Deployment
 
-See `/Users/mbhatt/openclaw/docs/raspberry-pi-deployment.md` for detailed instructions.
+See `/Users/mbhatt/secureclaw/docs/raspberry-pi-deployment.md` for detailed instructions.
 
 #### 4. systemd Service
 
@@ -333,7 +333,7 @@ SECURECLAW_MAX_MEMORY_MB=450
 SECURECLAW_RATE_LIMIT=100
 ```
 
-**Configuration Guide:** `/Users/mbhatt/openclaw/docs/config-env-vars.md`
+**Configuration Guide:** `/Users/mbhatt/secureclaw/docs/config-env-vars.md`
 
 ### Security Configuration
 
@@ -436,7 +436,7 @@ SECURECLAW_TLS_KEY_PATH=/path/to/key.pem
 
 ### Emergency Escalation
 
-For critical security or availability issues, follow the incident response procedure in `/Users/mbhatt/openclaw/docs/security/incident-response.md`.
+For critical security or availability issues, follow the incident response procedure in `/Users/mbhatt/secureclaw/docs/security/incident-response.md`.
 
 ---
 
@@ -464,7 +464,7 @@ For critical security or availability issues, follow the incident response proce
 
 ### Core Documentation
 
-- [README.md](/Users/mbhatt/openclaw/README.md) - Project overview
+- [README.md](/Users/mbhatt/secureclaw/README.md) - Project overview
 - [Architecture](docs/architecture.md) - System architecture
 - [Security Coach](docs/security-coach.md) - AI security monitoring
 - [Error Handling Guide](docs/error-handling.md) - Error handling patterns

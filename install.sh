@@ -123,22 +123,22 @@ check_git() {
 detect_install_location() {
   print_step "Detecting installation location..."
 
-  # Check if we're already in the openclaw directory
+  # Check if we're already in the secureclaw directory
   if [[ -f "package.json" ]] && grep -q "secureclaw" package.json 2>/dev/null; then
     INSTALL_DIR="$(pwd)"
     print_success "Using current directory: $INSTALL_DIR"
     return
   fi
 
-  # Check if openclaw exists in current directory
-  if [[ -d "openclaw" ]]; then
-    INSTALL_DIR="$(pwd)/openclaw"
+  # Check if secureclaw exists in current directory
+  if [[ -d "secureclaw" ]]; then
+    INSTALL_DIR="$(pwd)/secureclaw"
     print_success "Using existing directory: $INSTALL_DIR"
     return
   fi
 
   # Default: install to current directory
-  INSTALL_DIR="$(pwd)/openclaw"
+  INSTALL_DIR="$(pwd)/secureclaw"
   print_success "Will install to: $INSTALL_DIR"
 }
 

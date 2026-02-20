@@ -8,7 +8,7 @@ Successfully standardized error handling across SecureClaw by creating a compreh
 
 ### 1. Error Class Hierarchy ✅
 
-**Location:** `/Users/mbhatt/openclaw/src/infra/errors.ts`
+**Location:** `/Users/mbhatt/secureclaw/src/infra/errors.ts`
 
 **Created comprehensive error hierarchy:**
 
@@ -82,7 +82,7 @@ throw new NetworkError("Failed to connect to database", {
 
 ### 3. Gateway Error Mapping ✅
 
-**Location:** `/Users/mbhatt/openclaw/src/gateway/error-mapper.ts`
+**Location:** `/Users/mbhatt/secureclaw/src/gateway/error-mapper.ts`
 
 **Created comprehensive error mapping:**
 
@@ -115,7 +115,7 @@ try {
 
 ### 4. Error Handling Guide ✅
 
-**Location:** `/Users/mbhatt/openclaw/docs/error-handling.md`
+**Location:** `/Users/mbhatt/secureclaw/docs/error-handling.md`
 
 **Comprehensive documentation (10,149 bytes):**
 
@@ -434,9 +434,9 @@ The error handling system is now **production-ready** and provides a **clear mig
 
 ## Files Delivered
 
-1. `/Users/mbhatt/openclaw/src/infra/errors.ts` - Error class hierarchy (356 lines)
-2. `/Users/mbhatt/openclaw/src/gateway/error-mapper.ts` - Gateway error mapping (93 lines)
-3. `/Users/mbhatt/openclaw/docs/error-handling.md` - Comprehensive guide (432 lines)
+1. `/Users/mbhatt/secureclaw/src/infra/errors.ts` - Error class hierarchy (356 lines)
+2. `/Users/mbhatt/secureclaw/src/gateway/error-mapper.ts` - Gateway error mapping (93 lines)
+3. `/Users/mbhatt/secureclaw/docs/error-handling.md` - Comprehensive guide (432 lines)
 4. 6 updated files with typed errors:
    - `src/infra/ssh-tunnel.ts`
    - `src/config/profiles.ts`

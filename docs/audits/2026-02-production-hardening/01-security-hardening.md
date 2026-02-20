@@ -2,7 +2,7 @@
 
 **Date:** 2026-02-14
 **Auditor:** Security Agent 10
-**Target:** SecureClaw at /Users/mbhatt/openclaw
+**Target:** SecureClaw at /Users/mbhatt/secureclaw
 
 ## Executive Summary
 

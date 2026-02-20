@@ -45,9 +45,9 @@ SecureClaw has **comprehensive monitoring infrastructure** with excellent health
 
 **File Locations:**
 
-- `/Users/mbhatt/openclaw/src/gateway/server-methods/health.ts` - Health RPC handler
-- `/Users/mbhatt/openclaw/src/gateway/server/health-state.ts` - Health state management
-- `/Users/mbhatt/openclaw/src/commands/health.ts` - Health check implementation (630 lines)
+- `/Users/mbhatt/secureclaw/src/gateway/server-methods/health.ts` - Health RPC handler
+- `/Users/mbhatt/secureclaw/src/gateway/server/health-state.ts` - Health state management
+- `/Users/mbhatt/secureclaw/src/commands/health.ts` - Health check implementation (630 lines)
 
 **Health Check Features:**
 
@@ -115,7 +115,7 @@ const cappedTimeout = Math.max(1000, timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
 - Library: `tslog` with custom transports
 - Format: JSON with timestamps and structured fields
-- File location: `/Users/mbhatt/openclaw/src/logging/logger.ts`
+- File location: `/Users/mbhatt/secureclaw/src/logging/logger.ts`
 
 **Log Levels:**
 
@@ -147,7 +147,7 @@ createSubsystemLogger("security-coach");
 
 **Buffered File Logger:**
 
-- Location: `/Users/mbhatt/openclaw/src/infra/buffered-logger.ts`
+- Location: `/Users/mbhatt/secureclaw/src/infra/buffered-logger.ts`
 - Buffer size: 100 lines
 - Flush interval: 5000ms (5 seconds)
 - Stats available: `getBufferedLoggerStats()`
@@ -192,7 +192,7 @@ function defaultRollingPathForToday(): string {
 
 **OpenTelemetry Metrics:**
 
-- File: `/Users/mbhatt/openclaw/extensions/diagnostics-otel/src/service.ts` (634 lines)
+- File: `/Users/mbhatt/secureclaw/extensions/diagnostics-otel/src/service.ts` (634 lines)
 - Meter: `metrics.getMeter("secureclaw")`
 - Export: OTLP HTTP to Prometheus, Grafana, Datadog, etc.
 
@@ -246,7 +246,7 @@ function defaultRollingPathForToday(): string {
 
 **I/O Metrics:**
 
-- File: `/Users/mbhatt/openclaw/src/infra/io-metrics.ts` (390 lines)
+- File: `/Users/mbhatt/secureclaw/src/infra/io-metrics.ts` (390 lines)
 - Real-time tracking of:
   - Disk writes/reads (count + MB)
   - Network sent/received (count + MB)
@@ -255,7 +255,7 @@ function defaultRollingPathForToday(): string {
 
 **Security Coach Metrics:**
 
-- File: `/Users/mbhatt/openclaw/src/security-coach/metrics.ts` (390 lines)
+- File: `/Users/mbhatt/secureclaw/src/security-coach/metrics.ts` (390 lines)
 - Tracks:
   - Total alerts, blocks, allows, denies
   - Alerts/blocks per hour
@@ -292,7 +292,7 @@ function defaultRollingPathForToday(): string {
 
 **Security Coach SIEM Integration:**
 
-- File: `/Users/mbhatt/openclaw/src/security-coach/siem/dispatcher.ts` (558 lines)
+- File: `/Users/mbhatt/secureclaw/src/security-coach/siem/dispatcher.ts` (558 lines)
 - Destinations: Splunk, Datadog, Microsoft Sentinel
 - Event batching with configurable thresholds
 - Auto-retry on failure (1 retry with 5s delay)
@@ -330,7 +330,7 @@ function defaultRollingPathForToday(): string {
 
 **Diagnostic Heartbeat:**
 
-- File: `/Users/mbhatt/openclaw/src/logging/diagnostic.ts`
+- File: `/Users/mbhatt/secureclaw/src/logging/diagnostic.ts`
 - Periodic health snapshots sent to diagnostic event bus
 - Queue depth tracking
 
@@ -379,7 +379,7 @@ function defaultRollingPathForToday(): string {
 **Error Stack Traces:**
 
 - All errors logged with full stack traces
-- Error handling guide: `/Users/mbhatt/openclaw/docs/error-handling.md`
+- Error handling guide: `/Users/mbhatt/secureclaw/docs/error-handling.md`
 - Formatted error output: `formatError()` and `formatErrorMessage()`
 
 **Debug Mode:**
@@ -394,10 +394,10 @@ NODE_ENV=development             # Development mode
 
 **Performance Profiling:**
 
-- Startup metrics: `/Users/mbhatt/openclaw/src/infra/startup-optimizations.ts`
+- Startup metrics: `/Users/mbhatt/secureclaw/src/infra/startup-optimizations.ts`
 - Memory monitoring: `MemoryMonitor` class
 - Pi health monitoring for resource-constrained environments
-- Benchmark scripts: `/Users/mbhatt/openclaw/scripts/perf-benchmark.ts`
+- Benchmark scripts: `/Users/mbhatt/secureclaw/scripts/perf-benchmark.ts`
 
 **Debug Commands:**
 
@@ -685,20 +685,20 @@ SecureClaw has **production-grade observability infrastructure** with comprehens
 
 ### Core Monitoring Files
 
-- `/Users/mbhatt/openclaw/src/gateway/server-methods/health.ts` - Health RPC handler
-- `/Users/mbhatt/openclaw/src/gateway/server/health-state.ts` - Health state management
-- `/Users/mbhatt/openclaw/src/commands/health.ts` - Health check implementation
-- `/Users/mbhatt/openclaw/src/logging/logger.ts` - Structured logging
-- `/Users/mbhatt/openclaw/src/infra/io-metrics.ts` - I/O metrics collection
-- `/Users/mbhatt/openclaw/extensions/diagnostics-otel/src/service.ts` - OpenTelemetry integration
-- `/Users/mbhatt/openclaw/src/security-coach/metrics.ts` - Security Coach metrics
-- `/Users/mbhatt/openclaw/src/security-coach/siem/dispatcher.ts` - SIEM event dispatcher
+- `/Users/mbhatt/secureclaw/src/gateway/server-methods/health.ts` - Health RPC handler
+- `/Users/mbhatt/secureclaw/src/gateway/server/health-state.ts` - Health state management
+- `/Users/mbhatt/secureclaw/src/commands/health.ts` - Health check implementation
+- `/Users/mbhatt/secureclaw/src/logging/logger.ts` - Structured logging
+- `/Users/mbhatt/secureclaw/src/infra/io-metrics.ts` - I/O metrics collection
+- `/Users/mbhatt/secureclaw/extensions/diagnostics-otel/src/service.ts` - OpenTelemetry integration
+- `/Users/mbhatt/secureclaw/src/security-coach/metrics.ts` - Security Coach metrics
+- `/Users/mbhatt/secureclaw/src/security-coach/siem/dispatcher.ts` - SIEM event dispatcher
 
 ### Documentation
 
-- `/Users/mbhatt/openclaw/docs/gateway/health.md` - Health check documentation
-- `/Users/mbhatt/openclaw/docs/error-handling.md` - Error handling guide
-- `/Users/mbhatt/openclaw/docs/io-optimizations.md` - I/O optimization docs
+- `/Users/mbhatt/secureclaw/docs/gateway/health.md` - Health check documentation
+- `/Users/mbhatt/secureclaw/docs/error-handling.md` - Error handling guide
+- `/Users/mbhatt/secureclaw/docs/io-optimizations.md` - I/O optimization docs
 
 ---
 

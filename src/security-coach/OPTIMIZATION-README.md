@@ -27,7 +27,7 @@ This directory contains optimized implementations of the Security Coach pattern 
 ### Documentation
 
 - **`OPTIMIZATION-README.md`** - This file
-- **`/Users/mbhatt/openclaw/OPTIMIZATION-CPU.md`** - Detailed optimization report
+- **`/Users/mbhatt/secureclaw/OPTIMIZATION-CPU.md`** - Detailed optimization report
 
 ## Quick Start
 

@@ -1,7 +1,7 @@
 # Agent 8: Dead Code Elimination Report
 
 **Date**: February 14, 2026
-**Codebase**: SecureClaw @ /Users/mbhatt/openclaw
+**Codebase**: SecureClaw @ /Users/mbhatt/secureclaw
 **Commit**: `ebb6c9b34`
 
 ---

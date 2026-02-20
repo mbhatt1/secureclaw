@@ -39,7 +39,7 @@ SecureClaw demonstrates **excellent performance and resource management practice
 
 ### ✅ Excellent Implementations
 
-#### Memory Monitor (`/Users/mbhatt/openclaw/src/utils/memory-monitor.ts`)
+#### Memory Monitor (`/Users/mbhatt/secureclaw/src/utils/memory-monitor.ts`)
 
 ```typescript
 class MemoryMonitor {
@@ -67,7 +67,7 @@ class MemoryMonitor {
 - Automatic GC when available
 - Proper timer cleanup
 
-#### LRU Cache (`/Users/mbhatt/openclaw/src/utils/lru-cache.ts`)
+#### LRU Cache (`/Users/mbhatt/secureclaw/src/utils/lru-cache.ts`)
 
 ```typescript
 class LRUCache<K, V> {
@@ -98,7 +98,7 @@ class LRUCache<K, V> {
 - TTL support
 - Automatic eviction
 
-#### Request Cache (`/Users/mbhatt/openclaw/src/infra/request-cache.ts`)
+#### Request Cache (`/Users/mbhatt/secureclaw/src/infra/request-cache.ts`)
 
 ```typescript
 class RequestCache {
@@ -131,7 +131,7 @@ class RequestCache {
 
 **Recommendation**: Audit remaining 70 files for proper listener cleanup.
 
-#### Child Process Management (`/Users/mbhatt/openclaw/src/agents/bash-process-registry.ts`)
+#### Child Process Management (`/Users/mbhatt/secureclaw/src/agents/bash-process-registry.ts`)
 
 ```typescript
 // ✅ EXCELLENT: Comprehensive cleanup
@@ -166,7 +166,7 @@ function moveToFinished(session: ProcessSession, status: ProcessStatus) {
 
 ## 2. Connection Management
 
-### WebSocket Connection Pool (`/Users/mbhatt/openclaw/src/gateway/ws-connection-pool.ts`)
+### WebSocket Connection Pool (`/Users/mbhatt/secureclaw/src/gateway/ws-connection-pool.ts`)
 
 ```typescript
 class WSConnectionPool {
@@ -217,7 +217,7 @@ class WSConnectionPool {
 
 ## 3. CPU Optimization
 
-### Security Coach Worker Pool (`/Users/mbhatt/openclaw/src/security-coach/worker-pool.ts`)
+### Security Coach Worker Pool (`/Users/mbhatt/secureclaw/src/security-coach/worker-pool.ts`)
 
 ```typescript
 class SecurityCoachWorkerPool {
@@ -273,7 +273,7 @@ class SecurityCoachWorkerPool {
 
 ## 4. I/O Optimization
 
-### A. WebSocket Message Batching (`/Users/mbhatt/openclaw/src/infra/ws-message-batcher.ts`)
+### A. WebSocket Message Batching (`/Users/mbhatt/secureclaw/src/infra/ws-message-batcher.ts`)
 
 ```typescript
 class WSMessageBatcher {
@@ -303,7 +303,7 @@ class WSMessageBatcher {
 - Configurable batch size
 - Statistics tracking
 
-### B. Buffered File Logger (`/Users/mbhatt/openclaw/src/infra/buffered-logger.ts`)
+### B. Buffered File Logger (`/Users/mbhatt/secureclaw/src/infra/buffered-logger.ts`)
 
 ```typescript
 class BufferedFileLogger {
@@ -328,7 +328,7 @@ class BufferedFileLogger {
 - Graceful shutdown with SIGTERM/SIGINT hooks
 - Statistics tracking
 
-### C. Session Store Buffer (`/Users/mbhatt/openclaw/src/infra/session-store-buffer.ts`)
+### C. Session Store Buffer (`/Users/mbhatt/secureclaw/src/infra/session-store-buffer.ts`)
 
 ```typescript
 class SessionStoreBuffer {
@@ -359,7 +359,7 @@ class SessionStoreBuffer {
 - Prevents unbounded queue growth
 - Statistics: coalescence rate tracking
 
-### D. SQLite Optimization (`/Users/mbhatt/openclaw/src/infra/sqlite-adapter.ts`)
+### D. SQLite Optimization (`/Users/mbhatt/secureclaw/src/infra/sqlite-adapter.ts`)
 
 ```typescript
 class OptimizedSQLiteAdapter {
@@ -420,7 +420,7 @@ Found **~40 occurrences** of synchronous file operations:
 
 ## 5. Monitoring Hooks
 
-### I/O Metrics (`/Users/mbhatt/openclaw/src/infra/io-metrics.ts`)
+### I/O Metrics (`/Users/mbhatt/secureclaw/src/infra/io-metrics.ts`)
 
 ```typescript
 class IOMetrics {
@@ -744,29 +744,29 @@ The codebase is **well-optimized for Raspberry Pi deployments** and shows mature
 ### Key Performance Files
 
 1. **Memory Management**:
-   - `/Users/mbhatt/openclaw/src/utils/memory-monitor.ts`
-   - `/Users/mbhatt/openclaw/src/utils/lru-cache.ts`
+   - `/Users/mbhatt/secureclaw/src/utils/memory-monitor.ts`
+   - `/Users/mbhatt/secureclaw/src/utils/lru-cache.ts`
 
 2. **Connection Pooling**:
-   - `/Users/mbhatt/openclaw/src/gateway/ws-connection-pool.ts`
+   - `/Users/mbhatt/secureclaw/src/gateway/ws-connection-pool.ts`
 
 3. **I/O Optimization**:
-   - `/Users/mbhatt/openclaw/src/infra/ws-message-batcher.ts`
-   - `/Users/mbhatt/openclaw/src/infra/message-batcher.ts`
-   - `/Users/mbhatt/openclaw/src/infra/buffered-logger.ts`
-   - `/Users/mbhatt/openclaw/src/infra/session-store-buffer.ts`
-   - `/Users/mbhatt/openclaw/src/infra/sqlite-adapter.ts`
+   - `/Users/mbhatt/secureclaw/src/infra/ws-message-batcher.ts`
+   - `/Users/mbhatt/secureclaw/src/infra/message-batcher.ts`
+   - `/Users/mbhatt/secureclaw/src/infra/buffered-logger.ts`
+   - `/Users/mbhatt/secureclaw/src/infra/session-store-buffer.ts`
+   - `/Users/mbhatt/secureclaw/src/infra/sqlite-adapter.ts`
 
 4. **CPU Optimization**:
-   - `/Users/mbhatt/openclaw/src/security-coach/worker-pool.ts`
+   - `/Users/mbhatt/secureclaw/src/security-coach/worker-pool.ts`
 
 5. **Resource Cleanup**:
-   - `/Users/mbhatt/openclaw/src/agents/bash-process-registry.ts`
-   - `/Users/mbhatt/openclaw/src/process/child-process-bridge.ts`
+   - `/Users/mbhatt/secureclaw/src/agents/bash-process-registry.ts`
+   - `/Users/mbhatt/secureclaw/src/process/child-process-bridge.ts`
 
 6. **Monitoring**:
-   - `/Users/mbhatt/openclaw/src/infra/io-metrics.ts`
-   - `/Users/mbhatt/openclaw/src/infra/request-cache.ts`
+   - `/Users/mbhatt/secureclaw/src/infra/io-metrics.ts`
+   - `/Users/mbhatt/secureclaw/src/infra/request-cache.ts`
 
 ---
 

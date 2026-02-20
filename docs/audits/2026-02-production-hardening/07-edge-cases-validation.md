@@ -36,7 +36,7 @@ This report provides a detailed analysis of edge case handling, input validation
 
 ### 1.1 File Path Validation ✅ STRONG
 
-**Location**: `/Users/mbhatt/openclaw/src/security/path-validation.ts`
+**Location**: `/Users/mbhatt/secureclaw/src/security/path-validation.ts`
 
 **Implemented Controls:**
 
@@ -79,7 +79,7 @@ This report provides a detailed analysis of edge case handling, input validation
 
 ### 1.2 Network Input Validation ✅ STRONG
 
-**Location**: `/Users/mbhatt/openclaw/src/infra/net/ssrf.ts`
+**Location**: `/Users/mbhatt/secureclaw/src/infra/net/ssrf.ts`
 
 **Implemented SSRF Protections:**
 
@@ -129,7 +129,7 @@ This report provides a detailed analysis of edge case handling, input validation
 
 ### 1.3 Configuration Validation ✅ STRONG
 
-**Location**: `/Users/mbhatt/openclaw/src/config/validation.ts`
+**Location**: `/Users/mbhatt/secureclaw/src/config/validation.ts`
 
 **Zod Schema Validation:**
 
@@ -144,7 +144,7 @@ This report provides a detailed analysis of edge case handling, input validation
 
 ### 1.4 Size Limits ✅ WELL-DEFINED
 
-**Location**: `/Users/mbhatt/openclaw/src/config/defaults.unified.ts`
+**Location**: `/Users/mbhatt/secureclaw/src/config/defaults.unified.ts`
 
 ```typescript
 // Gateway Limits
@@ -170,7 +170,7 @@ MAX_MEDIA_ID_CHARS: 200;
 
 **Enforcement Points:**
 
-- `/Users/mbhatt/openclaw/src/media/fetch.ts:124-130` - Content-Length validation
+- `/Users/mbhatt/secureclaw/src/media/fetch.ts:124-130` - Content-Length validation
 - Gateway WebSocket payload size enforcement
 - Media store size validation
 
@@ -259,11 +259,11 @@ const latitude = parseFloat(input);
 
 **Specific Vulnerable Files:**
 
-1. `/Users/mbhatt/openclaw/src/media/image-ops.ts:153-154` - Image dimensions
-2. `/Users/mbhatt/openclaw/src/imessage/targets.ts:104` - Chat ID parsing
-3. `/Users/mbhatt/openclaw/src/commands/channels/add.ts:190` - Sync limit
-4. `/Users/mbhatt/openclaw/src/commands/channels/status.ts:247` - Timeout parsing
-5. `/Users/mbhatt/openclaw/src/cli/gateway-cli/discover.ts:25` - Port parsing
+1. `/Users/mbhatt/secureclaw/src/media/image-ops.ts:153-154` - Image dimensions
+2. `/Users/mbhatt/secureclaw/src/imessage/targets.ts:104` - Chat ID parsing
+3. `/Users/mbhatt/secureclaw/src/commands/channels/add.ts:190` - Sync limit
+4. `/Users/mbhatt/secureclaw/src/commands/channels/status.ts:247` - Timeout parsing
+5. `/Users/mbhatt/secureclaw/src/cli/gateway-cli/discover.ts:25` - Port parsing
 
 **Recommendation**: Create utility function:
 
@@ -305,7 +305,7 @@ if (sanitized.length > maxLength) {
 
 ### 3.1 Timeout Handling ✅ EXCELLENT
 
-**Location**: `/Users/mbhatt/openclaw/src/utils/fetch-timeout.ts`
+**Location**: `/Users/mbhatt/secureclaw/src/utils/fetch-timeout.ts`
 
 ```typescript
 export async function fetchWithTimeout(
@@ -335,7 +335,7 @@ export async function fetchWithTimeout(
 
 ### 3.2 Connection Failure Handling ✅ EXCELLENT
 
-**Location**: `/Users/mbhatt/openclaw/src/infra/retry.ts`
+**Location**: `/Users/mbhatt/secureclaw/src/infra/retry.ts`
 
 **Retry Strategy:**
 
@@ -367,7 +367,7 @@ export async function retryAsync<T>(fn: () => Promise<T>, options: RetryOptions 
 
 ### 3.3 Partial Response Handling ✅ GOOD
 
-**Location**: `/Users/mbhatt/openclaw/src/media/fetch.ts:133-135`
+**Location**: `/Users/mbhatt/secureclaw/src/media/fetch.ts:133-135`
 
 ```typescript
 const buffer = maxBytes
@@ -410,15 +410,15 @@ if (fs.existsSync(path)) {
 
 **Affected Files:**
 
-1. `/Users/mbhatt/openclaw/src/channels/plugins/catalog.ts:108`
-2. `/Users/mbhatt/openclaw/src/cli/skills-cli.test.ts:221`
-3. `/Users/mbhatt/openclaw/src/cli/plugins-cli.ts:490`
-4. `/Users/mbhatt/openclaw/src/cli/hooks-cli.ts:537`
-5. `/Users/mbhatt/openclaw/src/cli/dns-cli.ts:72`
-6. `/Users/mbhatt/openclaw/src/web/accounts.ts:108`
-7. `/Users/mbhatt/openclaw/src/infra/json-file.ts:6`
-8. `/Users/mbhatt/openclaw/src/plugins/bundled-dir.ts:15`
-9. `/Users/mbhatt/openclaw/src/plugins/discovery.ts:42`
+1. `/Users/mbhatt/secureclaw/src/channels/plugins/catalog.ts:108`
+2. `/Users/mbhatt/secureclaw/src/cli/skills-cli.test.ts:221`
+3. `/Users/mbhatt/secureclaw/src/cli/plugins-cli.ts:490`
+4. `/Users/mbhatt/secureclaw/src/cli/hooks-cli.ts:537`
+5. `/Users/mbhatt/secureclaw/src/cli/dns-cli.ts:72`
+6. `/Users/mbhatt/secureclaw/src/web/accounts.ts:108`
+7. `/Users/mbhatt/secureclaw/src/infra/json-file.ts:6`
+8. `/Users/mbhatt/secureclaw/src/plugins/bundled-dir.ts:15`
+9. `/Users/mbhatt/secureclaw/src/plugins/discovery.ts:42`
 
 **Safe Pattern:**
 
@@ -439,7 +439,7 @@ try {
 
 ### 4.2 Gateway Locking ✅ EXCELLENT
 
-**Location**: `/Users/mbhatt/openclaw/src/infra/gateway-lock.ts`
+**Location**: `/Users/mbhatt/secureclaw/src/infra/gateway-lock.ts`
 
 **Implementation:**
 
@@ -471,7 +471,7 @@ export async function acquireGatewayLock(
 **State Management**:
 
 - Found 720 files using Map/Set data structures
-- Connection pool management in `/Users/mbhatt/openclaw/src/gateway/ws-connection-pool.ts`
+- Connection pool management in `/Users/mbhatt/secureclaw/src/gateway/ws-connection-pool.ts`
 
 **Gaps**:
 
@@ -577,10 +577,10 @@ config.property.access(); // May crash if structure unexpected
 
 **Affected Files** (~15 instances):
 
-1. `/Users/mbhatt/openclaw/src/channels/plugins/catalog.ts:112`
-2. `/Users/mbhatt/openclaw/src/cli/browser-cli-state.ts:112`
-3. `/Users/mbhatt/openclaw/src/utils.ts:51`
-4. `/Users/mbhatt/openclaw/src/commands/doctor-auth.deprecated-cli-profiles.test.ts:98`
+1. `/Users/mbhatt/secureclaw/src/channels/plugins/catalog.ts:112`
+2. `/Users/mbhatt/secureclaw/src/cli/browser-cli-state.ts:112`
+3. `/Users/mbhatt/secureclaw/src/utils.ts:51`
+4. `/Users/mbhatt/secureclaw/src/commands/doctor-auth.deprecated-cli-profiles.test.ts:98`
 
 **Safe Pattern:**
 
