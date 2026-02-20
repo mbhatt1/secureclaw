@@ -65,7 +65,7 @@ describe("email detection", () => {
   });
 
   it("detects emails with + addressing", () => {
-    const result = scanner.scan("user+tag@example.com");
+    const _result = scanner.scan("user+tag@example.com");
     expect(typesFound("user+tag@example.com")).toContain("email");
   });
 

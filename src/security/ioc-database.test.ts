@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { IOCEntry, IOCMatch } from "./ioc-database.js";
+import type { IOCEntry } from "./ioc-database.js";
 import { IOCDatabase } from "./ioc-database.js";
 
 // ---------------------------------------------------------------------------

@@ -275,7 +275,7 @@ const PATTERNS: PatternDef[] = [
  * Includes: zero-width space, zero-width non-joiner, zero-width joiner,
  * left-to-right mark, right-to-left mark, word joiner, zero-width no-break space.
  */
-const ZERO_WIDTH_RE = /[\u200B\u200C\u200D\u200E\u200F\u2060\uFEFF]/g;
+const ZERO_WIDTH_RE = /\u200B|\u200C|\u200D|\u200E|\u200F|\u2060|\uFEFF/g;
 
 /**
  * Unicode fullwidth ASCII range (A-Z, a-z) and common homoglyphs.
